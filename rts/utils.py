@@ -3,6 +3,7 @@ import sys
 import time
 import logging
 import orjson
+import pickle
 from typing import Dict, List, Optional, Tuple, Callable
 from functools import wraps
 
@@ -76,3 +77,23 @@ def dict_from_json(path: str) -> Optional[Dict]:
     except (FileNotFoundError, ValueError, orjson.JSONDecodeError) as e:
         LOG.error(e)
         return None
+
+
+def dict_to_pickle(obj: Dict, outpath: str) -> bool:
+    try:
+        with open(outpath, 'wb') as fp:
+            pickle.dump(obj, fp)
+    except Exception as e:
+        LOG.error(e)
+        return False
+    return True
+
+
+def dict_from_pickle(path: str) -> Optional[Dict]:
+    try:
+        with open(path, 'rb') as fp:
+            obj = pickle.load(fp)
+    except Exception as e:
+        LOG.error(e)
+        return None
+    return obj
