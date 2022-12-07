@@ -1,0 +1,52 @@
+{
+    "CategorieAsset": "Programme",
+    "SemaphoreDroit": "Inconnu",
+    "DureeSec": 3821,
+    "DateModification": "2018-04-17T01:40:48Z",
+    "HeurePublication": "09:39:00",
+    "idCollection": "408",
+    "ApplicationModification": "TMS",
+    "NumeroEpisode": 101,
+    "idTypeProduction": "6",
+    "Collection": "Ski alpin",
+    "idTypeAsset": "5",
+    "idStatutArchivage": "3",
+    "idCategorieAsset": "PROGR",
+    "aVignette": false,
+    "DatePublication": "2011-10-22T09:39:00Z",
+    "DateCreation": "2011-09-29T12:12:26Z",
+    "Guid": "AA1109014960",
+    "TypeProduction": "Transmission",
+    "key": "asset-14961",
+    "StatutArchivage": "Terminé",
+    "Titre": "Géant dames, 1re manche, Sölden",
+    "environment": "production",
+    "ApplicationCreation": "STRADA",
+    "batchid": 1645384501,
+    "role": "asset",
+    "TypeAsset": "Retransmission sportive",
+    "Duree": "01:03:41:00",
+    "idTypeContenu": [
+        "Multiple"
+    ],
+    "idCanalPublication": [
+        "588"
+    ],
+    "id": "14961",
+    "UtilisateurCreation": "STRADA",
+    "Saison": "2011",
+    "CodeCollection": "SKIAL",
+    "TypeContenu": [
+        "Valeurs multiples"
+    ],
+    "idSemaphoreDroit": "G",
+    "CanalPublication": [
+        "TSR 2"
+    ],
+    "version": "1.13.4",
+    "UtilisateurModification": "TMS",
+    "Achat": "Non",
+    "aTexts": true,
+    "MetadonneesAutomatiques": "En direct de Sölden (AUT)",
+    "timestamp": "2022-02-21T00:53:41.170Z"
+}
