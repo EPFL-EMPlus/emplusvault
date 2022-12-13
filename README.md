@@ -1,5 +1,19 @@
 # RTS data parsing
 
+## Installation
+- Install poetry
+- Run `poetry install`
+
+# Meilisearch
+```
+docker run\
+    -p 7700:7700 \
+    -e MEILI_MASTER_KEY="1234"\
+    -v $(pwd)/meili_data:/meili_data \
+    getmeili/meilisearch:v0.30 \
+    meilisearch --env="development"
+```
+
 ## Notes
 - First put VPN, map network drive
 `\\emplussrv1.epfl.ch`

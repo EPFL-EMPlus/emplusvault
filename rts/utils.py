@@ -4,7 +4,7 @@ import time
 import logging
 import orjson
 import pickle
-from typing import Dict, List, Optional, Tuple, Callable
+from typing import Dict, List, Optional, Tuple, Callable, Any
 from functools import wraps
 
 
@@ -69,7 +69,7 @@ def dict_to_json(obj: Dict, outpath: str) -> bool:
         return False
 
 
-def dict_from_json(path: str) -> Optional[Dict]:
+def obj_from_json(path: str) -> Optional[Any]:
     try:
         with open(path, 'rb') as fp:
             js = orjson.loads(fp.read())
