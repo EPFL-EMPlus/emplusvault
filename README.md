@@ -14,6 +14,10 @@ docker run\
     meilisearch --env="development"
 ```
 
+# PyAv
+
+Maybe compile ffmpeg with hardware decoder enable and bind to pyAv?
+
 ## Notes
 - First put VPN, map network drive
 `\\emplussrv1.epfl.ch`

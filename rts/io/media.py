@@ -13,7 +13,7 @@ LOG = rts.utils.get_logger()
 def to_wav(in_path: str, out_path: str = None, sample_rate: int = 48000) -> str:
     """Arbitrary media files to wav"""
     if out_path is None:
-        out_path = os.path.splitext(in_path)[0] + '.wav'
+        out_path = str(Path(out_path).with_suffix('.wav'))
     with av.open(in_path) as in_container:
         in_stream = in_container.streams.audio[0]
         in_stream.thread_type = "AUTO"
@@ -33,7 +33,7 @@ def to_wav(in_path: str, out_path: str = None, sample_rate: int = 48000) -> str:
 @rts.utils.timeit
 def to_mp3(in_path: str, out_path: str = None, bitrate: str = '') -> str:
     if out_path is None:
-        out_path = os.path.splitext(in_path)[0] + '.mp3'
+        out_path = str(Path(out_path).with_suffix('.mp3'))
     with av.open(in_path) as in_container:
         in_stream = in_container.streams.audio[0]
         in_stream.thread_type = "AUTO"
@@ -57,10 +57,12 @@ def to_mp3(in_path: str, out_path: str = None, bitrate: str = '') -> str:
 @rts.utils.timeit
 def remux_audio(in_path: str, out_path: str = None) -> Optional[str]:
     try:
-        with av.open(in_path) as in_container:
+        with av.open(str(in_path)) as in_container:
             in_stream = in_container.streams.audio[0]
             in_stream.thread_type = "AUTO"
-            ext = in_stream.codec_context.codec.name  
+            ext = in_stream.codec_context.codec.name
+            if ext == 'aac':
+                ext = 'm4a'
             out_path = str(Path(out_path).with_suffix(f'.{ext}'))
             with av.open(out_path, 'w') as out_container:
                 out_stream = out_container.add_stream(template=in_stream)
