@@ -37,7 +37,7 @@ def create_load_video_folder_index(rts_drive_path: str, index_path: str) -> Opti
     vidx = read_video_folder_index(index_path)
     if not vidx:
         vidx = build_video_folder_index(rts_drive_path)
-        rts.utils.dict_to_json(vidx, index_path)
+        rts.utils.obj_to_json(vidx, index_path)
         return vidx
     return vidx
 

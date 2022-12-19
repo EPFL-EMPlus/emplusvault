@@ -58,7 +58,7 @@ def read_jsonlines_file(filepath: str) -> List[Dict]:
     return data
 
 
-def dict_to_json(obj: Dict, outpath: str) -> bool:
+def obj_to_json(obj: Any, outpath: str) -> bool:
     try:
         with open(outpath, 'wb') as fp:
             js = orjson.dumps(obj)

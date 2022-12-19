@@ -55,7 +55,7 @@ def to_mp3(in_path: str, out_path: str = None, bitrate: str = '') -> str:
 
 
 @rts.utils.timeit
-def remux_audio(in_path: str, out_path: str = None) -> Optional[str]:
+def extract_audio(in_path: str, out_path: str = None) -> Optional[str]:
     try:
         with av.open(str(in_path)) as in_container:
             in_stream = in_container.streams.audio[0]
@@ -73,6 +73,34 @@ def remux_audio(in_path: str, out_path: str = None) -> Optional[str]:
                     # We need to assign the packet to the new stream.
                     packet.stream = out_stream
                     out_container.mux(packet)
+        return out_path
+    except av.AVError as e:
+        LOG.error(e)
+        return None
+
+
+@rts.utils.timeit
+def merge_video_audio_files(video_path: str, audio_path: str, out_path: str) -> Optional[str]:
+    def demux(in_container, in_stream, out_container, out_stream):
+        for packet in in_container.demux(in_stream):
+            if packet.dts is None:
+                continue
+            packet.stream = out_stream
+            out_container.mux(packet)
+    
+    try:
+        out_path = str(Path(out_path).with_suffix(f'.mp4'))
+        with av.open(str(video_path)) as in_video:
+            in_vstream = in_video.streams.video[0]
+            with av.open(str(audio_path)) as in_audio:
+                in_astream = in_audio.streams.audio[0]
+                with av.open(out_path, 'w') as out_container:
+                    out_vstream = out_container.add_stream(template=in_vstream)
+                    out_astream = out_container.add_stream(template=in_astream)
+                    # Copy video
+                    demux(in_video, in_vstream, out_container, out_vstream)
+                    # Copy audio
+                    demux(in_audio, in_astream, out_container, out_astream)
         return out_path
     except av.AVError as e:
         LOG.error(e)
