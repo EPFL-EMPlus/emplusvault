@@ -5,7 +5,7 @@ description = ""
 authors = ["Kirell Benzi <kirell.benzi@epfl.ch>"]
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = ">=3.9,<4.0"
 jupyterlab = "^3.5.1"
 numpy = "^1.23.5"
 meilisearch = "^0.23.0"
@@ -22,6 +22,7 @@ transformers = "^4.25.1"
 tables = "^3.7.0"
 matplotlib = "^3.6.2"
 av = "^10.0.0"
+auto-editor = "^22.52.1"
 
 [tool.poetry.dev-dependencies]
 poethepoet = "^0.16.5"
