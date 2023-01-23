@@ -2,6 +2,8 @@ import pathlib
 import meilisearch
 import pandas as pd
 import numpy as np
+import requests
+import time
 
 import rts.utils
 
@@ -57,11 +59,12 @@ def get_or_create_media_index(client: meilisearch.Client) -> meilisearch.index.I
     
     try:
         m = client.get_index('media')
-    except (Exception, meilisearch.MeiliSearchApiError) as e:
+    except:
         client.create_index('media', {
             'primaryKey': 'guid'
         })
-
+        
+    time.sleep(1)
     m = client.get_index('media')
     
     here = pathlib.Path(__file__).parent.resolve()

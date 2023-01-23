@@ -11,7 +11,7 @@ numpy = "^1.23.5"
 meilisearch = "^0.23.0"
 pandas = "^1.5.2"
 orjson = "^3.8.3"
-whisper = {git = "https://github.com/openai/whisper.git", rev = "main"}
+openai-whisper = {git = "https://github.com/openai/whisper.git", rev = "main"}
 torch = "^1.13.0"
 torchvision = "^0.14.0"
 torchaudio = "^0.13.0"

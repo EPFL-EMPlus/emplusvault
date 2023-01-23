@@ -19,6 +19,10 @@ docker run\
 Maybe compile ffmpeg with hardware decoder enable and bind to pyAv?
 
 ## Notes
+
+If Poetry install issues with Keyring
+`export PYTHON_KEYRING_BACKEND=keyring.backends.null.Keyring`
+
 - First put VPN, map network drive
 `\\emplussrv1.epfl.ch`
 
