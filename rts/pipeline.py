@@ -5,18 +5,12 @@ import xml.etree.ElementTree as ET
 from typing import Dict, List, Optional, Tuple
 from pathlib import Path
 
-import whisper
-
 import rts.utils
 import rts.io.media
+import rts.features.audio
 
 LOG = rts.utils.get_logger()
 
-
-_model = {
-    'name': None,
-    'model': None
-}
 
 def read_xml_file(file_path: str):
     with open(file_path, 'r') as file:
@@ -59,17 +53,12 @@ def get_raw_video_audio_parts(media_folder: str) -> Tuple[str, str]:
     return video, audio
 
 
-def get_media_id(media_folder: str) -> str:
-    media_id = Path(media_folder).name
-    return media_id
-
-
 @rts.utils.timeit
 def create_optimized_media(media_folder: str, output_folder: str, force: bool = False) -> Dict:
     def get_folder_hierarchy(p):
         return '/'.join(p.split('/')[-4:])
 
-    media_id = get_media_id(media_folder)
+    media_id = rts.utils.get_media_id(media_folder)
     export_folder = Path(os.path.join(output_folder, get_folder_hierarchy(media_folder)))
     os.makedirs(export_folder, exist_ok=True)
 
@@ -122,7 +111,7 @@ def extract_scenes(
     if scene_out.exists() and not force:
         return rts.utils.obj_from_json(scene_out)
 
-    media_id = get_media_id(media_folder)
+    media_id = rts.utils.get_media_id(media_folder)
     scenes = rts.io.media.detect_scenes(video_path)
     if not scenes:
         return None
@@ -138,43 +127,23 @@ def extract_scenes(
     return scene_infos
 
 
-def transcribe_media(audio_path: str, model_name: Optional[str] = None) -> List[Dict]:
-    global _model
-
-    if not model_name:
-        if not _model['name']:
-            model_name = 'medium'
-        else:
-            model_name = _model['name']
-
-    # not in cache
-    if not _model['name']:
-        LOG.info(f'Load model: {model_name}')
-        _model['model'] = whisper.load_model(model_name)
-        _model['name'] = model_name
-
-    # invalidate model
-    if model_name != _model['name']:
-        LOG.info(f'Change model: {model_name}')
-        _model['model'] = whisper.load_model(model_name)
-        _model['name'] = model_name
-
-    res = _model['model'].transcribe(audio_path, language='French')
-    
-    output = []
-    for d in res['segments']:
-        output.append({
-            't': d['text'].strip().replace('-->', '->'),
-            's': f"{d['start']:.2f}",
-            'e': f"{d['end']:.2f}"
-        })
-    return output
-
-
-def process_media(media_folder: str, force: bool = False):
+def process_media(input_media_folder: str, global_output_folder: str, force: bool = False):
     # optimize media
-    # scene detect
-    # extract thumbnails
-    # transcribe
-    # extract features
+    remuxed = create_optimized_media(
+        input_media_folder, 
+        global_output_folder, 
+        force=force
+    )
+    
+    scenes = extract_scenes(
+        remuxed.get('media_folder'),
+        remuxed.get('video'),
+        force=force
+    )
+    
+    transcript = rts.features.audio.transcribe_media(
+        remuxed.get('media_folder'),
+        remuxed.get('audio')
+    )
+    
     pass

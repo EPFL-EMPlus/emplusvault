@@ -6,6 +6,7 @@ import orjson
 import pickle
 from typing import Dict, List, Optional, Tuple, Callable, Any
 from functools import wraps
+from pathlib import Path
 
 
 LOG = logging.getLogger('RTS')
@@ -60,7 +61,7 @@ def read_jsonlines_file(filepath: str) -> List[Dict]:
 
 def obj_to_json(obj: Any, outpath: str) -> bool:
     try:
-        with open(outpath, 'wb') as fp:
+        with open(str(outpath), 'wb') as fp:
             js = orjson.dumps(obj)
             fp.write(js)
             return True
@@ -71,7 +72,7 @@ def obj_to_json(obj: Any, outpath: str) -> bool:
 
 def obj_from_json(path: str) -> Optional[Any]:
     try:
-        with open(path, 'rb') as fp:
+        with open(str(path), 'rb') as fp:
             js = orjson.loads(fp.read())
             return js
     except (FileNotFoundError, ValueError, orjson.JSONDecodeError) as e:
@@ -81,7 +82,7 @@ def obj_from_json(path: str) -> Optional[Any]:
 
 def dict_to_pickle(obj: Dict, outpath: str) -> bool:
     try:
-        with open(outpath, 'wb') as fp:
+        with open(str(outpath), 'wb') as fp:
             pickle.dump(obj, fp)
     except Exception as e:
         LOG.error(e)
@@ -91,9 +92,14 @@ def dict_to_pickle(obj: Dict, outpath: str) -> bool:
 
 def dict_from_pickle(path: str) -> Optional[Dict]:
     try:
-        with open(path, 'rb') as fp:
+        with open(str(path), 'rb') as fp:
             obj = pickle.load(fp)
     except Exception as e:
         LOG.error(e)
         return None
     return obj
+
+
+def get_media_id(media_folder: str) -> str:
+    media_id = Path(media_folder).name
+    return media_id
