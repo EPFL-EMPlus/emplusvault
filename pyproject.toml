@@ -23,6 +23,7 @@ tables = "^3.7.0"
 matplotlib = "^3.6.2"
 av = "^10.0.0"
 auto-editor = "^22.52.1"
+scenedetect = {extras = ["opencv-headless"], version = "^0.6.1"}
 
 [tool.poetry.dev-dependencies]
 poethepoet = "^0.16.5"

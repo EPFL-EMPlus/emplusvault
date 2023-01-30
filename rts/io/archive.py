@@ -59,21 +59,33 @@ def get_raw_video_audio_parts(media_folder: str) -> Tuple[str, str]:
     return video, audio
 
 
-def create_optimized_media(media_folder: str, output_folder: str, force: bool = False) -> Optional[str]:
+def get_media_id(media_folder: str) -> str:
+    media_id = Path(media_folder).name
+    return media_id
+
+
+@rts.utils.timeit
+def create_optimized_media(media_folder: str, output_folder: str, force: bool = False) -> Dict:
     def get_folder_hierarchy(p):
         return '/'.join(p.split('/')[-4:])
 
-    media_id = Path(media_folder).name
-    v, a = get_raw_video_audio_parts(media_folder)
-
+    media_id = get_media_id(media_folder)
     export_folder = Path(os.path.join(output_folder, get_folder_hierarchy(media_folder)))
     os.makedirs(export_folder, exist_ok=True)
 
-    dst_path = export_folder.joinpath(f'{media_id}.mp4')
-    if not dst_path.exists() or force:
-        ok = rts.io.media.merge_video_audio_files(v, a, dst_path)
+    payload = {
+        'media_id': media_id,
+        'media_folder': str(export_folder)
+    }
+
+    v, a = get_raw_video_audio_parts(media_folder)
+    video_path = export_folder.joinpath(f'{media_id}.mp4')
+    if not video_path.exists() or force:
+        ok = rts.io.media.merge_video_audio_files(v, a, video_path)
         if not ok:
-            return False
+            return payload
+
+    payload['video'] = str(video_path)
 
     # # Copy video file for now
     # dst_path = export_folder.joinpath(f'{media_id}_video.mp4')
@@ -84,13 +96,46 @@ def create_optimized_media(media_folder: str, output_folder: str, force: bool = 
     #         LOG.error(e)
     #         return False
 
-    dst_path = export_folder.joinpath(f'{media_id}_audio.m4a')
-    if not dst_path.exists() or force:
-        audio = rts.io.media.extract_audio(a, dst_path)
+    audio_path = export_folder.joinpath(f'{media_id}_audio.m4a')
+    if not audio_path.exists() or force:
+        audio = rts.io.media.extract_audio(a, audio_path)
         if not audio:
-            return False
+            return payload
     
-    return str(export_folder)
+    payload['audio'] = str(audio_path)
+    return payload
+
+
+@rts.utils.timeit
+def extract_scenes(
+    media_folder: str,
+    video_path: str, 
+    min_seconds: float = 10, 
+    num_images: int = 3,
+    force: bool = False) -> Optional[Dict]:
+
+    if not media_folder:
+        return None
+
+    scene_out = Path(os.path.join(media_folder, 'scenes.json'))
+
+    if scene_out.exists() and not force:
+        return rts.utils.obj_from_json(scene_out)
+
+    media_id = get_media_id(media_folder)
+    scenes = rts.io.media.detect_scenes(video_path)
+    if not scenes:
+        return None
+
+    scenes = rts.io.media.filter_scenes(scenes, min_seconds)
+    if not scenes:
+        return None
+
+    paths = rts.io.media.save_scenes_images(scenes, video_path, media_folder, num_images)
+    scene_infos = rts.io.media.format_scenes(media_id, scenes, paths)
+    rts.utils.obj_to_json(scene_infos, os.path.join(media_folder, 'scenes.json'))
+
+    return scene_infos
 
 
 def transcribe_media(audio_path: str, model_name: Optional[str] = None) -> List[Dict]:
@@ -128,6 +173,8 @@ def transcribe_media(audio_path: str, model_name: Optional[str] = None) -> List[
 
 def process_media(media_folder: str, force: bool = False):
     # optimize media
+    # scene detect
     # extract thumbnails
     # transcribe
+    # extract features
     pass
