@@ -8,6 +8,7 @@ from typing import Dict, List, Optional, Tuple
 from pathlib import Path
 from tqdm import tqdm
 
+import rts.metadata
 import rts.utils
 import rts.io.media
 import rts.features.audio
@@ -216,3 +217,30 @@ def simple_process_archive(df: pd.DataFrame,
                 min_seconds, num_images, compute_transcript, force)
             LOG.info(status)
             pbar.update(row.mediaDuration)
+
+
+# Create a main function for the module and launch simple_process_archive
+if __name__ == '__main__':
+    import argparse
+    LOCAL_RTS_DATA = "/media/data/rts/"
+    METADATA = LOCAL_RTS_DATA + 'metadata'
+    LOCAL_VIDEOS = LOCAL_RTS_DATA + 'archive'
+
+    OUTDIR = 'data'
+
+    parser = argparse.ArgumentParser(description='Process media archive')
+    parser.add_argument('--min_seconds', type=float, default=5, help='Minimum duration of a scene')
+    parser.add_argument('--num_images', type=int, default=3, help='Number of images per scene')
+    parser.add_argument('--compute_transcript', action='store_true', help='Compute transcript')
+    parser.add_argument('--force', action='store_true', help='Force processing')
+    args = parser.parse_args()
+
+    LOG.info('Loading metadata')
+    df = rts.metadata.load_metadata_hdf5(METADATA, 'rts_metadata')
+
+    LOG.info('Get sample df')
+    sample_df = rts.metadata.get_one_percent_sample(df)
+
+    LOG.info('Process archive')
+    simple_process_archive(sample_df[:1000], LOCAL_VIDEOS, args.min_seconds, args.num_images, args.compute_transcript, args.force)
+
