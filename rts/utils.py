@@ -24,7 +24,7 @@ def timeit(method) -> Callable:
         start_time = time.time()
         result = method(*args, **kwargs)
         end_time = time.time()
-        LOG.info(f"{method.__name__} => {(end_time-start_time)*1000} ms")
+        LOG.debug(f"{method.__name__} => {(end_time-start_time)*1000} ms")
 
         return result
 

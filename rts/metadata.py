@@ -198,3 +198,23 @@ def metadata_to_hdf5(outdir: str, name: str, df: pd.DataFrame) -> bool:
 def load_metadata_hdf5(outdir: str, name: str) -> pd.DataFrame:
     df = pd.read_hdf(os.path.join(outdir, f'{name}.hdf5'), key='df')
     return df
+
+
+def export_metadata_stats(df: pd.DataFrame, outdir: str) -> bool:
+    def export(df: pd.DataFrame, col: str) -> bool:
+        d = df.groupby(col)[col].count().sort_values(ascending=False)
+        os.makedirs(outdir, exist_ok=True)
+        d.to_csv(os.path.join(outdir, f'{col}s.csv'))
+
+    export(df, 'contentType')
+    export(df, 'assetType')
+    export(df, 'collection')
+    export(df, 'categoryName')
+    
+
+def get_one_percent_sample(df: pd.DataFrame, 
+    nested_struct: str = '0/0', 
+    archive_prefix: str = '/mnt/rts/') -> pd.DataFrame:
+
+    sample = df[df.mediaFolderPath.str.startswith(f"{archive_prefix}{nested_struct}")]
+    return sample

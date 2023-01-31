@@ -1,9 +1,12 @@
 import os
+import sys
 import shutil
+import pandas as pd
 import xml.etree.ElementTree as ET
 
 from typing import Dict, List, Optional, Tuple
 from pathlib import Path
+from tqdm import tqdm
 
 import rts.utils
 import rts.io.media
@@ -60,8 +63,7 @@ def create_optimized_media(media_folder: str, output_folder: str, force: bool = 
 
     media_id = rts.utils.get_media_id(media_folder)
     export_folder = Path(os.path.join(output_folder, get_folder_hierarchy(media_folder)))
-    os.makedirs(export_folder, exist_ok=True)
-
+    
     payload = {
         'media_id': media_id,
         'media_folder': str(export_folder)
@@ -70,6 +72,7 @@ def create_optimized_media(media_folder: str, output_folder: str, force: bool = 
     v, a = get_raw_video_audio_parts(media_folder)
     video_path = export_folder.joinpath(f'{media_id}.mp4')
     if not video_path.exists() or force:
+        os.makedirs(export_folder, exist_ok=True)  # make folder if needed
         ok = rts.io.media.merge_video_audio_files(v, a, video_path)
         if not ok:
             return payload
@@ -114,10 +117,12 @@ def extract_scenes(
     media_id = rts.utils.get_media_id(media_folder)
     scenes = rts.io.media.detect_scenes(video_path)
     if not scenes:
+        LOG.error(f'Extract scene failed: {video_path}')
         return None
 
     scenes = rts.io.media.filter_scenes(scenes, min_seconds)
     if not scenes:
+        LOG.warning(f'No scenes longer than {min_seconds} secs')
         return None
 
     paths = rts.io.media.save_scenes_images(scenes, video_path, media_folder, num_images)
@@ -127,23 +132,87 @@ def extract_scenes(
     return scene_infos
 
 
-def process_media(input_media_folder: str, global_output_folder: str, force: bool = False):
-    # optimize media
-    remuxed = create_optimized_media(
-        input_media_folder, 
-        global_output_folder, 
-        force=force
-    )
+def save_metadata(meta: Dict, media_folder: str, force: bool = False) -> bool:
+    if not media_folder:
+        return False
+
+    p = Path(os.path.join(media_folder, 'metadata.json'))
+    if not p.exists() or force:
+        return rts.utils.obj_to_json(meta, p)
+    return True
+
+
+def process_media(input_media_folder: str, global_output_folder: str, 
+    metadata: Optional[Dict] = None,
+    min_seconds: float = 5, 
+    num_images: int = 3,
+    compute_transcript: bool = False,
+    force: bool = False) -> Dict:
+
+    res = {
+        'media_id': rts.utils.get_media_id(input_media_folder),
+        'status': 'fail',
+        'error': ''
+    }
+
+    try:
+        remuxed = create_optimized_media(
+            input_media_folder, 
+            global_output_folder, 
+            force=force
+        )
+
+        if not remuxed:
+            res['error'] = 'Could not remux file'
+            return res
+        
+        ok = save_metadata(metadata, remuxed.get('media_folder'), force)
+        if not ok:
+            res['error'] = 'Could not save metadata'
+            return res
+
+        scenes = extract_scenes(
+            remuxed.get('media_folder'),
+            remuxed.get('video'),
+            min_seconds=min_seconds, 
+            num_images=num_images,
+            force=force
+        )
+
+        if not scenes:
+            res['error'] = 'Could not extract scenes'
+            return res
+
+        if compute_transcript:
+            transcript = rts.features.audio.transcribe_media(
+                remuxed.get('media_folder'),
+                remuxed.get('audio')
+            )
+
+            if not transcript:
+                res['error'] = 'Could not transcribe media'
+                return res
+
+    except Exception as e:
+        res['error'] = e.message()
+        return res
     
-    scenes = extract_scenes(
-        remuxed.get('media_folder'),
-        remuxed.get('video'),
-        force=force
-    )
-    
-    transcript = rts.features.audio.transcribe_media(
-        remuxed.get('media_folder'),
-        remuxed.get('audio')
-    )
-    
-    pass
+    res['status'] = 'success'
+    return res
+
+
+def simple_process_archive(df: pd.DataFrame,
+    global_output_folder: str, 
+    min_seconds: float = 5, 
+    num_images: int = 3,
+    compute_transcript: bool = False,
+    force: bool = False) -> None:
+
+    LOG.setLevel('INFO')
+    total_duration = df.mediaDuration.sum()
+    with tqdm(total=total_duration, file=sys.stdout) as pbar:
+        for _, row in df.iterrows():
+            status = process_media(row.mediaFolderPath, global_output_folder, row.to_dict(), 
+                min_seconds, num_images, compute_transcript, force)
+            LOG.info(status)
+            pbar.update(row.mediaDuration)
