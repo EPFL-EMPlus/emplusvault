@@ -4,7 +4,7 @@ import time
 import logging
 import orjson
 import pickle
-from typing import Dict, List, Optional, Tuple, Callable, Any
+from typing import Dict, List, Optional, Tuple, Callable, Any, Generator
 from functools import wraps
 from pathlib import Path
 
@@ -103,3 +103,14 @@ def dict_from_pickle(path: str) -> Optional[Dict]:
 def get_media_id(media_folder: str) -> str:
     media_id = Path(media_folder).name
     return media_id
+
+
+def recursive_glob(path, file_extension='.json', match_name: Optional[str] = None) -> Generator[str, None, None]:
+   for (dirpath, _, filenames) in os.walk(path):
+      for filename in filenames:
+         if filename.endswith(file_extension):
+            if match_name:
+               if filename == match_name:
+                  yield os.path.join(dirpath, filename)
+            else:
+                yield os.path.join(dirpath, filename)

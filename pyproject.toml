@@ -24,10 +24,16 @@ matplotlib = "^3.6.2"
 av = "^10.0.0"
 auto-editor = "^22.52.1"
 scenedetect = {extras = ["opencv-headless"], version = "^0.6.1"}
+cupy-cuda12x = "^11.5.0"
+spacy = {extras = ["cuda-12"], version = "^3.5.0"}
+geonamescache = "^1.5.0"
 
 [tool.poetry.dev-dependencies]
-poethepoet = "^0.16.5"
+poethepoet = "^0.18.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poe.tasks]
+install-spacy-models = "python -m spacy download fr_core_news_lg"

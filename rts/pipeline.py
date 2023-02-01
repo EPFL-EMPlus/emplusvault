@@ -143,6 +143,20 @@ def save_metadata(meta: Dict, media_folder: str, force: bool = False) -> bool:
     return True
 
 
+def load_transcript(media_folder: str) -> Optional[Dict]:
+    p = Path(os.path.join(media_folder, 'transcript.json'))
+    if p.exists():
+        return rts.utils.obj_from_json(p)
+    return None
+
+
+def load_scene(media_folder: str) -> Optional[Dict]:
+    p = Path(os.path.join(media_folder, 'scenes.json'))
+    if p.exists():
+        return rts.utils.obj_from_json(p)
+    return None
+
+
 def process_media(input_media_folder: str, global_output_folder: str, 
     metadata: Optional[Dict] = None,
     min_seconds: float = 5, 
@@ -215,8 +229,16 @@ def simple_process_archive(df: pd.DataFrame,
         for _, row in df.iterrows():
             status = process_media(row.mediaFolderPath, global_output_folder, row.to_dict(), 
                 min_seconds, num_images, compute_transcript, force)
-            LOG.info(status)
+            LOG.info(f"{status['media_id']} - {status['status']}")
             pbar.update(row.mediaDuration)
+
+
+def load_all_transcripts(root_folder: str) -> Dict:
+    transcripts = {}
+    for p in rts.utils.recursive_glob(root_folder, match_name='transcript.json'):
+        media_id = rts.utils.get_media_id(Path(p).parent)
+        transcripts[media_id] = rts.utils.obj_from_json(p)
+    return transcripts
 
 
 # Create a main function for the module and launch simple_process_archive
@@ -242,5 +264,5 @@ if __name__ == '__main__':
     sample_df = rts.metadata.get_one_percent_sample(df)
 
     LOG.info('Process archive')
-    simple_process_archive(sample_df[:1000], LOCAL_VIDEOS, args.min_seconds, args.num_images, args.compute_transcript, args.force)
+    simple_process_archive(sample_df[:2000], LOCAL_VIDEOS, args.min_seconds, args.num_images, args.compute_transcript, args.force)
 
