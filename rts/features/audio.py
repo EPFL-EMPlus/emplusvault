@@ -13,8 +13,10 @@ _model = {
     'model': None
 }
 
-def _transcribe_media(audio_path: str, model_name: Optional[str] = None) -> List[Dict]:
+def transcribe_media(audio_path: str, model_name: Optional[str] = None) -> List[Dict]:
     global _model
+    if not audio_path:
+        return None
 
     if not model_name:
         if not _model['name']:
@@ -46,16 +48,4 @@ def _transcribe_media(audio_path: str, model_name: Optional[str] = None) -> List
     return output
 
 
-def transcribe_media(media_folder: str, audio_path: str, model_name: Optional[str] = None, force: bool = False) -> List[Dict]:
-    # rts.utils.obj_to_json(r, os.path.join(OUTDIR, 'transcript.json'))
-    if not media_folder:
-        return None
 
-    transcript = Path(os.path.join(media_folder, 'transcript.json'))
-
-    if transcript.exists() and not force:
-        return rts.utils.obj_from_json(transcript)
-    
-    d = _transcribe_media(audio_path, model_name)
-    rts.utils.obj_to_json(d, transcript)
-    return d
