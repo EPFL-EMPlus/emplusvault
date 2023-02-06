@@ -1,8 +1,11 @@
 from typing import List, Optional, Any, Dict
 from pathlib import Path
+from collections import defaultdict
+
 
 import geonamescache
 import spacy
+import pandas as pd
 # spacy.prefer_gpu()
 
 import rts.utils
@@ -52,9 +55,9 @@ def get_swiss_cities() -> Dict:
         SWISS_CITIES = {}
         for k, v in cities.items():
             if v["countrycode"] == "CH":
-                SWISS_CITIES[v["name"]] = {"lat": v["latitude"], "lon": v["longitude"]}
+                SWISS_CITIES[v["name"]] = {"lat": v["latitude"], "lon": v["longitude"], 'geoid': v['geonameid']}
                 for alt in v["alternatenames"]:
-                    SWISS_CITIES[alt] = {"lat": v["latitude"], "lon": v["longitude"]}
+                    SWISS_CITIES[alt] = {"lat": v["latitude"], "lon": v["longitude"], 'geoid': v['geonameid']}
     return SWISS_CITIES
     
 
@@ -95,3 +98,34 @@ def find_locations_all_transcripts(transcripts: Dict[str, Dict], filtered_locati
         if ts:
             res[k] = ts
     return res
+
+
+def build_location_df(transcripts: Dict[str, Dict]) -> pd.DataFrame:
+    """Get media with fixed multilang locations"""
+    gc = geonamescache.GeonamesCache(min_city_population=500)
+    all_cities = gc.get_cities()
+    swiss_cities = get_swiss_cities()
+
+    res = []
+    for k, v in transcripts.items():
+        for sent in v:
+            if 'locations' in sent:
+                cities = sent['locations'].split(' | ')
+                for city in cities:
+                    if not city: 
+                        continue
+
+                    geoid = swiss_cities[city]['geoid']                    
+                    # Normalize city name
+                    c = all_cities[str(geoid)]['name']
+                    res.append({
+                        'mediaId': k,
+                        'location': c,
+                        's': sent['s'],
+                        'e': sent['e'],
+                        't': sent['t']
+                    })
+
+    ts = pd.DataFrame.from_records(res)
+    ts.set_index('mediaId', inplace=True)
+    return ts

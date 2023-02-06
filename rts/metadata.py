@@ -197,6 +197,8 @@ def metadata_to_hdf5(outdir: str, name: str, df: pd.DataFrame) -> bool:
 
 def load_metadata_hdf5(outdir: str, name: str) -> pd.DataFrame:
     df = pd.read_hdf(os.path.join(outdir, f'{name}.hdf5'), key='df')
+    df.drop_duplicates(subset=['mediaId'], inplace=True)
+    df.set_index('mediaId', inplace=True)
     return df
 
 
@@ -218,3 +220,9 @@ def get_one_percent_sample(df: pd.DataFrame,
 
     sample = df[df.mediaFolderPath.str.startswith(f"{archive_prefix}{nested_struct}")]
     return sample
+
+
+def merge_location_df_with_metadata(metadata: pd.DataFrame, location: pd.DataFrame) -> pd.DataFrame:    
+    fdf = metadata[['mediaFolderPath', 'publishedDate', 'title', 'collection', 'contentType']]
+    location = location.join(fdf, on='mediaId', how='inner')
+    return location

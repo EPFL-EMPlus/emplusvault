@@ -67,8 +67,8 @@ def create_optimized_media(media_folder: str, output_folder: str, force: bool = 
     export_folder = Path(os.path.join(output_folder, get_folder_hierarchy(media_folder)))
     
     payload = {
-        'media_id': media_id,
-        'media_folder': str(export_folder)
+        'mediaId': media_id,
+        'mediaFolder': str(export_folder)
     }
 
     v, a = get_raw_video_audio_parts(media_folder)
@@ -119,12 +119,12 @@ def extract_scenes(
     media_id = rts.utils.get_media_id(media_folder)
     scenes = rts.io.media.detect_scenes(video_path)
     if not scenes:
-        LOG.error(f'Extract scene failed: {video_path}')
+        LOG.debug(f'Extract scene failed: {video_path}')
         return None
 
     scenes = rts.io.media.filter_scenes(scenes, min_seconds)
     if not scenes:
-        LOG.warning(f'No scenes longer than {min_seconds} secs')
+        LOG.debug(f'No scenes longer than {min_seconds} secs')
         return None
 
     paths = rts.io.media.save_scenes_images(scenes, video_path, media_folder, num_images)
@@ -186,7 +186,7 @@ def process_media(input_media_folder: str, global_output_folder: str,
     force_trans: bool = False) -> Dict:
 
     res = {
-        'media_id': rts.utils.get_media_id(input_media_folder),
+        'mediaId': rts.utils.get_media_id(input_media_folder),
         'status': 'fail',
         'error': ''
     }
@@ -208,7 +208,7 @@ def process_media(input_media_folder: str, global_output_folder: str,
             return res
 
         scenes = extract_scenes(
-            remuxed.get('media_folder'),
+            remuxed.get('mediaFolder'),
             remuxed.get('video'),
             min_seconds=min_seconds, 
             num_images=num_images,
@@ -221,7 +221,7 @@ def process_media(input_media_folder: str, global_output_folder: str,
 
         if compute_transcript:
             transcript = transcribe_media(
-                remuxed.get('media_folder'),
+                remuxed.get('mediaFolder'),
                 remuxed.get('audio'), 
                 force=force_trans
             )
@@ -254,11 +254,11 @@ def simple_process_archive(df: pd.DataFrame,
         for _, row in df.iterrows():
             status = process_media(row.mediaFolderPath, global_output_folder, row.to_dict(), 
                 min_seconds, num_images, compute_transcript, force_media, force_scene, force_trans)
-            LOG.debug(f"{status['media_id']} - {status['status']}")
+            LOG.debug(f"{status['mediaId']} - {status['status']}")
             pbar.update(row.mediaDuration)
 
 
-def load_all_transcripts(root_folder: str) -> Dict:
+def load_all_transcripts(root_folder: str) -> Dict[str, Dict]:
     transcripts = {}
     for p in rts.utils.recursive_glob(root_folder, match_name='transcript.json'):
         media_id = rts.utils.get_media_id(Path(p).parent)
@@ -266,31 +266,31 @@ def load_all_transcripts(root_folder: str) -> Dict:
     return transcripts
 
 
-# Create a main function for the module and launch simple_process_archive
-if __name__ == '__main__':
-    import argparse
-    LOCAL_RTS_DATA = "/media/data/rts/"
-    METADATA = LOCAL_RTS_DATA + 'metadata'
-    LOCAL_VIDEOS = LOCAL_RTS_DATA + 'archive'
+# # Create a main function for the module and launch simple_process_archive
+# if __name__ == '__main__':
+#     import argparse
+#     LOCAL_RTS_DATA = "/media/data/rts/"
+#     METADATA = LOCAL_RTS_DATA + 'metadata'
+#     LOCAL_VIDEOS = LOCAL_RTS_DATA + 'archive'
 
-    OUTDIR = 'data'
+#     OUTDIR = 'data'
 
-    parser = argparse.ArgumentParser(description='Process media archive')
-    parser.add_argument('--min_seconds', type=float, default=5, help='Minimum duration of a scene')
-    parser.add_argument('--num_images', type=int, default=3, help='Number of images per scene')
-    parser.add_argument('--compute_transcript', action='store_true', help='Compute transcript')
-    parser.add_argument('--force_media', action='store_true', help='Force processing')
-    parser.add_argument('--force_scene', action='store_true', help='Force processing')
-    parser.add_argument('--force_transcript', action='store_true', help='Force processing')
-    args = parser.parse_args()
+#     parser = argparse.ArgumentParser(description='Process media archive')
+#     parser.add_argument('--min_seconds', type=float, default=5, help='Minimum duration of a scene')
+#     parser.add_argument('--num_images', type=int, default=3, help='Number of images per scene')
+#     parser.add_argument('--compute_transcript', action='store_true', help='Compute transcript')
+#     parser.add_argument('--force_media', action='store_true', help='Force processing')
+#     parser.add_argument('--force_scene', action='store_true', help='Force processing')
+#     parser.add_argument('--force_transcript', action='store_true', help='Force processing')
+#     args = parser.parse_args()
 
-    LOG.info('Loading metadata')
-    df = rts.metadata.load_metadata_hdf5(METADATA, 'rts_metadata')
+#     LOG.info('Loading metadata')
+#     df = rts.metadata.load_metadata_hdf5(METADATA, 'rts_metadata')
 
-    LOG.info('Get sample df')
-    sample_df = rts.metadata.get_one_percent_sample(df)
+#     LOG.info('Get sample df')
+#     sample_df = rts.metadata.get_one_percent_sample(df)
 
-    LOG.info('Process archive')
-    simple_process_archive(sample_df[:1000], LOCAL_VIDEOS, args.min_seconds,
-        args.num_images, args.compute_transcript, args.force_media, args.force_scene, args.force_transcript)
+#     LOG.info('Process archive')
+#     simple_process_archive(sample_df[:1000], LOCAL_VIDEOS, args.min_seconds,
+#         args.num_images, args.compute_transcript, args.force_media, args.force_scene, args.force_transcript)
 
