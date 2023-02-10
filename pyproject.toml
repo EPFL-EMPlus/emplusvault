@@ -22,12 +22,13 @@ transformers = "^4.25.1"
 tables = "^3.7.0"
 matplotlib = "^3.6.2"
 av = "^10.0.0"
-auto-editor = "^22.52.1"
 scenedetect = {extras = ["opencv-headless"], version = "^0.6.1"}
 cupy-cuda12x = "^11.5.0"
 spacy = {extras = ["cuda-12"], version = "^3.5.0"}
 geonamescache = "^1.5.0"
 click = "^8.1.3"
+weaviate-client = "^3.11.0"
+pillow = "^9.4.0"
 
 [tool.poetry.dev-dependencies]
 poethepoet = "^0.18.1"
@@ -38,3 +39,5 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poe.tasks]
 install-spacy-models = "python -m spacy download fr_core_news_lg"
+start-weaviate = "docker compose -f docker/weaviate.yml up -d"
+stop-weaviate = "docker compose -f docker/weaviate.yml down"

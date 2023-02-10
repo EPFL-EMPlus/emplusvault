@@ -116,7 +116,6 @@ def extract_scenes(
     if scene_out.exists() and not force:
         return rts.utils.obj_from_json(scene_out)
 
-    media_id = rts.utils.get_media_id(media_folder)
     scenes = rts.io.media.detect_scenes(video_path)
     if not scenes:
         LOG.debug(f'Extract scene failed: {video_path}')
@@ -127,15 +126,14 @@ def extract_scenes(
         LOG.debug(f'No scenes longer than {min_seconds} secs')
         return None
 
-    paths = rts.io.media.save_scenes_images(scenes, video_path, media_folder, num_images)
-    scene_infos = rts.io.media.format_scenes(media_id, scenes, paths)
+    scene_infos = rts.io.media.save_scenes_images(scenes, video_path, media_folder, num_images)
     rts.utils.obj_to_json(scene_infos, os.path.join(media_folder, 'scenes.json'))
 
     return scene_infos
 
 
 def save_metadata(meta: Dict, media_folder: str, force: bool = False) -> bool:
-    if not media_folder:
+    if not media_folder or not meta:
         return False
 
     p = Path(os.path.join(media_folder, 'metadata.json'))
@@ -202,10 +200,11 @@ def process_media(input_media_folder: str, global_output_folder: str,
             res['error'] = 'Could not remux file'
             return res
         
-        ok = save_metadata(metadata, remuxed.get('media_folder'), force_media)
-        if not ok:
-            res['error'] = 'Could not save metadata'
-            return res
+        if metadata:
+            ok = save_metadata(metadata, remuxed.get('media_folder'), force_media)
+            if not ok:
+                res['error'] = 'Could not save metadata'
+                return res
 
         scenes = extract_scenes(
             remuxed.get('mediaFolder'),
@@ -229,7 +228,6 @@ def process_media(input_media_folder: str, global_output_folder: str,
             if not transcript:
                 res['error'] = 'Could not transcribe media'
                 return res
-            
 
     except Exception as e:
         res['error'] = e.message()
@@ -264,33 +262,4 @@ def load_all_transcripts(root_folder: str) -> Dict[str, Dict]:
         media_id = rts.utils.get_media_id(Path(p).parent)
         transcripts[media_id] = rts.utils.obj_from_json(p)
     return transcripts
-
-
-# # Create a main function for the module and launch simple_process_archive
-# if __name__ == '__main__':
-#     import argparse
-#     LOCAL_RTS_DATA = "/media/data/rts/"
-#     METADATA = LOCAL_RTS_DATA + 'metadata'
-#     LOCAL_VIDEOS = LOCAL_RTS_DATA + 'archive'
-
-#     OUTDIR = 'data'
-
-#     parser = argparse.ArgumentParser(description='Process media archive')
-#     parser.add_argument('--min_seconds', type=float, default=5, help='Minimum duration of a scene')
-#     parser.add_argument('--num_images', type=int, default=3, help='Number of images per scene')
-#     parser.add_argument('--compute_transcript', action='store_true', help='Compute transcript')
-#     parser.add_argument('--force_media', action='store_true', help='Force processing')
-#     parser.add_argument('--force_scene', action='store_true', help='Force processing')
-#     parser.add_argument('--force_transcript', action='store_true', help='Force processing')
-#     args = parser.parse_args()
-
-#     LOG.info('Loading metadata')
-#     df = rts.metadata.load_metadata_hdf5(METADATA, 'rts_metadata')
-
-#     LOG.info('Get sample df')
-#     sample_df = rts.metadata.get_one_percent_sample(df)
-
-#     LOG.info('Process archive')
-#     simple_process_archive(sample_df[:1000], LOCAL_VIDEOS, args.min_seconds,
-#         args.num_images, args.compute_transcript, args.force_media, args.force_scene, args.force_transcript)
 

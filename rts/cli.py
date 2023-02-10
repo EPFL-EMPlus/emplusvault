@@ -1,13 +1,5 @@
 import click
-import os
-import sys
-import shutil
 import pandas as pd
-import xml.etree.ElementTree as ET
-
-from typing import Dict, List, Optional, Tuple
-from pathlib import Path
-from tqdm import tqdm
 
 import rts.metadata
 import rts.utils
@@ -22,7 +14,7 @@ METADATA = LOCAL_RTS_DATA + 'metadata'
 LOCAL_VIDEOS = LOCAL_RTS_DATA + 'archive'
 
 
-def get_sample_df():
+def get_sample_df() -> pd.DataFrame:
     click.echo('Loading metadata')
     df = rts.metadata.load_metadata_hdf5(METADATA, 'rts_metadata')
     return rts.metadata.get_one_percent_sample(df)
@@ -40,7 +32,8 @@ def cli():
 @click.option('--force_media', is_flag=True, help='Force processing')
 @click.option('--force_scene', is_flag=True, help='Force processing')
 @click.option('--force_transcript', is_flag=True, help='Force processing')
-def pipeline(min_seconds, num_images, compute_transcript, force_media, force_scene, force_transcript):
+def pipeline(min_seconds: int, num_images: int, compute_transcript: bool, force_media: bool, 
+    force_scene: bool, force_transcript: bool) -> None:
     sample_df = get_sample_df()
 
     click.echo('Processing archive')
@@ -49,7 +42,7 @@ def pipeline(min_seconds, num_images, compute_transcript, force_media, force_sce
 
 
 @cli.command()
-def location():
+def location() -> None:
     ts = rts.pipeline.load_all_transcripts(LOCAL_VIDEOS)
     fts = rts.features.text.build_location_df(ts)
 

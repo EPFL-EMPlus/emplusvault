@@ -1,12 +1,19 @@
 import os
 import shutil
 import logging
+import math
 from pathlib import Path
+from string import Template
 from typing import Dict, List, Optional, Tuple, Any
 
+import numpy as np
 import av
+import cv2
+import PIL
 import scenedetect
+
 from scenedetect import open_video, SceneManager, ContentDetector
+from scenedetect.frame_timecode import FrameTimecode
 
 import rts.utils
 
@@ -117,6 +124,70 @@ def merge_video_audio_files(video_path: str, audio_path: str, out_path: str) -> 
         return None
 
 
+def get_media_info(media_path: str) -> Dict:
+    """Get media info"""
+
+    def format_framerate(framerate: Any) -> str:
+        if framerate.denominator == 1:
+            return str(framerate.numerator)
+        return f'{framerate.numerator / framerate.denominator:.3f}'
+
+    info = {}
+    try:
+        info['path'] = str(media_path)
+        info['filesize'] = os.path.getsize(str(media_path))
+        info['human_filesize'] = rts.utils.human_readable_size(info['filesize'])
+        with av.open(str(media_path)) as container:
+            info['duration'] = container.duration / 1000000
+            info['video'] = {}
+            info['audio'] = {}
+            for stream in container.streams:
+                if stream.type == 'video':
+                    info['video']['codec'] = stream.codec_context.name
+                    info['video']['width'] = stream.codec_context.width
+                    info['video']['height'] = stream.codec_context.height
+                    info['video']['framerate'] = format_framerate(stream.guessed_rate)
+                    info['video']['bitrate'] = stream.codec_context.bit_rate
+                    info['video']['human_bitrate'] = rts.utils.human_readable_bitrate(stream.codec_context.bit_rate)
+                elif stream.type == 'audio':
+                    info['audio']['codec'] = stream.codec_context.name
+                    info['audio']['channels'] = stream.codec_context.channels
+                    info['audio']['sample_rate'] = stream.codec_context.sample_rate
+                    info['audio']['bitrate'] = stream.codec_context.bit_rate
+                    info['audio']['human_bitrate'] = rts.utils.human_readable_bitrate(stream.codec_context.bit_rate)
+    except av.AVError as e:
+        LOG.error(e)
+    return info
+
+
+def save_image_pyramid(image: PIL.Image, out_folder: str, name: str, split_folders: bool = False, base_res: int = 16, depth: int = 6) -> Dict:
+    """Save image pyramid"""
+    images = {}
+
+    if split_folders:
+        ori_folder = Path(out_folder) / 'original'
+        os.makedirs(str(ori_folder), exist_ok=True)
+        images['original'] = str(Path(ori_folder) / f'{name}.jpg')
+    else:
+        os.makedirs(str(out_folder), exist_ok=True)
+        images['original'] = str(Path(out_folder) / f'{name}.jpg')
+
+    image.save(images['original'])
+
+    for i in range(1, depth):
+        size = base_res * (2**i)
+        if split_folders:
+            tmp = Path(out_folder) / f'{size}px'
+            os.makedirs(str(tmp), exist_ok=True)
+            filename = f'{name}.jpg'
+            images[f'{size}px'] = str(Path(tmp) / filename)
+        else:
+            filename = f'{name}-{size}px.jpg'
+            images[f'{size}px'] = str(Path(out_folder) / filename)
+        res = PIL.ImageOps.fit(image, size=(size, size))
+        res.save(images[f'{size}px'])
+    return images
+
 
 def detect_scenes(video_path: str) -> Optional[List[Tuple[scenedetect.frame_timecode.FrameTimecode]]]:
     """Detect scenes from video analysis"""
@@ -137,31 +208,6 @@ def filter_scenes(scenes: Any, min_seconds: float = 10) -> Any:
     return list(filter(lambda s: (s[1] - s[0]).get_seconds() >= min_seconds, scenes))
 
 
-def save_scenes_images(scenes: Any,
-    video_path: str, 
-    media_folder: Optional[str] = None,
-    num_images: int = 3) -> Dict:
-
-    images_folder = Path(media_folder) / 'scenes'
-
-    if images_folder.exists():
-        # remove old directory
-        shutil.rmtree(str(images_folder))
-    os.makedirs(str(images_folder), exist_ok=True)
-
-    # video = open_video(video_path, framerate=25, backend='pyav')
-    video = open_video(video_path)
-    res = scenedetect.scene_manager.save_images(scenes, 
-      video, num_images=num_images, 
-      frame_margin=1, 
-      image_extension='jpg', 
-      encoder_param=95, 
-      image_name_template='$VIDEO_NAME-$SCENE_NUMBER-$IMAGE_NUMBER',
-      output_dir=images_folder, show_progress=False)
-
-    return res
-
-
 def format_scenes(media_id: str, scenes: Any, images_dict: Dict) -> Dict:
     payload = {
         'fps': scenes[0][0].framerate,
@@ -176,4 +222,110 @@ def format_scenes(media_id: str, scenes: Any, images_dict: Dict) -> Dict:
         }
     
     return payload
+
+
+def save_scenes_images(scenes: Any,
+    video_path: str, 
+    media_folder: str,
+    num_images: int = 3) -> Dict:
+
+    def inner():
+        # Adapted from https://github.com/Breakthrough/PySceneDetect/blob/master/scenedetect/scene_manager.py
+        image_name_template: str = '$VIDEO_NAME-$SCENE_NUMBER-$IMAGE_NUMBER'
+        filename_template = Template(image_name_template)
+        framerate = scenes[0][0].framerate
+        frame_margin = 1
+        scene_num_format = '%0'
+        scene_num_format += str(max(3, math.floor(math.log(len(scenes), 10)) + 1)) + 'd'
+        image_num_format = '%0'
+        image_num_format += str(math.floor(math.log(num_images, 10)) + 2) + 'd'
+        timecode_list = [
+            [
+                FrameTimecode(int(f), fps=framerate) for f in [
+                                                                                                # middle frames
+                    a[len(a) // 2] if (0 < j < num_images - 1) or num_images == 1
+
+                                                                                                # first frame
+                    else min(a[0] + frame_margin, a[-1]) if j == 0
+
+                                                                                                # last frame
+                    else max(a[-1] - frame_margin, a[0])
+
+                                                                                                # for each evenly-split array of frames in the scene list
+                    for j, a in enumerate(np.array_split(r, num_images))
+                ]
+            ] for i, r in enumerate([
+                                                                                                # pad ranges to number of images
+                r if 1 + r[-1] - r[0] >= num_images else list(r) + [r[-1]] * (num_images - len(r))
+                                                                                                # create range of frames in scene
+                for r in (
+                    range(start.get_frames(), end.get_frames())
+                                                                                                # for each scene in scene list
+                    for start, end in scenes)
+            ])
+        ]
+        image_names = []
+        resolutions = []
+        media_id = video.name
+        for i, scene_timecodes in enumerate(timecode_list):
+            scene_num = scene_num_format % i
+            scene_framenames = []
+            for j, image_timecode in enumerate(scene_timecodes):
+                video.seek(image_timecode)
+                frame_im = video.read()
+                if frame_im is None:
+                    continue
+
+                filename = '%s' % (filename_template.safe_substitute(
+                VIDEO_NAME=media_id,
+                SCENE_NUMBER=scene_num,
+                IMAGE_NUMBER=image_num_format % j,
+                FRAME_NUMBER=image_timecode.get_frames()))
+
+                fullname = f'{filename}.jpg'
+                scene_framenames.append(fullname)
+
+                color_converted = cv2.cvtColor(frame_im, cv2.COLOR_BGR2RGB)
+                im = PIL.Image.fromarray(color_converted)
+                images = save_image_pyramid(im, images_folder, filename, split_folders=True)
+                
+                if not resolutions: # fill available resolutions
+                    resolutions = list(images.keys())
+
+            image_names.append(scene_framenames)
+
+        return media_id, image_names, resolutions
+
+    images_folder = Path(media_folder) / 'scenes'
+    if images_folder.exists():
+        # remove old directory
+        shutil.rmtree(str(images_folder))
+    os.makedirs(str(images_folder), exist_ok=True)
+
+    video = open_video(video_path, backend='opencv')
+    media_id, images_names, resolutions = inner()
+
+    # Format scenes
+    payload = {
+        'mediaId': media_id,
+        'resolutions': resolutions,
+        'scene_folder': str(images_folder),
+        'scenes': {}
+    }
+
+    for i, s in enumerate(scenes):
+        dur = s[1] - s[0]
+        payload['scenes'][f"{media_id}-{i:03d}"] = {
+            'scene_number': i,
+            'start': s[0].get_timecode(),
+            'start_frame': s[0].get_frames(),
+            'end': s[1].get_timecode(),
+            'end_frame': s[1].get_frames(),
+            'duration': dur.get_seconds(),
+            'duration_frames': dur.get_frames(),
+            'images': images_names[i],
+        }
+    
+    return payload
+
 
