@@ -127,9 +127,15 @@ def extract_scenes(
         return None
 
     scene_infos = rts.io.media.save_scenes_images(scenes, video_path, media_folder, num_images)
-    rts.utils.obj_to_json(scene_infos, os.path.join(media_folder, 'scenes.json'))
-
     return scene_infos
+
+
+def save_scenes(scenes: Dict, media_folder: str) -> bool:
+    if not media_folder or not scenes:
+        return False
+
+    p = Path(os.path.join(media_folder, 'scenes.json'))
+    return rts.utils.obj_to_json(scenes, p)
 
 
 def save_metadata(meta: Dict, media_folder: str, force: bool = False) -> bool:
@@ -217,7 +223,9 @@ def process_media(input_media_folder: str, global_output_folder: str,
         if not scenes:
             res['error'] = 'Could not extract scenes'
             return res
-
+        
+        save_scenes(scenes, remuxed.get('mediaFolder'))
+        
         if compute_transcript:
             transcript = transcribe_media(
                 remuxed.get('mediaFolder'),
@@ -229,6 +237,9 @@ def process_media(input_media_folder: str, global_output_folder: str,
                 res['error'] = 'Could not transcribe media'
                 return res
 
+            # Create scenes from transcript's locations
+            
+            # scenes = rts.features.text.enrich_scenes_with_transcript(scenes, transcript)
     except Exception as e:
         res['error'] = e.message()
         return res

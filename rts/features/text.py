@@ -18,6 +18,7 @@ _model = {
 }
 
 SWISS_CITIES = None
+ALL_CITIES = None
 
 
 def load_model(model_name: str = 'fr_core_news_lg'):
@@ -40,6 +41,7 @@ def run_nlp(text: str, model_name: Optional[str] = None) -> Any:
 
 def extract_locations(text: str, model_name: Optional[str] = None) -> List[str]:
     doc = run_nlp(text, model_name)
+    # Fix Zurich
     res = set([ent.text for ent in doc.ents if ent.label_ == 'LOC'])
     if not res:
         return None
@@ -47,10 +49,11 @@ def extract_locations(text: str, model_name: Optional[str] = None) -> List[str]:
 
 
 def get_swiss_cities() -> Dict:
-    global SWISS_CITIES
+    global SWISS_CITIES, ALL_CITIES
     if not SWISS_CITIES:
         gc = geonamescache.GeonamesCache(min_city_population=500)
         cities = gc.get_cities()
+        ALL_CITIES = cities
 
         SWISS_CITIES = {}
         for k, v in cities.items():
@@ -58,6 +61,10 @@ def get_swiss_cities() -> Dict:
                 SWISS_CITIES[v["name"]] = {"lat": v["latitude"], "lon": v["longitude"], 'geoid': v['geonameid']}
                 for alt in v["alternatenames"]:
                     SWISS_CITIES[alt] = {"lat": v["latitude"], "lon": v["longitude"], 'geoid': v['geonameid']}
+        
+        # Monkey patch cities
+        SWISS_CITIES['Baal'] = SWISS_CITIES['Basel']
+        SWISS_CITIES['Saint-Gal'] = SWISS_CITIES['St. Gallen']
     return SWISS_CITIES
     
 
@@ -68,9 +75,7 @@ def find_locations(transcript: List[Dict],
     if not filtered_locations:
         filtered_locations = get_swiss_cities()
 
-    # has_loc = False
-    # filtered_ts = []
-
+    global ALL_CITIES
     for sent in transcript:
         locs = extract_locations(sent['t'], model_name)
         if not locs:
@@ -80,14 +85,55 @@ def find_locations(transcript: List[Dict],
         if not cities:
             continue
         
-        # has_loc = True
-        sent['locations'] = ' | '.join(cities)
-        # filtered_ts.append(sent)
+        norm_cities = []
+        for city in cities:
+            geoid = filtered_locations[city]['geoid']                    
+            # Normalize city name
+            c = ALL_CITIES[str(geoid)]['name']
+            norm_cities.append(c)
 
-    # if not has_loc:
-    #     return None
+        sent['locations'] = ' | '.join(norm_cities)
 
     return transcript
+
+
+def enrich_scenes_with_transcript(scenes: Dict, ori_transcript: List[Dict]) -> Dict:
+    transcript = ori_transcript.copy()
+
+    for i, s in scenes['scenes'].items():
+        scenes['scenes'][i]['transcript'] = ''
+
+        scene_start = float(s['start'])
+        scene_end = float(s['end'])
+
+        last_tidx = 0
+        for tidx, t in enumerate(transcript):
+            t_start = float(t['s'])
+            t_end = float(t['e'])
+
+            # if 'locations' in t:
+            #     print(t_start, t_end, ' -- ', scene_start, scene_end)
+
+            if t_start > scene_end: # overshooting timestamp
+                last_tidx = tidx
+                break
+
+            if t_end <= scene_end or t_start >= scene_start:
+                scenes['scenes'][i]['transcript'] += t['t'] + ' '
+                if 'locations' in t:
+                    if 'locations' not in scenes['scenes'][i]:
+                        scenes['scenes'][i]['locations'] = set(t['locations'].split(' | '))
+                    else:
+                        scenes['scenes'][i]['locations'] |= set(t['locations'].split(' | '))
+        
+        # start from last_tidx
+        transcript = transcript[last_tidx:]
+
+    for i, s in scenes['scenes'].items():
+        if 'locations' in scenes['scenes'][i]:
+            scenes['scenes'][i]['locations'] = ' | '.join(scenes['scenes'][i]['locations'])
+    
+    return scenes
 
 
 def find_locations_all_transcripts(transcripts: Dict[str, Dict], filtered_locations: Optional[Dict] = None, model_name: Optional[str] = None) -> Dict[str, Dict]:

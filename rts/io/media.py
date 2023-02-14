@@ -12,6 +12,7 @@ import cv2
 import PIL
 import scenedetect
 
+from PIL import Image
 from scenedetect import open_video, SceneManager, ContentDetector
 from scenedetect.frame_timecode import FrameTimecode
 
@@ -160,7 +161,7 @@ def get_media_info(media_path: str) -> Dict:
     return info
 
 
-def save_image_pyramid(image: PIL.Image, out_folder: str, name: str, split_folders: bool = False, base_res: int = 16, depth: int = 6) -> Dict:
+def save_image_pyramid(image: Image, out_folder: str, name: str, split_folders: bool = False, base_res: int = 16, depth: int = 6) -> Dict:
     """Save image pyramid"""
     images = {}
 
@@ -286,7 +287,7 @@ def save_scenes_images(scenes: Any,
                 scene_framenames.append(fullname)
 
                 color_converted = cv2.cvtColor(frame_im, cv2.COLOR_BGR2RGB)
-                im = PIL.Image.fromarray(color_converted)
+                im = Image.fromarray(color_converted)
                 images = save_image_pyramid(im, images_folder, filename, split_folders=True)
                 
                 if not resolutions: # fill available resolutions
@@ -310,22 +311,26 @@ def save_scenes_images(scenes: Any,
         'mediaId': media_id,
         'resolutions': resolutions,
         'scene_folder': str(images_folder),
+        'framerate': scenes[0][0].framerate,
+        'scene_count': len(scenes),
         'scenes': {}
     }
 
     for i, s in enumerate(scenes):
         dur = s[1] - s[0]
-        payload['scenes'][f"{media_id}-{i:03d}"] = {
+        scene_id = f'{media_id}-S{i:03d}'
+        payload['scenes'][scene_id] = {
+            'scene_id': scene_id,
             'scene_number': i,
-            'start': s[0].get_timecode(),
+            'start': s[0].get_seconds(),
             'start_frame': s[0].get_frames(),
-            'end': s[1].get_timecode(),
+            'end': s[1].get_seconds(),
             'end_frame': s[1].get_frames(),
             'duration': dur.get_seconds(),
             'duration_frames': dur.get_frames(),
             'images': images_names[i],
         }
-    
+
     return payload
 
 
