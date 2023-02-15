@@ -156,6 +156,12 @@ def get_media_info(media_path: str) -> Dict:
                     info['audio']['sample_rate'] = stream.codec_context.sample_rate
                     info['audio']['bitrate'] = stream.codec_context.bit_rate
                     info['audio']['human_bitrate'] = rts.utils.human_readable_bitrate(stream.codec_context.bit_rate)
+
+            if not info['video']:
+                del info['video']
+            if not info['audio']:
+                del info['audio']
+
     except av.AVError as e:
         LOG.error(e)
     return info
@@ -209,35 +215,21 @@ def filter_scenes(scenes: Any, min_seconds: float = 10) -> Any:
     return list(filter(lambda s: (s[1] - s[0]).get_seconds() >= min_seconds, scenes))
 
 
-def format_scenes(media_id: str, scenes: Any, images_dict: Dict) -> Dict:
-    payload = {
-        'fps': scenes[0][0].framerate,
-        'scenes': {}
-    }
-    for i, s in enumerate(scenes):
-        payload['scenes'][f"{media_id}-{i+1:03d}"] = {
-            'images': images_dict[i],
-            's': s[0].get_timecode(),
-            'e': s[1].get_timecode(),
-            'dur': (s[1] - s[0]).get_seconds()
-        }
-    
-    return payload
-
-
-def save_scenes_images(scenes: Any,
+def save_clips_images(timecodes: Any,
     video_path: str, 
     media_folder: str,
-    num_images: int = 3) -> Dict:
+    out_folder_name: str = 'clips',
+    num_images: int = 3,
+    clip_prefix_id: str = 'S') -> Optional[Dict]:
 
     def inner():
         # Adapted from https://github.com/Breakthrough/PySceneDetect/blob/master/scenedetect/scene_manager.py
         image_name_template: str = '$VIDEO_NAME-$SCENE_NUMBER-$IMAGE_NUMBER'
         filename_template = Template(image_name_template)
-        framerate = scenes[0][0].framerate
+        framerate = timecodes[0][0].framerate
         frame_margin = 1
         scene_num_format = '%0'
-        scene_num_format += str(max(3, math.floor(math.log(len(scenes), 10)) + 1)) + 'd'
+        scene_num_format += str(max(3, math.floor(math.log(len(timecodes), 10)) + 1)) + 'd'
         image_num_format = '%0'
         image_num_format += str(math.floor(math.log(num_images, 10)) + 2) + 'd'
         timecode_list = [
@@ -262,7 +254,7 @@ def save_scenes_images(scenes: Any,
                 for r in (
                     range(start.get_frames(), end.get_frames())
                                                                                                 # for each scene in scene list
-                    for start, end in scenes)
+                    for start, end in timecodes)
             ])
         ]
         image_names = []
@@ -297,37 +289,41 @@ def save_scenes_images(scenes: Any,
 
         return media_id, image_names, resolutions
 
-    images_folder = Path(media_folder) / 'scenes'
+    images_folder = Path(media_folder) / out_folder_name
     if images_folder.exists():
         # remove old directory
         shutil.rmtree(str(images_folder))
     os.makedirs(str(images_folder), exist_ok=True)
 
-    video = open_video(video_path, backend='opencv')
+    try:
+        video = open_video(video_path, backend='opencv')
+    except OSError as e:
+        LOG.error(e)
+        return None
     media_id, images_names, resolutions = inner()
 
-    # Format scenes
+    # Format timecodes
     payload = {
         'mediaId': media_id,
         'resolutions': resolutions,
-        'scene_folder': str(images_folder),
-        'framerate': scenes[0][0].framerate,
-        'scene_count': len(scenes),
-        'scenes': {}
+        'clip_folder': str(images_folder),
+        'framerate': timecodes[0][0].framerate,
+        'clip_count': len(timecodes),
+        'clips': {}
     }
 
-    for i, s in enumerate(scenes):
+    for i, s in enumerate(timecodes):
         dur = s[1] - s[0]
-        scene_id = f'{media_id}-S{i:03d}'
-        payload['scenes'][scene_id] = {
-            'scene_id': scene_id,
-            'scene_number': i,
-            'start': s[0].get_seconds(),
-            'start_frame': s[0].get_frames(),
-            'end': s[1].get_seconds(),
-            'end_frame': s[1].get_frames(),
-            'duration': dur.get_seconds(),
-            'duration_frames': dur.get_frames(),
+        clip_id = f'{media_id}-{clip_prefix_id}{i:03d}'
+        payload['clips'][clip_id] = {
+            'clip_id': clip_id,
+            'clip_number': i,
+            'start': float(s[0].get_seconds()),
+            'start_frame': int(s[0].get_frames()),
+            'end': float(s[1].get_seconds()),
+            'end_frame': int(s[1].get_frames()),
+            'duration': float(dur.get_seconds()),
+            'duration_frames': int(dur.get_frames()),
             'images': images_names[i],
         }
 

@@ -1,11 +1,13 @@
-from typing import List, Optional, Any, Dict
-from pathlib import Path
-from collections import defaultdict
-
-
 import geonamescache
 import spacy
 import pandas as pd
+
+from typing import List, Optional, Any, Dict, Tuple
+from pathlib import Path
+from collections import defaultdict
+from scenedetect.frame_timecode import FrameTimecode
+
+
 # spacy.prefer_gpu()
 
 import rts.utils
@@ -97,11 +99,41 @@ def find_locations(transcript: List[Dict],
     return transcript
 
 
+def timecodes_from_transcript(transcript: Dict, framerate: int = 25, 
+    min_seconds: float = 3, 
+    extend_duration: float = 6, 
+    location_only: bool = True) -> Optional[Tuple[List[Tuple[FrameTimecode, FrameTimecode]], List[int]]]:
+    if not transcript:
+        return None
+    
+    timecodes = []
+    saved_idx = []
+    for i, sent in enumerate(transcript):
+        if location_only and 'locations' not in sent:
+            continue
+
+        start = FrameTimecode(float(sent['s']), framerate)
+        end = FrameTimecode(float(sent['e']), framerate)
+        duration = end - start
+        if duration.get_seconds() < min_seconds:
+            continue
+
+        if duration.get_seconds() < extend_duration:
+            delta = extend_duration - duration.get_seconds()
+            start -= delta
+            if start.get_seconds() < 0:
+                start = FrameTimecode(0, framerate)
+
+        saved_idx.append(i)
+        timecodes.append((start, end))
+    return timecodes, saved_idx
+
+
 def enrich_scenes_with_transcript(scenes: Dict, ori_transcript: List[Dict]) -> Dict:
     transcript = ori_transcript.copy()
 
-    for i, s in scenes['scenes'].items():
-        scenes['scenes'][i]['transcript'] = ''
+    for i, s in scenes['clips'].items():
+        scenes['clips'][i]['transcript'] = ''
 
         scene_start = float(s['start'])
         scene_end = float(s['end'])
@@ -119,19 +151,19 @@ def enrich_scenes_with_transcript(scenes: Dict, ori_transcript: List[Dict]) -> D
                 break
 
             if t_end <= scene_end or t_start >= scene_start:
-                scenes['scenes'][i]['transcript'] += t['t'] + ' '
+                scenes['clips'][i]['transcript'] += t['t'] + ' '
                 if 'locations' in t:
-                    if 'locations' not in scenes['scenes'][i]:
-                        scenes['scenes'][i]['locations'] = set(t['locations'].split(' | '))
+                    if 'locations' not in scenes['clips'][i]:
+                        scenes['clips'][i]['locations'] = set(t['locations'].split(' | '))
                     else:
-                        scenes['scenes'][i]['locations'] |= set(t['locations'].split(' | '))
+                        scenes['clips'][i]['locations'] |= set(t['locations'].split(' | '))
         
         # start from last_tidx
         transcript = transcript[last_tidx:]
 
-    for i, s in scenes['scenes'].items():
-        if 'locations' in scenes['scenes'][i]:
-            scenes['scenes'][i]['locations'] = ' | '.join(scenes['scenes'][i]['locations'])
+    for i, s in scenes['clips'].items():
+        if 'locations' in scenes['clips'][i]:
+            scenes['clips'][i]['locations'] = ' | '.join(scenes['clips'][i]['locations'])
     
     return scenes
 
