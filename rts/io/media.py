@@ -360,7 +360,8 @@ def create_atlas_texture(images_path: List[str],
                          out_file: str,
                          max_width: int = 4096,
                          max_tile_size: int = 128,
-                         square: bool = True, 
+                         square: bool = True,
+                         keep_only_ids: bool = True,
                          bg_color: Tuple[int, int, int, int] = (0, 0, 0, 0)) -> Optional[Dict]:
     
     if not images_path:
@@ -375,6 +376,9 @@ def create_atlas_texture(images_path: List[str],
 
     # drop if too many images and square
     images = [Image.open(im) for i, im in enumerate(images_path) if i < rows * cols]
+
+    if keep_only_ids:
+        images_path = [Path(im).stem for im in images_path]
 
     atlas = {
         'images': images_path[:rows * cols],
@@ -401,9 +405,11 @@ def create_atlas_texture(images_path: List[str],
 
 def create_square_atlases(images_path: List[str], 
                    out_folder: str,
-                   atlas_prefix: str = 'atlas',
-                   width: int = 4096,
                    max_tile_size: int = 128,
+                   width: int = 4096,
+                   keep_only_ids: bool = True,
+                   atlas_prefix: str = 'atlas',
+                   format: str = 'png',
                    bg_color: Tuple[int, int, int, int] = (0, 0, 0, 0)) -> Optional[Dict]:
     if not images_path:
         return None
@@ -412,12 +418,12 @@ def create_square_atlases(images_path: List[str],
     
     max_tiles_per_atlas = (width // max_tile_size) ** 2
     atlases = {}
-    for i in range(0, len(images_path), max_tiles_per_atlas):
+    for k, i in enumerate(range(0, len(images_path), max_tiles_per_atlas)):
         atlas_images = images_path[i:i + max_tiles_per_atlas]
-        atlas_file = Path(out_folder) / f'{atlas_prefix}{i:03d}.png'
-        atlas = create_atlas_texture(atlas_images, atlas_file, width, max_tile_size, square=True, bg_color=bg_color)
+        atlas_file = Path(out_folder) / f'{atlas_prefix}{k:03d}.{format}'
+        atlas = create_atlas_texture(atlas_images, atlas_file, width, max_tile_size, square=True, keep_only_ids=keep_only_ids, bg_color=bg_color)
         atlas['path'] = str(atlas_file)
-        atlases[str(i)] = atlas
+        atlases[str(k)] = atlas
     
     rts.utils.obj_to_json(atlases, Path(out_folder) / 'atlases.json')
     return atlases

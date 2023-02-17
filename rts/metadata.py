@@ -5,6 +5,7 @@ import orjson
 import pandas as pd
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
+from pathlib import Path
 
 import rts.utils
 
@@ -226,3 +227,51 @@ def merge_location_df_with_metadata(metadata: pd.DataFrame, location: pd.DataFra
     fdf = metadata[['mediaFolderPath', 'publishedDate', 'title', 'collection', 'contentType']]
     location = location.join(fdf, on='mediaId', how='inner')
     return location
+
+
+def load_all_clips(root_folder: str) -> Dict[str, Dict]:
+    clips = {}
+    for p in rts.utils.recursive_glob(root_folder, match_name='clips.json'):
+        media_id = rts.utils.get_media_id(Path(p).parent)
+        clips[media_id] = rts.utils.obj_from_json(p)
+    return clips
+
+
+def load_all_media_info(root_folder: str) -> Dict[str, Dict]:
+    media = {}
+    for p in rts.utils.recursive_glob(root_folder, match_name='media.json'):
+        media_id = rts.utils.get_media_id(Path(p).parent)
+        media[media_id] = rts.utils.obj_from_json(p)
+    return media
+
+
+def create_clips_df(root_folder: str) -> pd.DataFrame:
+    clips = load_all_clips(root_folder)
+
+    payload = []
+    for media_id, v in clips.items():
+        clip_folder = v['clip_folder']
+        for _, clip in v['clips'].items():
+            p = clip.copy()
+            p['mediaId'] = media_id
+            p['clip_folder'] = clip_folder
+            payload.append(p)
+
+    df = pd.DataFrame.from_records(payload)
+    df.set_index('mediaId', inplace=True)
+    return df
+
+
+def create_clip_texture_atlases(df: pd.DataFrame, root_dir: str, tile_size: int = 64, format='jpg') -> Optional[Dict]:
+    images_paths = []
+    for media_id, v in df.iterrows():
+        clip_folder = v['clip_folder']
+        filename = v['images'][1] # take middle image
+        image_path = os.path.join(clip_folder, f'{tile_size}px', filename)
+        if not image_path:
+            LOG.error(f'No image path for {media_id}')
+            continue
+        images_paths.append(image_path)
+    
+    outdir = os.path.join(root_dir, 'atlases')
+    return rts.io.media.create_square_atlases(images_paths, outdir, max_tile_size=tile_size, format=format)

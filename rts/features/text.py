@@ -67,6 +67,7 @@ def get_swiss_cities() -> Dict:
         # Monkey patch cities
         SWISS_CITIES['Baal'] = SWISS_CITIES['Basel']
         SWISS_CITIES['Saint-Gal'] = SWISS_CITIES['St. Gallen']
+        SWISS_CITIES['St-Maurice'] = SWISS_CITIES['Saint-Maurice']
     return SWISS_CITIES
     
 

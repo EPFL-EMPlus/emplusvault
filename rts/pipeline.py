@@ -321,7 +321,6 @@ def simple_process_archive(df: pd.DataFrame,
             pbar.update(row.mediaDuration)
 
 
-
 def load_transcript(media_folder: str) -> Optional[Dict]:
     p = Path(os.path.join(media_folder, 'transcript.json'))
     if p.exists():
@@ -342,4 +341,5 @@ def load_all_transcripts(root_folder: str) -> Dict[str, Dict]:
         media_id = rts.utils.get_media_id(Path(p).parent)
         transcripts[media_id] = rts.utils.obj_from_json(p)
     return transcripts
+
 
