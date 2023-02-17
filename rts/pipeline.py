@@ -224,7 +224,7 @@ def transcribe_media(media_folder: str, audio_path: str,
 
 def process_media(input_media_folder: str, global_output_folder: str, 
     metadata: Optional[Dict] = None,
-    min_seconds: float = 5, 
+    min_seconds: float = 6, 
     num_images: int = 3,
     compute_scenes: bool = False,
     compute_transcript: bool = False,
@@ -294,7 +294,7 @@ def process_media(input_media_folder: str, global_output_folder: str,
             # if compute_scenes:
                 # scenes = rts.features.text.enrich_scenes_with_transcript(scenes, transcript)
     except Exception as e:
-        res['error'] = e.message()
+        res['error'] = str(e)
         return res
     
     res['status'] = 'success'
@@ -303,7 +303,7 @@ def process_media(input_media_folder: str, global_output_folder: str,
 
 def simple_process_archive(df: pd.DataFrame,
     global_output_folder: str, 
-    min_seconds: float = 5, 
+    min_seconds: float = 6, 
     num_images: int = 3,
     compute_scenes: bool = True,
     compute_transcript: bool = True,

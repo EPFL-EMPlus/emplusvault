@@ -265,7 +265,7 @@ def save_clips_images(timecodes: Any,
             scene_framenames = []
             for j, image_timecode in enumerate(scene_timecodes):
                 video.seek(image_timecode)
-                frame_im = video.read()
+                frame_im = video.read().astype(np.uint8) 
                 if frame_im is None:
                     continue
 
@@ -329,4 +329,96 @@ def save_clips_images(timecodes: Any,
 
     return payload
 
+
+def create_image_grid(images: List[Image.Image], 
+    out_file: str, 
+    grid_size: Tuple[int, int] = (3, 3), 
+    grid_spacing: int = 10, 
+    grid_border: int = 10, 
+    grid_bg_color: Tuple[int, int, int, int] = (0, 0, 0, 0)) -> None:
+    """Create a grid of images from a list of image paths"""
+    if not images:
+        return None
+    
+    Path(out_file).parent.mkdir(exist_ok=True, parents=True)
+
+    mode = 'RGB'
+    if str(out_file).endswith('.png'):
+        mode = 'RGBA'
+
+    width = grid_size[0] * images[0].width + grid_spacing * (grid_size[0] - 1) + 2 * grid_border
+    height = grid_size[1] * images[0].height + grid_spacing * (grid_size[1] - 1) + 2 * grid_border
+    grid = Image.new(mode, (width, height), grid_bg_color)
+    for i, im in enumerate(images):
+        x = i % grid_size[0] * (images[0].width + grid_spacing) + grid_border
+        y = i // grid_size[0] * (images[0].height + grid_spacing) + grid_border
+        grid.paste(im, (x, y))
+    grid.save(out_file)
+    
+
+def create_atlas_texture(images_path: List[str],
+                         out_file: str,
+                         max_width: int = 4096,
+                         max_tile_size: int = 128,
+                         square: bool = True, 
+                         bg_color: Tuple[int, int, int, int] = (0, 0, 0, 0)) -> Optional[Dict]:
+    
+    if not images_path:
+        return None
+
+    fim = Image.open(images_path[0])
+    tile_size = min(max_tile_size, fim.width)
+    rows = max(1, max_width // tile_size)
+    cols = math.ceil(len(images_path) / rows)
+    if square:
+        cols = rows
+
+    # drop if too many images and square
+    images = [Image.open(im) for i, im in enumerate(images_path) if i < rows * cols]
+
+    atlas = {
+        'images': images_path[:rows * cols],
+        'image_count': len(images),
+        'tile_size': (tile_size, tile_size),
+        'atlas_size': (rows * tile_size, cols * tile_size),
+        'rows': rows,
+        'cols': cols,
+    }
+
+    ims = []
+    for im in images:
+        if im.width > tile_size or im.height > tile_size:
+            im = PIL.ImageOps.fit(im, size=(tile_size, tile_size))
+        im = PIL.ImageOps.crop(im, 1) # remove borders
+        ims.append(im)
+
+    create_image_grid(ims, out_file, 
+                      grid_size=(rows, cols), 
+                      grid_spacing=2, grid_border=1, grid_bg_color=bg_color)
+    
+    return atlas
+
+
+def create_square_atlases(images_path: List[str], 
+                   out_folder: str,
+                   atlas_prefix: str = 'atlas',
+                   width: int = 4096,
+                   max_tile_size: int = 128,
+                   bg_color: Tuple[int, int, int, int] = (0, 0, 0, 0)) -> Optional[Dict]:
+    if not images_path:
+        return None
+
+    Path(out_folder).mkdir(exist_ok=True, parents=True)
+    
+    max_tiles_per_atlas = (width // max_tile_size) ** 2
+    atlases = {}
+    for i in range(0, len(images_path), max_tiles_per_atlas):
+        atlas_images = images_path[i:i + max_tiles_per_atlas]
+        atlas_file = Path(out_folder) / f'{atlas_prefix}{i:03d}.png'
+        atlas = create_atlas_texture(atlas_images, atlas_file, width, max_tile_size, square=True, bg_color=bg_color)
+        atlas['path'] = str(atlas_file)
+        atlases[str(i)] = atlas
+    
+    rts.utils.obj_to_json(atlases, Path(out_folder) / 'atlases.json')
+    return atlases
 
