@@ -3,6 +3,7 @@ import io
 import zipfile
 import orjson
 import pandas as pd
+import glob
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 from pathlib import Path
@@ -196,11 +197,36 @@ def metadata_to_hdf5(outdir: str, name: str, df: pd.DataFrame) -> bool:
         return False
 
 
-def load_metadata_hdf5(outdir: str, name: str) -> pd.DataFrame:
-    df = pd.read_hdf(os.path.join(outdir, f'{name}.hdf5'), key='df')
+def load_metadata_hdf5(input_dir: str, name: str = 'rts_metadata') -> pd.DataFrame:
+    df = pd.read_hdf(os.path.join(input_dir, f'{name}.hdf5'), key='df')
     df.drop_duplicates(subset=['mediaId'], inplace=True)
     df.set_index('mediaId', inplace=True)
     return df
+
+
+def link_aivectors_to_metadata(metadata: pd.DataFrame, input_dir: str, name: str = 'videos.csv') -> pd.DataFrame:
+    def match_feat_to_folder():
+        base_path = input_dir + '/videos/'
+        files = glob.glob(base_path + '*/*/*/*/features.npz', recursive = False)
+        feats = {}
+        for file in files:
+            f = os.path.relpath(str(Path(file).parent), base_path)
+            feat_id = f.split('/')[-1]
+            feats[feat_id] = str(f)
+
+        s = pd.Series(feats)
+        s.name = 'aivector_path'
+        return s
+
+    vf = pd.read_csv(Path(input_dir) / name)
+    vf.set_index('umid', inplace=True)
+    vf.index.name = 'mediaId'
+    vf.rename(columns={'id_result': 'aivector_id'}, inplace=True)
+    merged = metadata.join(vf, on='mediaId', how='left')
+    merged.dropna(subset=['aivector_id'], inplace=True)
+
+    s = match_feat_to_folder()
+    return merged.join(s, on='aivector_id', how='left')
 
 
 def export_metadata_stats(df: pd.DataFrame, outdir: str) -> bool:
@@ -262,7 +288,7 @@ def create_clips_df(root_folder: str) -> pd.DataFrame:
     return df
 
 
-def create_clip_texture_atlases(df: pd.DataFrame, root_dir: str, tile_size: int = 64, format='jpg') -> Optional[Dict]:
+def create_clip_texture_atlases(df: pd.DataFrame, root_dir: str, tile_size: int = 64, no_border: bool = False, format='jpg') -> Optional[Dict]:
     images_paths = []
     for media_id, v in df.iterrows():
         clip_folder = v['clip_folder']
@@ -274,4 +300,5 @@ def create_clip_texture_atlases(df: pd.DataFrame, root_dir: str, tile_size: int 
         images_paths.append(image_path)
     
     outdir = os.path.join(root_dir, 'atlases')
-    return rts.io.media.create_square_atlases(images_paths, outdir, max_tile_size=tile_size, format=format)
+    return rts.io.media.create_square_atlases(images_paths, outdir, 
+                                              max_tile_size=tile_size, no_border=no_border, format=format)

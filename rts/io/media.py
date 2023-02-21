@@ -361,6 +361,7 @@ def create_atlas_texture(images_path: List[str],
                          max_width: int = 4096,
                          max_tile_size: int = 128,
                          square: bool = True,
+                         no_border: bool = False,
                          keep_only_ids: bool = True,
                          bg_color: Tuple[int, int, int, int] = (0, 0, 0, 0)) -> Optional[Dict]:
     
@@ -396,9 +397,15 @@ def create_atlas_texture(images_path: List[str],
         im = PIL.ImageOps.crop(im, 1) # remove borders
         ims.append(im)
 
+    grid_border = 1
+    grid_spacing = 1
+    if no_border:
+        grid_border = 0
+        grid_spacing = 0
+
     create_image_grid(ims, out_file, 
                       grid_size=(rows, cols), 
-                      grid_spacing=2, grid_border=1, grid_bg_color=bg_color)
+                      grid_spacing=grid_spacing, grid_border=grid_border, grid_bg_color=bg_color)
     
     return atlas
 
@@ -407,6 +414,7 @@ def create_square_atlases(images_path: List[str],
                    out_folder: str,
                    max_tile_size: int = 128,
                    width: int = 4096,
+                   no_border: bool = False,
                    keep_only_ids: bool = True,
                    atlas_prefix: str = 'atlas',
                    format: str = 'png',
@@ -421,7 +429,9 @@ def create_square_atlases(images_path: List[str],
     for k, i in enumerate(range(0, len(images_path), max_tiles_per_atlas)):
         atlas_images = images_path[i:i + max_tiles_per_atlas]
         atlas_file = Path(out_folder) / f'{atlas_prefix}{k:03d}.{format}'
-        atlas = create_atlas_texture(atlas_images, atlas_file, width, max_tile_size, square=True, keep_only_ids=keep_only_ids, bg_color=bg_color)
+        atlas = create_atlas_texture(atlas_images, atlas_file, width, max_tile_size, 
+                                     square=True, no_border=no_border,
+                                     keep_only_ids=keep_only_ids, bg_color=bg_color)
         atlas['path'] = str(atlas_file)
         atlases[str(k)] = atlas
     

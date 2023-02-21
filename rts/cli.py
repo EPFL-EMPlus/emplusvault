@@ -20,6 +20,12 @@ def get_sample_df() -> pd.DataFrame:
     return rts.metadata.get_one_percent_sample(df)
 
 
+def get_aivectors_df() -> pd.DataFrame:
+    click.echo('Loading AI vectors subset')
+    df = rts.utils.dataframe_from_hdf5(LOCAL_RTS_DATA + '/metadata', 'rts_aivectors')
+    return df
+
+
 @click.group()
 def cli():
     pass
@@ -36,10 +42,12 @@ def cli():
 def pipeline(min_seconds: int, num_images: int, 
     compute_scenes: bool, compute_transcript: bool, force_media: bool, 
     force_scene: bool, force_transcript: bool) -> None:
-    sample_df = get_sample_df()
+
+    # df = get_sample_df()
+    df = get_aivectors_df()
 
     click.echo('Processing archive')
-    rts.pipeline.simple_process_archive(sample_df[:1000], LOCAL_VIDEOS, min_seconds,
+    rts.pipeline.simple_process_archive(df, LOCAL_VIDEOS, min_seconds,
         num_images, compute_scenes, compute_transcript, force_media, force_scene, force_transcript)
 
 

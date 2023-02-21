@@ -4,6 +4,7 @@ import time
 import logging
 import orjson
 import pickle
+import pandas as pd
 from typing import Dict, List, Optional, Tuple, Callable, Any, Generator
 from functools import wraps
 from pathlib import Path
@@ -114,3 +115,20 @@ def recursive_glob(path, file_extension='.json', match_name: Optional[str] = Non
                   yield os.path.join(dirpath, filename)
             else:
                 yield os.path.join(dirpath, filename)
+
+
+def dataframe_to_hdf5(outdir: str, name: str, df: pd.DataFrame) -> bool:
+    try:
+        df.to_hdf(os.path.join(outdir, f'{name}.hdf5'), key='df', mode='w')
+        return True
+    except Exception as e:
+        return False
+    
+
+def dataframe_from_hdf5(input_dir: str, name: str, key: str = 'df') -> Optional[pd.DataFrame]:
+    try:
+        df = pd.read_hdf(os.path.join(input_dir, f'{name}.hdf5'), key=key)
+        return df
+    except Exception as e:
+        LOG.error(e)
+        return None
