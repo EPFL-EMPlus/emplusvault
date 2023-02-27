@@ -288,7 +288,8 @@ def create_clips_df(root_folder: str) -> pd.DataFrame:
     return df
 
 
-def create_clip_texture_atlases(df: pd.DataFrame, root_dir: str, tile_size: int = 64, no_border: bool = False, format='jpg') -> Optional[Dict]:
+def create_clip_texture_atlases(df: pd.DataFrame, root_dir: str, tile_size: int = 64, 
+                                no_border: bool = False, flip: bool = True, format='jpg') -> Optional[Dict]:
     images_paths = []
     for media_id, v in df.iterrows():
         clip_folder = v['clip_folder']
@@ -301,4 +302,7 @@ def create_clip_texture_atlases(df: pd.DataFrame, root_dir: str, tile_size: int 
     
     outdir = os.path.join(root_dir, 'atlases')
     return rts.io.media.create_square_atlases(images_paths, outdir, 
-                                              max_tile_size=tile_size, no_border=no_border, format=format)
+                                              max_tile_size=tile_size, 
+                                              no_border=no_border,
+                                              flip=flip, 
+                                              format=format)
