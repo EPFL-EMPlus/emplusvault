@@ -125,10 +125,11 @@ def dataframe_to_hdf5(outdir: str, name: str, df: pd.DataFrame) -> bool:
         return False
     
 
-def dataframe_from_hdf5(input_dir: str, name: str, key: str = 'df') -> Optional[pd.DataFrame]:
+def dataframe_from_hdf5(input_dir: str, name: str, key: str = 'df', silent: bool = False) -> Optional[pd.DataFrame]:
     try:
         df = pd.read_hdf(os.path.join(input_dir, f'{name}.hdf5'), key=key)
         return df
     except Exception as e:
-        LOG.error(e)
+        if not silent:
+            LOG.error(e)
         return None

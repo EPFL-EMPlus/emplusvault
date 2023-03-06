@@ -224,7 +224,7 @@ def save_clips_images(timecodes: Any,
 
     def inner():
         # Adapted from https://github.com/Breakthrough/PySceneDetect/blob/master/scenedetect/scene_manager.py
-        image_name_template: str = '$VIDEO_NAME-$SCENE_NUMBER-$IMAGE_NUMBER'
+        image_name_template: str = '$VIDEO_NAME-$PREFIX$SCENE_NUMBER-$IMAGE_NUMBER'
         filename_template = Template(image_name_template)
         framerate = timecodes[0][0].framerate
         frame_margin = 1
@@ -271,6 +271,7 @@ def save_clips_images(timecodes: Any,
 
                 filename = '%s' % (filename_template.safe_substitute(
                 VIDEO_NAME=media_id,
+                PREFIX=clip_prefix_id,
                 SCENE_NUMBER=scene_num,
                 IMAGE_NUMBER=image_num_format % j,
                 FRAME_NUMBER=image_timecode.get_frames()))

@@ -271,7 +271,12 @@ def load_all_media_info(root_folder: str) -> Dict[str, Dict]:
     return media
 
 
-def create_clips_df(root_folder: str) -> pd.DataFrame:
+def build_clips_df(root_folder: str, force: bool = False) -> pd.DataFrame:
+    if not force:
+        df = rts.utils.dataframe_from_hdf5(root_folder, 'clips', silent=True)
+        if df is not None:
+            return df
+
     clips = load_all_clips(root_folder)
 
     payload = []
@@ -286,6 +291,23 @@ def create_clips_df(root_folder: str) -> pd.DataFrame:
     df = pd.DataFrame.from_records(payload)
     df.set_index('mediaId', inplace=True)
     return df
+
+
+def build_clip_index(df: pd.DataFrame) -> Dict[str, Dict]:
+    index = {}
+    for media_id, v in df.iterrows():
+        media_folder = Path(v['clip_folder']).parent
+        video_path = media_folder / f'{media_id}.mp4'
+        p = {
+            'mediaId': media_id,
+            'clip_folder': v['clip_folder'],
+            'media_folder': str(media_folder),
+            'media_path': str(video_path),
+            'start_frame': v['start_frame'],
+            'end_frame': v['end_frame'],
+        }
+        index[v['clip_id']] = p
+    return index
 
 
 def create_clip_texture_atlases(df: pd.DataFrame, root_dir: str, tile_size: int = 64, 
