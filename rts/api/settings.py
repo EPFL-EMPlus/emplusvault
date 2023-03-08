@@ -42,6 +42,9 @@ class Settings(BaseSettings):
     
     def get_archive_folder(self) -> Path:
         return Path(self.data_folder) / "archive"
+    
+    def get_atlases_folder(self) -> Path:
+        return Path(self.data_folder) / "atlases"
 
 
 class DevSettings(Settings):

@@ -167,6 +167,107 @@ def get_media_info(media_path: str) -> Dict:
     return info
 
 
+def trim_media(media_path: str, start_ts: float, end_ts: float, out_path: str) -> Optional[str]:
+    """Trim media file"""
+
+    def get_timestamp(in_stream: Any, target_s: int) -> int:
+        time_base = float(in_stream.time_base)
+        # rate = float(in_stream.average_rate)
+        # print('rate', rate)
+        # target_sec = target_frame * 1/rate
+        target_sec = target_s
+        # print('target_sec', target_sec)
+        target_timestamp = int(target_sec / time_base) + in_stream.start_time
+        return target_timestamp
+
+    try:
+        with av.open(str(media_path)) as in_container:
+            with av.open(str(out_path), 'w') as out_container:
+
+                # video_stream = next(s for s in in_container.streams if s.type == 'video')
+                # start_ts =  get_timestamp(video_stream, start_ts)
+                # end_ts = get_timestamp(video_stream, end_ts)
+
+                # print(start_ts, end_ts)
+                # target_frame = start_frame
+                # time_base = float(video_stream.time_base)
+                    
+                # rate = float(video_stream.average_rate)
+                # target_sec = target_frame * 1/rate
+                    
+                # target_timestamp = int(target_sec / time_base) + video_stream.start_time
+                # print(target_timestamp, target_sec)
+                
+                # in_container.seek(start_ts, stream=video_stream)
+
+                # in_stream = next(s for s in in_container.streams if s.type == 'video')
+
+                # print(in_stream)
+                # out_stream = out_container.add_stream("h264", rate=25)
+                # out_stream.width = in_stream.width
+                # out_stream.height = in_stream.height
+                # out_stream.pix_fmt = in_stream.pix_fmt
+                # out_stream.codec_context.bit_rate = in_stream.codec_context.bit_rate
+
+                # start =  get_timestamp(in_stream, start_ts)
+                # end = get_timestamp(in_stream, end_ts)
+                
+                # # out_stream.time_base = in_stream.time_base
+                # in_container.seek(start, stream=in_stream)
+                
+                # print(in_stream.start_time, in_stream.duration)
+                # print(out_stream.start_time, out_stream.duration)
+                # for packet in in_container.demux(in_stream):
+                #     if packet.dts is None:
+                #         continue
+                #     if packet.dts < start:
+                #         continue
+                #     if packet.dts > end:
+                #         break
+                #     packet.stream = out_stream
+                #     # print(packet)
+                #     out_container.mux(packet)
+
+                for in_stream in in_container.streams:
+                    print(in_stream)
+                    start = get_timestamp(in_stream, start_ts)
+                    end = get_timestamp(in_stream, end_ts)
+                    if in_stream.type == 'video':
+                        sample_rate = int(in_stream.guessed_rate)
+                        # continue
+                    elif in_stream.type == 'audio':
+                        sample_rate = in_stream.codec_context.sample_rate
+                        # continue
+                    else:
+                        continue
+                    
+                    # in_container.seek(0, stream=in_stream)
+
+                    
+                    # out_stream.time_base = in_stream.time_base
+                    in_container.seek(start)
+                    out_stream = out_container.add_stream(template=in_stream, rate=sample_rate)
+
+                    # print(in_stream.time_base, out_stream.time_base)
+                    # print(in_stream.start_time, in_stream.duration)
+                    # print(out_stream.start_time, out_stream.duration)
+
+                    for packet in in_container.demux(in_stream):
+                        print(packet)
+                        if packet.dts is None:
+                            continue
+                        # if packet.dts < start:
+                        #     continue
+                        # if packet.dts > end:
+                        #     break
+                        packet.stream = out_stream
+                        out_container.mux(packet)
+        return out_path
+    except av.AVError as e:
+        LOG.error(e)
+        return None
+
+
 def save_image_pyramid(image: Image, out_folder: str, name: str, split_folders: bool = False, base_res: int = 16, depth: int = 6) -> Dict:
     """Save image pyramid"""
     images = {}
@@ -419,33 +520,39 @@ def create_atlas_texture(images_path: List[str],
 
 def create_square_atlases(images_path: List[str], 
                    out_folder: str,
+                   name: str,
                    max_tile_size: int = 128,
                    width: int = 4096,
                    no_border: bool = False,
                    flip: bool = True,
                    keep_only_ids: bool = True,
                    atlas_prefix: str = 'atlas',
-                   format: str = 'png',
+                   format: str = 'jpg',
                    bg_color: Tuple[int, int, int, int] = (0, 0, 0, 0)) -> Optional[Dict]:
     if not images_path:
         return None
 
-    Path(out_folder).mkdir(exist_ok=True, parents=True)
+    outpath = Path(out_folder) / name
+    outpath.mkdir(exist_ok=True, parents=True)
     
     max_tiles_per_atlas = (width // max_tile_size) ** 2
     atlases = {}
+
     for k, i in enumerate(range(0, len(images_path), max_tiles_per_atlas)):
         atlas_images = images_path[i:i + max_tiles_per_atlas]
-        atlas_file = Path(out_folder) / f'{atlas_prefix}{k:03d}.{format}'
+        atlas_filename = f'{atlas_prefix}{k:03d}.{format}'
+        atlas_file = outpath / atlas_filename
         atlas = create_atlas_texture(atlas_images, atlas_file, width, max_tile_size, 
                                      square=True, no_border=no_border, flip=flip,
                                      keep_only_ids=keep_only_ids, bg_color=bg_color)
-        atlas['path'] = str(atlas_file)
+        atlas['texture_id'] = k
+        atlas['fullpath'] = str(atlas_file)
         atlases[str(k)] = atlas
     
     payload = {
         'atlas_count': len(atlases),
         'atlases': atlases,
+        'name': name,
     }
 
     rts.utils.obj_to_json(payload, Path(out_folder) / 'atlases.json')

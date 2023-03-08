@@ -6,10 +6,11 @@ from fastapi import (APIRouter, Depends, Request, Response, HTTPException)
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, StreamingResponse, FileResponse
-from typing import Any, Dict, Tuple, Union
+from typing import Any, Dict, Tuple, Union, Optional
 
 # Local imports
 from rts.api.settings import Settings, get_settings, get_public_folder_path
+from rts.utils import obj_from_json
 
 
 BYTES_PER_RESPONSE = 300000
@@ -59,8 +60,8 @@ def mount_static_folder(app, route_name: str, folder_path: Union[str, Path]) -> 
     app.mount(f"/{route_name}", StaticFilesSym(directory=Path(folder_path).expanduser()), name=route_name)
 
 
-@router.get("/images/{image_id}/{size}")
-def get_image(req: Request, image_id: str, size: str):
+@router.get("/images/{image_id}/{zoom}")
+def get_image(req: Request, image_id: str, zoom: int):
     toks = image_id.split('-')
     mediaId = toks[0]
     clip_number = f'L{toks[1]}'
@@ -70,12 +71,55 @@ def get_image(req: Request, image_id: str, size: str):
 
     if not clip:
         raise HTTPException(status_code=404, detail=f"Image not found {image_id}")
-    
+
+    sizes = {
+        0: '32px',
+        1: '64px',
+        2: '128px',
+        3: '256px',
+        4: '512px',
+        5: 'original'
+    }
+
+    size = sizes.get(zoom, 'original')
     image_path = Path(clip['clip_folder']) / size / f'{image_id}.jpg'    
     if not image_path.exists():
         raise HTTPException(status_code=404, detail=f"Image not found {image_id}")
     
     return FileResponse(image_path)
+
+
+def _get_atlas(atlas_name: str, settings: Settings) -> Optional[str]:
+    atlas_folder = settings.get_atlases_folder()
+    atlas_folder = Path(atlas_folder) / atlas_name
+    if not atlas_folder.exists():
+        return None
+    return str(atlas_folder / 'atlases.json')
+
+
+@router.get("/atlases/{atlas_name}")
+def get_atlas(atlas_name: str = '0', settings: Settings = Depends(get_settings)):
+    atlas = _get_atlas(atlas_name, settings)
+    if not atlas:
+        raise HTTPException(status_code=404, detail=f"Atlas not found {atlas_name}")
+
+    return FileResponse(atlas)
+
+
+@router.get("/atlases/{atlas_name}/texture/{texture_id}")
+def get_atlas(req: Request, atlas_name: str = '0', texture_id: int = 0, settings: Settings = Depends(get_settings)):
+    atlas = _get_atlas(atlas_name, settings)
+    if not atlas:
+        raise HTTPException(status_code=404, detail=f"Atlas not found {atlas_name}")
+    
+    atlases = obj_from_json(atlas)
+    try:
+        texture_path = atlases['atlases'][texture_id]['fullpath']
+        return FileResponse(texture_path)
+    except:
+        raise HTTPException(status_code=404, detail=f"Texture not found {texture_id}")
+
+
 
 # def chunk_generator_from_stream(config: benedict, media: dict, chunk_size: int, start: int, size: int):
 #     bytes_read = 0
@@ -86,6 +130,17 @@ def get_image(req: Request, image_id: str, size: str):
 #             yield stream.read(bytes_to_read)
 #             bytes_read += bytes_to_read
 
+def stream_clip(video_path: str, start_frame: int, end_frame: int):
+    pass
+    # target_frame = int(total_frame_count / 2.0)
+    # time_base = float(video_stream.time_base)
+        
+    # rate = float(video_stream.average_rate)
+    # target_sec = target_frame * 1/rate
+        
+    # target_timestamp = int(target_sec / time_base) + video_stream.start_time
+        
+    # video_stream.seek(target_timestamp)
 
 # @router.get('/stream/{media_id}')
 # async def stream_video(req: Request, media_id: str):
