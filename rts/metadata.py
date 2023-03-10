@@ -7,6 +7,7 @@ import glob
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 from pathlib import Path
+import shutil
 
 import rts.utils
 
@@ -271,13 +272,13 @@ def load_all_media_info(root_folder: str) -> Dict[str, Dict]:
     return media
 
 
-def build_clips_df(root_folder: str, force: bool = False) -> pd.DataFrame:
+def build_clips_df(archive_folder: str, metadata_folder: str, force: bool = False) -> pd.DataFrame:
     if not force:
-        df = rts.utils.dataframe_from_hdf5(root_folder, 'clips', silent=True)
+        df = rts.utils.dataframe_from_hdf5(metadata_folder, 'rts_clips', silent=True)
         if df is not None:
             return df
 
-    clips = load_all_clips(root_folder)
+    clips = load_all_clips(archive_folder)
 
     payload = []
     for media_id, v in clips.items():
@@ -290,6 +291,7 @@ def build_clips_df(root_folder: str, force: bool = False) -> pd.DataFrame:
 
     df = pd.DataFrame.from_records(payload)
     df.set_index('mediaId', inplace=True)
+    rts.utils.dataframe_to_hdf5(metadata_folder, 'rts_clips', df)
     return df
 
 
@@ -316,9 +318,9 @@ def create_clip_texture_atlases(df: pd.DataFrame, root_dir: str, name: str, tile
     for media_id, v in df.iterrows():
         clip_folder = v['clip_folder']
         filename = v['images'][1] # take middle image
-        image_path = os.path.join(clip_folder, f'{tile_size}px', filename)
-        if not image_path:
-            LOG.error(f'No image path for {media_id}')
+        image_path = Path(clip_folder) / 'images'/ f'{tile_size}px' / filename
+        if not image_path.exists():
+            # LOG.error(f'No image path for {media_id}')
             continue
         images_paths.append(image_path)
     
@@ -328,3 +330,22 @@ def create_clip_texture_atlases(df: pd.DataFrame, root_dir: str, name: str, tile
                                               no_border=no_border,
                                               flip=flip, 
                                               format=format)
+
+
+def clear_all_clips_and_scenes(clip_df: pd.DataFrame) -> None:
+    for _, row in clip_df.iterrows():
+        media_folder = Path(row['clip_folder']).parent
+        clip_path = media_folder / 'clips.json'
+        if clip_path.exists():
+            clip_path.unlink()
+            shutil.rmtree(row['clip_folder'])
+        
+        scene_path = media_folder / 'scenes.json'
+        if scene_path.exists():
+            scene_path.unlink()
+            scene_folder = scene_path.parent / 'scenes'
+            shutil.rmtree(scene_folder)
+
+        metadata = media_folder / 'metadata.json'
+        if metadata.exists():
+            metadata.unlink()

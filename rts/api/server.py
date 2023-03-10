@@ -17,7 +17,8 @@ app = get_app()
 async def startup_event():
     settings = get_settings()
     metadata_folder = settings.get_metadata_folder()
-    df = build_clips_df(metadata_folder)
+    archive_folder = settings.get_archive_folder()
+    df = build_clips_df(archive_folder, metadata_folder, force=False)
     app.state.clips = build_clip_index(df)
     router.mount_routers(app, settings)
 

@@ -160,6 +160,9 @@ def extract_location_clips_from_transcript(
     if not clip_infos:
         LOG.debug(f'No clips from transcript: {video_path}')
         return None
+    
+    # Cut video to clips
+    rts.io.media.cut_video_to_clips(clip_infos, force)
         
     # Add transcript to scene infos with locations
     for i, (cid, clip) in enumerate(clip_infos['clips'].items()):

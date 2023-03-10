@@ -34,7 +34,7 @@ def cli():
 @cli.command()
 @click.option('--min-seconds', type=float, default=6, help='Minimum duration of a scene')
 @click.option('--num-images', type=int, default=3, help='Number of images per scene')
-@click.option('--compute-scenes', is_flag=True, help='Compute transcript')
+@click.option('--compute-scenes', is_flag=True, help='Compute py detect scenes')
 @click.option('--compute-transcript', is_flag=True, help='Compute transcript')
 @click.option('--force-media', is_flag=True, help='Force processing')
 @click.option('--force-scene', is_flag=True, help='Force processing')
@@ -52,12 +52,28 @@ def pipeline(min_seconds: int, num_images: int,
 
 
 @cli.command()
+@click.option('--tile-size', type=int, default=64, help='Tile size')
+@click.option('--name', type=str, default='0', help='Atlas name')
+def atlas(tile_size: int, name: str) -> None:
+    df = rts.metadata.build_clips_df(LOCAL_VIDEOS, METADATA, force=True)
+    rts.metadata.create_clip_texture_atlases(df, LOCAL_RTS_DATA,
+                                                    name, # folder name
+                                                    tile_size=tile_size,
+                                                    flip=True,
+                                                    no_border=True, 
+                                                    format='jpg')
+
+
+@cli.command()
 def location() -> None:
     ts = rts.pipeline.load_all_transcripts(LOCAL_VIDEOS)
     fts = rts.features.text.build_location_df(ts)
 
     sample_df = get_sample_df()
     fts = rts.metadata.merge_location_df_with_metadata(sample_df, fts)
+
+
+
 
 if __name__ == '__main__':
     cli()

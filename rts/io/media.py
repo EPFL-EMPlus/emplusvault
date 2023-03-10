@@ -4,10 +4,11 @@ import logging
 import math
 from pathlib import Path
 from string import Template
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Optional, Tuple, Any, Union
 
 import numpy as np
 import av
+import ffmpeg
 import cv2
 import PIL
 import scenedetect
@@ -167,105 +168,31 @@ def get_media_info(media_path: str) -> Dict:
     return info
 
 
-def trim_media(media_path: str, start_ts: float, end_ts: float, out_path: str) -> Optional[str]:
-    """Trim media file"""
+def trim(input_path: Union[str, Path], output_path: Union[str, Path], start_ts: float, end_ts: float) -> bool:
+    input_stream = ffmpeg.input(str(input_path), hide_banner=None, loglevel='error')
+    vid = (
+        input_stream.video
+        .trim(start=start_ts, end=end_ts)
+        .setpts('PTS-STARTPTS')
+    )
+    aud = (
+        input_stream.audio
+        .filter_('atrim', start=start_ts, end=end_ts)
+        .filter_('asetpts', 'PTS-STARTPTS')
+    )
 
-    def get_timestamp(in_stream: Any, target_s: int) -> int:
-        time_base = float(in_stream.time_base)
-        # rate = float(in_stream.average_rate)
-        # print('rate', rate)
-        # target_sec = target_frame * 1/rate
-        target_sec = target_s
-        # print('target_sec', target_sec)
-        target_timestamp = int(target_sec / time_base) + in_stream.start_time
-        return target_timestamp
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
 
+    joined = ffmpeg.concat(vid, aud, v=1, a=1).node
+    output = ffmpeg.output(joined[0], joined[1], str(output_path)).overwrite_output()
     try:
-        with av.open(str(media_path)) as in_container:
-            with av.open(str(out_path), 'w') as out_container:
-
-                # video_stream = next(s for s in in_container.streams if s.type == 'video')
-                # start_ts =  get_timestamp(video_stream, start_ts)
-                # end_ts = get_timestamp(video_stream, end_ts)
-
-                # print(start_ts, end_ts)
-                # target_frame = start_frame
-                # time_base = float(video_stream.time_base)
-                    
-                # rate = float(video_stream.average_rate)
-                # target_sec = target_frame * 1/rate
-                    
-                # target_timestamp = int(target_sec / time_base) + video_stream.start_time
-                # print(target_timestamp, target_sec)
-                
-                # in_container.seek(start_ts, stream=video_stream)
-
-                # in_stream = next(s for s in in_container.streams if s.type == 'video')
-
-                # print(in_stream)
-                # out_stream = out_container.add_stream("h264", rate=25)
-                # out_stream.width = in_stream.width
-                # out_stream.height = in_stream.height
-                # out_stream.pix_fmt = in_stream.pix_fmt
-                # out_stream.codec_context.bit_rate = in_stream.codec_context.bit_rate
-
-                # start =  get_timestamp(in_stream, start_ts)
-                # end = get_timestamp(in_stream, end_ts)
-                
-                # # out_stream.time_base = in_stream.time_base
-                # in_container.seek(start, stream=in_stream)
-                
-                # print(in_stream.start_time, in_stream.duration)
-                # print(out_stream.start_time, out_stream.duration)
-                # for packet in in_container.demux(in_stream):
-                #     if packet.dts is None:
-                #         continue
-                #     if packet.dts < start:
-                #         continue
-                #     if packet.dts > end:
-                #         break
-                #     packet.stream = out_stream
-                #     # print(packet)
-                #     out_container.mux(packet)
-
-                for in_stream in in_container.streams:
-                    print(in_stream)
-                    start = get_timestamp(in_stream, start_ts)
-                    end = get_timestamp(in_stream, end_ts)
-                    if in_stream.type == 'video':
-                        sample_rate = int(in_stream.guessed_rate)
-                        # continue
-                    elif in_stream.type == 'audio':
-                        sample_rate = in_stream.codec_context.sample_rate
-                        # continue
-                    else:
-                        continue
-                    
-                    # in_container.seek(0, stream=in_stream)
-
-                    
-                    # out_stream.time_base = in_stream.time_base
-                    in_container.seek(start)
-                    out_stream = out_container.add_stream(template=in_stream, rate=sample_rate)
-
-                    # print(in_stream.time_base, out_stream.time_base)
-                    # print(in_stream.start_time, in_stream.duration)
-                    # print(out_stream.start_time, out_stream.duration)
-
-                    for packet in in_container.demux(in_stream):
-                        print(packet)
-                        if packet.dts is None:
-                            continue
-                        # if packet.dts < start:
-                        #     continue
-                        # if packet.dts > end:
-                        #     break
-                        packet.stream = out_stream
-                        out_container.mux(packet)
-        return out_path
-    except av.AVError as e:
+        output.run(capture_stdout=False)
+        return True
+    except ffmpeg.Error as e:
         LOG.error(e)
-        return None
+    
+    return False
 
 
 def save_image_pyramid(image: Image, out_folder: str, name: str, split_folders: bool = False, base_res: int = 16, depth: int = 6) -> Dict:
@@ -391,7 +318,8 @@ def save_clips_images(timecodes: Any,
 
         return media_id, image_names, resolutions
 
-    images_folder = Path(media_folder) / out_folder_name
+    clip_folder = Path(media_folder) / out_folder_name
+    images_folder = clip_folder / 'images'
     if images_folder.exists():
         # remove old directory
         shutil.rmtree(str(images_folder))
@@ -407,8 +335,9 @@ def save_clips_images(timecodes: Any,
     # Format timecodes
     payload = {
         'mediaId': media_id,
-        'resolutions': resolutions,
-        'clip_folder': str(images_folder),
+        'media_folder': str(media_folder),
+        'clip_folder': str(clip_folder),
+        'image_resolutions': resolutions,
         'framerate': timecodes[0][0].framerate,
         'clip_count': len(timecodes),
         'clips': {}
@@ -431,6 +360,25 @@ def save_clips_images(timecodes: Any,
 
     return payload
 
+
+def cut_video_to_clips(clips_payload: Dict, force: bool = False) -> bool:
+    has_errors = False
+    for clip_id, clip in clips_payload['clips'].items():
+        start = clip['start']
+        end = clip['end']
+        video_folder = Path(clips_payload['clip_folder']) / 'videos'
+        clip_path = video_folder / f'{clip_id}.mp4'
+        if clip_path.exists() and not force:
+            return clip_path
+        
+        video_path = Path(clips_payload['media_folder']) / f"{clips_payload['mediaId']}.mp4"
+        ok = trim(video_path, clip_path, start, end)
+        if not ok:
+            has_errors = True
+            LOG.error(f'Error cutting clip {clip_id} from {video_path} to {clip_path}')
+    
+    return not has_errors
+    
 
 def create_image_grid(images: List[Image.Image], 
     out_file: str,
@@ -555,6 +503,6 @@ def create_square_atlases(images_path: List[str],
         'name': name,
     }
 
-    rts.utils.obj_to_json(payload, Path(out_folder) / 'atlases.json')
+    rts.utils.obj_to_json(payload, outpath / 'atlases.json')
     return atlases
 
