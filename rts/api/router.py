@@ -16,6 +16,15 @@ from rts.utils import obj_from_json
 BYTES_PER_RESPONSE = 300000
 router = APIRouter()
 
+
+def get_clip_id_from_image(image_id: str) -> str:
+    toks = image_id.split('-')
+    mediaId = toks[0]
+    clip_number = f'{toks[1]}'
+    clip_id = f'{mediaId}-{clip_number}'
+    return clip_id
+
+
 class StaticFilesSym(StaticFiles):
     "subclass StaticFiles middleware to allow symlinks"
     def lookup_path(self, path) -> Tuple[str, Any]:
@@ -62,11 +71,7 @@ def mount_static_folder(app, route_name: str, folder_path: Union[str, Path]) -> 
 
 @router.get("/images/{image_id}/{zoom}")
 def get_image(req: Request, image_id: str, zoom: int):
-    toks = image_id.split('-')
-    mediaId = toks[0]
-    clip_number = f'{toks[1]}'
-
-    clip_id = f'{mediaId}-{clip_number}'
+    clip_id = get_clip_id_from_image(image_id)
     clip = req.app.state.clips.get(clip_id)
 
     if not clip:
@@ -133,8 +138,9 @@ def chunk_generator_from_stream(video_path: str, chunk_size: int, start: int, si
             bytes_read += bytes_to_read
 
 
-@router.get('/stream/{clip_id}')
-async def stream_video(req: Request, clip_id: str):
+@router.get('/stream/{image_id}')
+async def stream_video(req: Request, image_id: str):
+    clip_id = get_clip_id_from_image(image_id)
     clip = req.app.state.clips.get(clip_id)
     if not clip:
         raise HTTPException(status_code=404, detail=f"Media not found {clip_id}")
