@@ -1373,6 +1373,23 @@ files = [
 ]
 
 [[package]]
+name = "img2vec-pytorch"
+version = "1.0.1"
+description = "Use pre-trained models in PyTorch to extract vector embeddings for any image"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "img2vec_pytorch-1.0.1-py3-none-any.whl", hash = "sha256:b68cf9a30c8c17b0c19279f537e1dce6c78370e191414bf6589f62ae9c140adf"},
+    {file = "img2vec_pytorch-1.0.1.tar.gz", hash = "sha256:c173b2ef8b4de673017f7cbb90d7febf48403c28d01aed47a231c3c5316d24f1"},
+]
+
+[package.dependencies]
+numpy = "*"
+torch = "*"
+torchvision = "*"
+
+[[package]]
 name = "importlib-metadata"
 version = "6.0.0"
 description = "Read metadata from Python packages"
@@ -4782,4 +4799,4 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<4.0"
-content-hash = "dd0f6d27cad1ff4e46312817a97fa3782de4470febeb30372ca95cc3adbe56ed"
+content-hash = "d1153d2758923a2273ae6929c5d7f9b902804144094176d2eda6983ef76e8660"

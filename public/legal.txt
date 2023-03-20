@@ -1,0 +1,21 @@
+All cables core code is licenced under the MIT licence
+
+Some ops may be using code from contributors or external libraries under different licences.
+
+Additional code from contributors and libraries in this export are licenced as follows:
+
+MIT:
+
+- glmatrix by toji (https://github.com/toji/gl-matrix)
+
+Public Domain:
+
+- Photoshop math GLSL shaders by Romain Dura (https://mouaif.wordpress.com/2009/01/05/photoshop-math-with-glsl-shaders/)
+
+ISC:
+
+- d3 (https://github.com/d3/d3)
+
+uploaded/unknown:
+
+- d3-octree.min.js (/assets/63ef55fa1cda93f74e0e87f7/d3-octree.min.js)
