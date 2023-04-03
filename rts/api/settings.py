@@ -54,7 +54,7 @@ class DevSettings(Settings):
 class ProductionSettings(Settings):
     mode = 'production'
     host = ''
-    # app_port = '80'
+    app_port = '80'
 
 
 settings = DevSettings()
