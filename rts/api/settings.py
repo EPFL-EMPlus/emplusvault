@@ -53,7 +53,7 @@ class DevSettings(Settings):
 
 class ProductionSettings(Settings):
     mode = 'production'
-    host = ''
+    host = 'emplusdemo.epfl.ch'
     app_port = '80'
 
 
