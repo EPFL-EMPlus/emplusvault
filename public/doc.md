@@ -1,5 +1,6 @@
 ## Patch Variables:
 
+* __baseServerUrl__ ```String```
 * __boxIds__ ```Array```
 * __boxMaterialId__ ```Number```
 * __boxPositions__ ```Array```
@@ -15,7 +16,6 @@
 * __hoveredIdx__ ```Number```
 * __loadImages__ ```Number```
 * __needToWaitForSearch__ ```Number``` (default Value: `1`)
-* __serverUrl__ ```String```
 * __shouldPlayVideo__ ```Number```
 * __showDebug__ ```Number```
 * __validHover__ ```Number```
