@@ -1510,10 +1510,11 @@ function updateUi()
 
 function checkTypes()
 {
-    if (inTex.isLinked() && inTex.get() && tex.textureType != inTex.get().textureType && (tex.textureType != CGL.Texture.TYPE_FLOAT || inTex.get().textureType == CGL.Texture.TYPE_FLOAT))
-        op.setUiError("textypediff", "Drawing 32bit texture into an 8 bit can result in data/precision loss", 1);
-    else
-        op.setUiError("textypediff", null);
+    if (tex)
+        if (inTex.isLinked() && inTex.get() && tex.textureType != inTex.get().textureType && (tex.textureType != CGL.Texture.TYPE_FLOAT || inTex.get().textureType == CGL.Texture.TYPE_FLOAT))
+            op.setUiError("textypediff", "Drawing 32bit texture into an 8 bit can result in data/precision loss", 1);
+        else
+            op.setUiError("textypediff", null);
 }
 
 op.preRender = () =>
@@ -3042,13 +3043,13 @@ let mesh = null;
 let geom = new CGL.Geometry("fullscreen rectangle");
 let x = 0, y = 0, z = 0, w = 0, h = 0;
 
-op.toWorkShouldNotBeChild("Ops.Gl.TextureEffects.ImageCompose");
+op.toWorkShouldNotBeChild("Ops.Gl.TextureEffects.ImageCompose", CABLES.OP_PORT_TYPE_FUNCTION);
+op.toWorkPortsNeedToBeLinked(render);
 
 flipX.onChange = rebuildFlip;
 flipY.onChange = rebuildFlip;
 render.onTriggered = doRender;
 inTexture.onLinkChanged = updateUi;
-op.toWorkPortsNeedToBeLinked(render);
 inScale.onChange = updateScale;
 
 const shader = new CGL.Shader(cgl, "fullscreenrectangle");
@@ -6628,7 +6629,7 @@ Ops.Gl.ShaderEffects.Render2TexturesSlots_v2 = function()
 {
 CABLES.Op.apply(this,arguments);
 const op=this;
-const attachments={"slots_frag":"\n// default\n\n#ifdef SLOT_TEX_0_COLOR\n    outColor0=col;\n#endif\n#ifdef SLOT_TEX_1_COLOR\n    outColor1=col;\n#endif\n#ifdef SLOT_TEX_2_COLOR\n    outColor2=col;\n#endif\n#ifdef SLOT_TEX_3_COLOR\n    outColor3=col;\n#endif\n\n// normals\n\n#ifdef SLOT_TEX_0_NORMAL\n    outColor0=vec4(norm,1.);\n#endif\n#ifdef SLOT_TEX_1_NORMAL\n    outColor1=vec4(norm,1.);\n#endif\n#ifdef SLOT_TEX_2_NORMAL\n    outColor2=vec4(norm,1.);\n#endif\n#ifdef SLOT_TEX_3_NORMAL\n    outColor3=vec4(norm,1.);\n#endif\n\n// texcoord\n\n#ifdef SLOT_TEX_0_TEXCOORD\n    outColor0=vec4(texCoord, 0., 1.);\n#endif\n#ifdef SLOT_TEX_1_TEXCOORD\n    outColor1=vec4(texCoord, 0., 1.);\n#endif\n#ifdef SLOT_TEX_2_TEXCOORD\n    outColor2=vec4(texCoord, 0., 1.);\n#endif\n#ifdef SLOT_TEX_3_TEXCOORD\n    outColor3=vec4(texCoord, 0., 1.);\n#endif\n\n// black\n\n#ifdef SLOT_TEX_0_BLACK\n    outColor0=vec4(0.,0.,0.,1.);\n#endif\n#ifdef SLOT_TEX_1_BLACK\n    outColor1=vec4(0.,0.,0.,1.);\n#endif\n#ifdef SLOT_TEX_2_BLACK\n    outColor2=vec4(0.,0.,0.,1.);\n#endif\n#ifdef SLOT_TEX_3_BLACK\n    outColor3=vec4(0.,0.,0.,1.);\n#endif\n\n// 1\n\n#ifdef SLOT_TEX_0_1\n    outColor0=vec4(1.);\n#endif\n#ifdef SLOT_TEX_1_1\n    outColor1=vec4(1.);\n#endif\n#ifdef SLOT_TEX_2_1\n    outColor2=vec4(1.);\n#endif\n#ifdef SLOT_TEX_3_1\n    outColor3=vec4(1.);\n#endif\n\n// 0\n\n#ifdef SLOT_TEX_0_0\n    outColor0=vec4(0.);\n#endif\n#ifdef SLOT_TEX_1_0\n    outColor1=vec4(0.);\n#endif\n#ifdef SLOT_TEX_2_0\n    outColor2=vec4(0.);\n#endif\n#ifdef SLOT_TEX_3_0\n    outColor3=vec4(0.);\n#endif\n\n\n\n#ifdef SLOT_TEX_0_POS_LOCAL\n    outColor0=vec4(MOD_pos_local,1.);\n#endif\n#ifdef SLOT_TEX_1_POS_LOCAL\n    outColor1=vec4(MOD_pos_local,1.);\n#endif\n#ifdef SLOT_TEX_2_POS_LOCAL\n    outColor2=vec4(MOD_pos_local,1.);\n#endif\n#ifdef SLOT_TEX_3_POS_LOCAL\n    outColor3=vec4(MOD_pos_local,1.);\n#endif\n\n\n\n#ifdef SLOT_TEX_0_POS_OBJECT\n    outColor0=vec4(MOD_pos_object, 1.);\n#endif\n#ifdef SLOT_TEX_1_POS_OBJECT\n    outColor1=vec4(MOD_pos_object, 1.);\n#endif\n#ifdef SLOT_TEX_2_POS_OBJECT\n    outColor2=vec4(MOD_pos_object, 1.);\n#endif\n#ifdef SLOT_TEX_3_POS_OBJECT\n    outColor3=vec4(MOD_pos_object, 1.);\n#endif\n\n\n\n\n#ifdef SLOT_TEX_0_POS_WORLD\n    outColor0=vec4(MOD_pos_world,1.);\n#endif\n#ifdef SLOT_TEX_1_POS_WORLD\n    outColor1=vec4(MOD_pos_world,1.);\n#endif\n#ifdef SLOT_TEX_2_POS_WORLD\n    outColor2=vec4(MOD_pos_world,1.);\n#endif\n#ifdef SLOT_TEX_3_POS_WORLD\n    outColor3=vec4(MOD_pos_world,1.);\n#endif\n\n\n\n#ifdef SLOT_TEX_0_NORMAL_MV\n    outColor0=vec4(MOD_normal_mv,1.);\n#endif\n#ifdef SLOT_TEX_1_NORMAL_MV\n    outColor1=vec4(MOD_normal_mv,1.);\n#endif\n#ifdef SLOT_TEX_2_NORMAL_MV\n    outColor2=vec4(MOD_normal_mv,1.);\n#endif\n#ifdef SLOT_TEX_3_NORMAL_MV\n    outColor3=vec4(MOD_normal_mv,1.);\n#endif\n\n\n\n#ifdef INSTANCING\n    float instIdx=frag_instIndex;\n#endif\n#ifndef INSTANCING\n    float instIdx=0.0;\n#endif\n\n#ifdef SLOT_TEX_0_MATERIALID\n    outColor0=vec4(materialId,instIdx,0.0,1.);\n#endif\n#ifdef SLOT_TEX_1_MATERIALID\n    outColor1=vec4(materialId,instIdx,0.0,1.);\n#endif\n#ifdef SLOT_TEX_2_MATERIALID\n    outColor2=vec4(materialId,instIdx,0.0,1.);\n#endif\n#ifdef SLOT_TEX_3_MATERIALID\n    outColor3=vec4(materialId,instIdx,0.0,1.);\n#endif\n\n\n\n#ifdef SLOT_TEX_0_FRAGZ\n    outColor0=vec4(vec3(gl_FragCoord.z),1.);\n#endif\n#ifdef SLOT_TEX_1_FRAGZ\n    outColor1=vec4(vec3(gl_FragCoord.z),1.);\n#endif\n#ifdef SLOT_TEX_2_FRAGZ\n    outColor2=vec4(vec3(gl_FragCoord.z),1.);\n#endif\n#ifdef SLOT_TEX_3_FRAGZ\n    outColor3=vec4(vec3(gl_FragCoord.z),1.);\n#endif\n\n\n\n\n\n","slots_vert":"#ifdef SLOT_POS_WORLD\n    MOD_pos_world=(mMatrix*pos).xyz;\n#endif\n\n#ifdef SLOT_POS_OBJECT\n    MOD_pos_object=(mMatrix*vec4(0.,0.,0.,1.)).xyz;\n#endif\n\n#ifdef SLOT_POS_LOCAL\n    MOD_pos_local=vPosition.xyz;\n#endif\n\n#ifdef SLOT_POS_NORMAL_MV\n    MOD_normal_mv=((viewMatrix*mMatrix)*vec4(norm,1.0)).xyz;\n#endif","slots_head_frag":"#ifdef SLOT_POS_WORLD\n    in vec3 MOD_pos_world;\n#endif\n\n#ifdef SLOT_POS_LOCAL\n    in vec3 MOD_pos_local;\n#endif\n\n#ifdef SLOT_POS_OBJECT\n    in vec3 MOD_pos_object;\n#endif\n\n#ifdef SLOT_POS_NORMAL_MV\n    in vec3 MOD_normal_mv;\n#endif\n","slots_head_vert":"#ifdef SLOT_POS_WORLD\n    out vec3 MOD_pos_world;\n#endif\n\n#ifdef SLOT_POS_LOCAL\n    out vec3 MOD_pos_local;\n#endif\n\n#ifdef SLOT_POS_OBJECT\n    out vec3 MOD_pos_object;\n#endif\n\n#ifdef SLOT_POS_NORMAL_MV\n    out vec3 MOD_normal_mv;\n#endif",};
+const attachments={};
 const
     render = op.inTrigger("Render"),
     next = op.outTrigger("Next");
@@ -6637,40 +6638,15 @@ const ports = [];
 const cgl = op.patch.cgl;
 const NUM_BUFFERS = 4;
 
-const mod = new CGL.ShaderModifier(cgl, op.name);
-mod.addModule({
-    "priority": 2,
-    "title": op.name,
-    "name": "MODULE_COLOR",
-    "srcHeadFrag": attachments.slots_head_frag,
-    "srcBodyFrag": attachments.slots_frag,
-});
+const rt = new CGL.RenderTargets(cgl);
 
-mod.addModule({
-    "priority": 2,
-    "title": op.name,
-    "name": "MODULE_VERTEX_POSITION",
-    "srcHeadVert": attachments.slots_head_vert,
-    "srcBodyVert": attachments.slots_vert
-});
+const mod = rt.mod;// new CGL.ShaderModifier(cgl, op.name);
 
 for (let i = 0; i < NUM_BUFFERS; i++)
 {
     let slot = "Default";
     if (i != 0)slot = "0";
-    const p = op.inDropDown("Texture " + i, [
-        "Default",
-        "Material Id",
-        "Position World",
-        "Position Local",
-        "Position Object",
-        "Normal",
-        "Normal * ModelView",
-        "FragCoord.z",
-        "TexCoord",
-        "Black",
-        "0", "1",
-    ], slot);
+    const p = op.inDropDown("Texture " + i, rt.getTypes(), slot);
     p.onChange = updateDefines;
     ports.push(p);
 }
@@ -6679,44 +6655,13 @@ updateDefines();
 
 function updateDefines()
 {
-    let strExt = "";
-    let hasPosWorld = false;
-    let hasPosLocal = false;
-    let hasPosObject = false;
-    let hasNormalModelView = false;
-
+    let types = [];
     for (let i = 0; i < NUM_BUFFERS; i++)
-    {
-        mod.toggleDefine("SLOT_TEX_" + i + "_NORMAL", ports[i].get() == "Normal");
-        mod.toggleDefine("SLOT_TEX_" + i + "_COLOR", ports[i].get() == "Color" || ports[i].get() == "Default");
-        mod.toggleDefine("SLOT_TEX_" + i + "_BLACK", ports[i].get() == "Black");
-        mod.toggleDefine("SLOT_TEX_" + i + "_1", ports[i].get() == "1");
-        mod.toggleDefine("SLOT_TEX_" + i + "_0", ports[i].get() == "0");
+        types.push(ports[i].get());
 
-        hasPosWorld = (ports[i].get() == "Position World") || hasPosWorld;
-        hasNormalModelView = (ports[i].get() == "Normal * ModelView") || hasNormalModelView;
-        hasPosLocal = (ports[i].get() == "Position Local") || hasPosLocal;
-        hasPosObject = (ports[i].get() == "Position Object") || hasPosObject;
+    rt.update(types);
 
-        mod.toggleDefine("SLOT_TEX_" + i + "_POS_WORLD", ports[i].get() == "Position World");
-        mod.toggleDefine("SLOT_TEX_" + i + "_POS_LOCAL", ports[i].get() == "Position Local");
-        mod.toggleDefine("SLOT_TEX_" + i + "_POS_OBJECT", ports[i].get() == "Position Object");
-        mod.toggleDefine("SLOT_TEX_" + i + "_TEXCOORD", ports[i].get() == "TexCoord");
-        mod.toggleDefine("SLOT_TEX_" + i + "_MATERIALID", ports[i].get() == "Material Id");
-
-        mod.toggleDefine("SLOT_TEX_" + i + "_NORMAL_MV", ports[i].get() == "Normal * ModelView");
-        mod.toggleDefine("SLOT_TEX_" + i + "_FRAGZ", ports[i].get() == "FragCoord.z");
-
-        strExt += ports[i].get();
-        if (i != NUM_BUFFERS - 1)strExt += " | ";
-    }
-
-    mod.toggleDefine("SLOT_POS_WORLD", hasPosWorld);
-    mod.toggleDefine("SLOT_POS_LOCAL", hasPosLocal);
-    mod.toggleDefine("SLOT_POS_OBJECT", hasPosObject);
-    mod.toggleDefine("SLOT_POS_NORMAL_MV", hasNormalModelView);
-
-    op.setUiAttrib({ "extendTitle": strExt });
+    op.setUiAttrib({ "extendTitle": rt.asString });
 }
 
 render.onTriggered = function ()
@@ -6826,7 +6771,6 @@ op.setPortGroup("Values", [valueFalse, valueTrue]);
 
 dir.onChange = bool.onChange = valueFalse.onChange = valueTrue.onChange = duration.onChange = setAnim;
 setAnim();
-
 
 function setAnim()
 {
@@ -8501,10 +8445,8 @@ function buildMeshLater()
 
 render.onLinkChanged = function ()
 {
-    if (!render.isLinked())
-    {
-        geomOut.set(null);
-    }
+    if (!render.isLinked()) geomOut.set(null);
+    else geomOut.setRef(geom);
 };
 
 render.onTriggered = function ()
@@ -8565,8 +8507,7 @@ function buildMesh()
     if (mesh)mesh.dispose();
     mesh = op.patch.cg.createMesh(geom);
 
-    geomOut.set(null);
-    geomOut.set(geom);
+    geomOut.setRef(geom);
 
     needsRebuild = false;
 }

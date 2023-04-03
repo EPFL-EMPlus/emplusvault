@@ -62,6 +62,9 @@
 
         function patchInitialized(patch) {
             // You can now access the patch object (patch), register variable watchers and so on
+            {% if base_url %}
+                CABLES.patch.setVariable("baseServerUrl", "{{base_url}}");
+            {% endif %}
         }
 
         function patchFinishedLoading(patch) {
