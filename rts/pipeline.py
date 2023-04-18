@@ -345,4 +345,3 @@ def load_all_transcripts(root_folder: str) -> Dict[str, Dict]:
         transcripts[media_id] = rts.utils.obj_from_json(p)
     return transcripts
 
-

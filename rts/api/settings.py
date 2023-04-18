@@ -14,7 +14,8 @@ origins = [
     "https://localhost",
     "https://dev.cables.gl",
     "https://cables.gl",
-    "https://emplusdemo.epfl.ch"
+    "https://emplusdemo.epfl.ch",
+    "http://emplusdemo.epfl.ch"
     # "*" # all origins
 ]
 
