@@ -41,8 +41,15 @@ The frontend code is made with [Cables.gl](htttps://cables.gl), a node-based vis
 4. Create an specific API-KEY on [Cables.gl](https://cables.gl/settings)
 5. Create `~/.cablesrc` file with `apikey=YOUR_API_KEY`.
 
+# Copy data from RTS to transfer drive
+```
+rsync -am /media/data/rts/metadata/ /mnt/transfer/rts/metadata/
+rsync -am /media/data/rts/metadata/ /mnt/transfer/rts/metadata/
+```
 
 # Copy data from RTS machine to public demo
 ```
 rsync -am /media/data/rts/metadata/ root@128.178.218.107:/media/data/rts/metadata/
+
+
 ```
