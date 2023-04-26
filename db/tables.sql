@@ -1,49 +1,58 @@
-CREATE TABLE media (
-   media_id SERIAL PRIMARY KEY,
-   media_path VARCHAR(500) NOT NULL,
-   original_path VARCHAR(500) NOT NULL,
-   created_at TIMESTAMP DEFAULT NOW(),
-   media_type VARCHAR(50) NOT NULL,
-   sub_type VARCHAR(50) NOT NULL,
-   size INTEGER NOT NULL,
-   archive_name VARCHAR (50) NOT NULL,
-   archive_id VARCHAR (50) NOT NULL,
-   metadata JSONB NOT NULL
+CREATE TABLE IF NOT EXISTS media (
+    media_id SERIAL PRIMARY KEY,
+    media_path VARCHAR(500) NOT NULL,
+    original_path VARCHAR(500) NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    media_type VARCHAR(50) NOT NULL,
+    sub_type VARCHAR(50) NOT NULL,
+    size INTEGER NOT NULL,
+    archive_name VARCHAR (50) NOT NULL,
+    archive_id VARCHAR (50) NOT NULL,
+    metadata JSONB NOT NULL
 );
 
-CREATE TABLE features (
-   feature_id SERIAL PRIMARY KEY,
-   feature_type VARCHAR(50) NOT NULL,
-   version VARCHAR(20) NOT NULL,
-   created_at TIMESTAMP DEFAULT NOW(),
-   model_name VARCHAR(200) NOT NULL,
-   model_params JSONB NOT NULL,
-   data JSONB NOT NULL,
+COMMENT ON COLUMN media.media_id IS 'Unique identifier for the media';
+COMMENT ON COLUMN media.media_path IS 'Path to the media file';
+COMMENT ON COLUMN media.original_path IS 'Path to the original media file';
+COMMENT ON COLUMN media.created_at IS 'Timestamp when the media was added to the database';
+COMMENT ON COLUMN media.media_type IS 'Type of the media (image, video, audio)';
+COMMENT ON COLUMN media.sub_type IS 'Subtype of the media (thumbnail, ...)';
+COMMENT ON COLUMN media.size IS 'Size of the media file in bytes';
+COMMENT ON COLUMN media.archive_name IS 'Name of the archive the media belongs to (rts, ioc, mjf,...)';
+COMMENT ON COLUMN media.archive_id IS 'Unique identifier of the archive the media belongs to';
+COMMENT ON COLUMN media.metadata IS 'Metadata of the media';
 
-   embedding_size INTEGER,
-   embedding_1024 vector (1024),
-   embedding_2048 vector (2048),
 
-   media_id INTEGER,
+CREATE TABLE IF NOT EXISTS features (
+    feature_id SERIAL PRIMARY KEY,
+    feature_type VARCHAR(50) NOT NULL,
+    version VARCHAR(20) NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    model_name VARCHAR(200) NOT NULL,
+    model_params JSONB NOT NULL,
+    data JSONB NOT NULL,
 
-   CONSTRAINT FK_features_media_id FOREIGN KEY (media_id) 
-    REFERENCES media (media_id)
+    embedding_size INTEGER,
+    embedding_1024 vector (1024),
+    embedding_2048 vector (2048),
+
+    media_id INTEGER,
+
+    CONSTRAINT FK_features_media_id FOREIGN KEY (media_id) 
+        REFERENCES media (media_id)
 );
 
-   generic_embedding vector (2048),
-
-   embedding_resnet vector (2048),
-   embedding_openai vector (1536), 
-   
-
--- Create vector tables for each vector feature
--- type of vectors: text, image, audio, video
-CREATE TABLE embedding_text (
-   feature_id INTEGER PRIMARY KEY,
-   embedding vector (1536),
-   CONSTRAINT FK_embedding_text_feature_id FOREIGN KEY (feature_id) 
-    REFERENCES features (feature_id)
-);
+COMMENT ON COLUMN features.feature_id IS 'Unique identifier for the feature';
+COMMENT ON COLUMN features.feature_type IS 'Type of the feature (image, video, audio)';
+COMMENT ON COLUMN features.version IS 'Version of the feature';
+COMMENT ON COLUMN features.created_at IS 'Timestamp when the feature was added to the database';
+COMMENT ON COLUMN features.model_name IS 'Name of the model used to extract the feature';
+COMMENT ON COLUMN features.model_params IS 'Parameters of the model used to extract the feature';
+COMMENT ON COLUMN features.data IS 'Other data related to the feature';
+COMMENT ON COLUMN features.embedding_size IS 'Size of the embedding';
+COMMENT ON COLUMN features.embedding_1024 IS '1024 dimensional embedding';
+COMMENT ON COLUMN features.embedding_2048 IS '2048 dimensional embedding';
+COMMENT ON COLUMN features.media_id IS 'Unique identifier of the media the feature belongs to';
 
 CREATE TABLE tasks (
    task_id SERIAL PRIMARY KEY,
@@ -56,21 +65,5 @@ CREATE TABLE tasks (
    task_result JSONB NOT NULL
 );
 
-
 CREATE INDEX features_data_jsonb_idx ON features USING GIN (data);
 CREATE INDEX media_media_path_idx ON media (media_path);
-
--- create index for vector column
-
-
-SELECT 
-    media_id,
-    CASE
-        WHEN embedding_size = 1024 THEN embedding_1024
-        WHEN embedding_size = 2048 THEN embedding_2048
-        ELSE NULL
-    END AS embedding_vector
-FROM 
-    features
-WHERE 
-    media_id = <your_media_id>;
