@@ -1,29 +1,74 @@
+CREATE TABLE IF NOT EXISTS library (
+    library_id SERIAL PRIMARY KEY,
+    library_name VARCHAR(50) NOT NULL,
+    version VARCHAR(20) NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    data JSONB NOT NULL
+);
+
+INSERT INTO library (library_name, version, data)
+VALUES ('rts', '0.1', '{}')
+RETURNING library_id;
+
+CREATE TABLE IF NOT EXISTS projection (
+    projection_id SERIAL PRIMARY KEY,
+    version VARCHAR(20) NOT NULL,
+    library_id INTEGER NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    model_name VARCHAR(200) NOT NULL,
+    model_params JSONB NOT NULL,
+    data JSONB NOT NULL,
+    dimension INTEGER NOT NULL,
+    atlas_folder_path VARCHAR(500) NOT NULL,
+    atlas_width INTEGER NOT NULL,
+    tile_size INTEGER NOT NULL,
+    atlas_count INTEGER NOT NULL,
+    total_tiles INTEGER NOT NULL,
+    tiles_per_atlas INTEGER NOT NULL,
+
+    CONSTRAINT FK_projection_library_id FOREIGN KEY (library_id)
+        REFERENCES library (library_id)
+);
+
+CREATE TABLE IF NOT EXISTS atlas (
+    atlas_id SERIAL PRIMARY KEY,
+    projection_id INTEGER NOT NULL,
+    atlas_order INTEGER NOT NULL,
+    atlas_path VARCHAR(500) NOT NULL,
+    atlas_size Vector (2) NOT NULL,
+    tile_size Vector (2) NOT NULL,
+    tile_count INTEGER NOT NULL,
+    rows INTEGER NOT NULL,
+    cols INTEGER NOT NULL,
+    tiles_per_atlas INTEGER NOT NULL,
+
+    CONSTRAINT FK_atlas_projection_id FOREIGN KEY (projection_id)
+        REFERENCES projection (projection_id)
+);
+
 CREATE TABLE IF NOT EXISTS media (
     media_id SERIAL PRIMARY KEY,
-    media_path VARCHAR(500) NOT NULL,
+    media_path VARCHAR(500) UNIQUE,
     original_path VARCHAR(500) NOT NULL,
     created_at TIMESTAMP DEFAULT NOW(),
     media_type VARCHAR(50) NOT NULL,
     sub_type VARCHAR(50) NOT NULL,
     size INTEGER NOT NULL,
-    archive_name VARCHAR (50) NOT NULL,
-    archive_id VARCHAR (50) NOT NULL,
-    metadata JSONB NOT NULL
+    metadata JSONB NOT NULL,
+    library_id INTEGER NOT NULL,
+    hash VARCHAR(50) UNIQUE,
+    parent_id INTEGER,
+    start_ts FLOAT,
+    end_ts FLOAT,
+    start_frame INTEGER,
+    end_frame INTEGER,
+    frame_rate FLOAT,
+
+    CONSTRAINT FK_media_library_id FOREIGN KEY (library_id)
+        REFERENCES library (library_id)
 );
 
-COMMENT ON COLUMN media.media_id IS 'Unique identifier for the media';
-COMMENT ON COLUMN media.media_path IS 'Path to the media file';
-COMMENT ON COLUMN media.original_path IS 'Path to the original media file';
-COMMENT ON COLUMN media.created_at IS 'Timestamp when the media was added to the database';
-COMMENT ON COLUMN media.media_type IS 'Type of the media (image, video, audio)';
-COMMENT ON COLUMN media.sub_type IS 'Subtype of the media (thumbnail, ...)';
-COMMENT ON COLUMN media.size IS 'Size of the media file in bytes';
-COMMENT ON COLUMN media.archive_name IS 'Name of the archive the media belongs to (rts, ioc, mjf,...)';
-COMMENT ON COLUMN media.archive_id IS 'Unique identifier of the archive the media belongs to';
-COMMENT ON COLUMN media.metadata IS 'Metadata of the media';
-
-
-CREATE TABLE IF NOT EXISTS features (
+CREATE TABLE IF NOT EXISTS feature (
     feature_id SERIAL PRIMARY KEY,
     feature_type VARCHAR(50) NOT NULL,
     version VARCHAR(20) NOT NULL,
@@ -34,36 +79,27 @@ CREATE TABLE IF NOT EXISTS features (
 
     embedding_size INTEGER,
     embedding_1024 vector (1024),
+    embedding_1536 vector (1536),
     embedding_2048 vector (2048),
 
     media_id INTEGER,
 
-    CONSTRAINT FK_features_media_id FOREIGN KEY (media_id) 
+    CONSTRAINT FK_feature_media_id FOREIGN KEY (media_id) 
         REFERENCES media (media_id)
 );
 
-COMMENT ON COLUMN features.feature_id IS 'Unique identifier for the feature';
-COMMENT ON COLUMN features.feature_type IS 'Type of the feature (image, video, audio)';
-COMMENT ON COLUMN features.version IS 'Version of the feature';
-COMMENT ON COLUMN features.created_at IS 'Timestamp when the feature was added to the database';
-COMMENT ON COLUMN features.model_name IS 'Name of the model used to extract the feature';
-COMMENT ON COLUMN features.model_params IS 'Parameters of the model used to extract the feature';
-COMMENT ON COLUMN features.data IS 'Other data related to the feature';
-COMMENT ON COLUMN features.embedding_size IS 'Size of the embedding';
-COMMENT ON COLUMN features.embedding_1024 IS '1024 dimensional embedding';
-COMMENT ON COLUMN features.embedding_2048 IS '2048 dimensional embedding';
-COMMENT ON COLUMN features.media_id IS 'Unique identifier of the media the feature belongs to';
 
-CREATE TABLE tasks (
-   task_id SERIAL PRIMARY KEY,
-   task_name VARCHAR(200) NOT NULL,
-   task_type VARCHAR(200) NOT NULL,
-   task_params JSONB NOT NULL,
-   created_at TIMESTAMP DEFAULT NOW(),
-   updated_at TIMESTAMP DEFAULT NOW(),
-   status VARCHAR(200) NOT NULL,
-   task_result JSONB NOT NULL
+CREATE TABLE IF NOT EXISTS map_projection_feature (
+    map_projection_feature_id SERIAL PRIMARY KEY,
+    projection_id INTEGER NOT NULL,
+    feature_id INTEGER,
+    media_id INTEGER,
+    atlas_order INTEGER NOT NULL,
+
+    CONSTRAINT FK_map_projection_feature_projection_id FOREIGN KEY (projection_id)
+        REFERENCES projection (projection_id),
+    CONSTRAINT FK_map_projection_feature_feature_id FOREIGN KEY (feature_id)
+        REFERENCES feature (feature_id),
+    CONSTRAINT FK_map_projection_feature_media_id FOREIGN KEY (media_id)
+        REFERENCES media (media_id)
 );
-
-CREATE INDEX features_data_jsonb_idx ON features USING GIN (data);
-CREATE INDEX media_media_path_idx ON media (media_path);

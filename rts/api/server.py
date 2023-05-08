@@ -8,6 +8,8 @@ from rts.api.settings import Settings, get_settings, get_app, production_mode, g
 from rts.api import router
 from rts.utils import get_logger
 from rts.metadata import build_clips_df, build_clip_index
+from rts.api.dao import DataAccessObject
+from rts.settings import DB_HOST, DB_NAME, DB_USER, DB_PASSWORD
 
 LOG = get_logger()
 
@@ -18,14 +20,24 @@ async def startup_event():
     settings = get_settings()
     metadata_folder = settings.get_metadata_folder()
     archive_folder = settings.get_archive_folder()
-    df = build_clips_df(archive_folder, metadata_folder, force=False)
-    app.state.clips = build_clip_index(df)
+
+    # connect to the database
+    dao = DataAccessObject()
+    await dao.connect(f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}")
+
+    try:
+        df = build_clips_df(archive_folder, metadata_folder, force=False)
+        app.state.clips = build_clip_index(df)
+    except KeyError as e:
+        LOG.error(f'KeyError: {e}')
+        LOG.error(f'Please check that all clip files are available')
     router.mount_routers(app, settings)
 
 
 @app.on_event("shutdown")
 async def on_shutdown():
-    pass
+    dao = DataAccessObject()
+    await dao.disconnect()
 
 
 def start_dev():

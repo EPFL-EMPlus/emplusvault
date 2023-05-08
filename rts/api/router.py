@@ -11,7 +11,8 @@ from typing import Any, Dict, Tuple, Union, Optional
 # Local imports
 from rts.api.settings import Settings, get_settings, get_public_folder_path
 from rts.utils import obj_from_json
-
+from rts.api.dao import DataAccessObject
+from models import LibraryBase, LibraryCreate, Library
 
 BYTES_PER_RESPONSE = 300000
 router = APIRouter()
@@ -185,3 +186,11 @@ async def stream_video(req: Request, image_id: str):
         },
         status_code=206
     )    
+
+@router.get("/libraries/{library_id}", response_model=Library)
+async def read_library(library_id: int):
+    query = "SELECT * FROM library WHERE library_id=:id"
+    library = await DataAccessObject().fetch_one(query, {"id": library_id})
+    if library is None:
+        raise HTTPException(status_code=404, detail="Library not found")
+    return library
