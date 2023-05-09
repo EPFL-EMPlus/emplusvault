@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  postgres_test:
+    image: ankane/pgvector:v0.4.1
+    environment:
+      POSTGRES_USER: testuser
+      POSTGRES_PASSWORD: testpassword
+      POSTGRES_DB: testdb
+    ports:
+      - "5433:5432"

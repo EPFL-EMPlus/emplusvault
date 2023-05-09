@@ -26,6 +26,7 @@ async def startup_event():
 
     # connect to the database
     dao = DataAccessObject()
+    LOG.info(f"Connecting to database: {DB_HOST}/{DB_NAME}")
     await dao.connect(f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}")
 
     try:

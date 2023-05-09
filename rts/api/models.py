@@ -1,9 +1,10 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, Json
 import datetime
 
 class LibraryBase(BaseModel):
     library_name: str
     version: str
+    data: Json
 
 class LibraryCreate(LibraryBase):
     pass
