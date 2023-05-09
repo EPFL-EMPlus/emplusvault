@@ -9,11 +9,14 @@ from rts.api import router
 from rts.utils import get_logger
 from rts.metadata import build_clips_df, build_clip_index
 from rts.api.dao import DataAccessObject
+from rts.api.routers.library_router import library_router
 from rts.settings import DB_HOST, DB_NAME, DB_USER, DB_PASSWORD
 
 LOG = get_logger()
 
 app = get_app()
+
+app.include_router(library_router, tags=["library"])
 
 @app.on_event("startup")
 async def startup_event():
