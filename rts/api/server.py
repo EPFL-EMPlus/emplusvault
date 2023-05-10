@@ -8,7 +8,7 @@ from rts.api.settings import Settings, get_settings, get_app, production_mode, g
 from rts.api import router
 from rts.utils import get_logger
 from rts.metadata import build_clips_df, build_clip_index
-from rts.api.dao import DataAccessObject
+from rts.db.dao import DataAccessObject
 from rts.api.routers.library_router import library_router
 from rts.settings import DATABASE_URL, DB_HOST, DB_NAME
 

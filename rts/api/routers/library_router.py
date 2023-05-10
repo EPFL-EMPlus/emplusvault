@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from fastapi import (APIRouter, Depends, Request, Response, HTTPException)
-from rts.api.dao import DataAccessObject
+from rts.db.dao import DataAccessObject
 from rts.api.models import LibraryBase, LibraryCreate, Library
 
 

@@ -34,3 +34,11 @@ class DataAccessObject:
         if self._database is None:
             raise ValueError("Database not connected")
         return await self._database.fetch_all(query, values)
+
+    async def database_exists(self, database_name):
+        if self._database is None:
+            raise ValueError("Database not connected")
+        return await self._database.fetch_val(
+            "SELECT EXISTS(SELECT datname FROM pg_catalog.pg_database WHERE datname = :database_name)",
+            {"database_name": database_name},
+        )
