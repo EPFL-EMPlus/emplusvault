@@ -15,6 +15,7 @@ from rts.settings import DATABASE_URL, DB_HOST, DB_NAME
 LOG = get_logger()
 
 app = get_app()
+app.testing = False
 
 app.include_router(library_router, tags=["library"])
 

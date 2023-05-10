@@ -7,7 +7,7 @@ class LibraryBase(BaseModel):
     data: Json
 
 class LibraryCreate(LibraryBase):
-    pass
+    data: str
 
 class Library(LibraryBase):
     library_id: int
