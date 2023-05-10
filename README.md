@@ -86,3 +86,16 @@ In addition, the following steps need to be taken in the rts project:
 2. Activate the vector extension in supabase: Database -> Extensions -> Enable vector
 3. Create the rts bucket in the supabase interface and create a policy allowing read and write access to the bucket
 4. Run the initialization script: `python init_project.py`
+
+
+# Tests
+
+Running the tests needs the pgvector docker image to be running. To start it, run the following command:
+```
+docker compose up 
+```
+
+## Run tests
+```
+pytest tests
+```
