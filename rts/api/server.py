@@ -26,9 +26,9 @@ async def startup_event():
     archive_folder = settings.get_archive_folder()
 
     # connect to the database
-    dao = DataAccessObject()
-    LOG.info(f"Connecting to database: {DB_HOST}/{DB_NAME}")
-    await dao.connect(DATABASE_URL)
+    # dao = DataAccessObject()
+    # LOG.info(f"Connecting to database: {DB_HOST}/{DB_NAME}")
+    # await dao.connect(DATABASE_URL)
 
     try:
         df = build_clips_df(archive_folder, metadata_folder, force=False)

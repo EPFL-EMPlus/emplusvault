@@ -13,9 +13,9 @@ DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 
 TEST_DB_HOST="localhost"
-TEST_DB_PORT=5433
+TEST_DB_PORT=5435
 TEST_DB_NAME="testdb"
-TEST_DB_USER="testuser"
+TEST_DB_USER="postgres"
 TEST_DB_PASSWORD="testpassword"
 
 DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}"

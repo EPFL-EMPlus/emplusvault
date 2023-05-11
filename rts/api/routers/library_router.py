@@ -11,8 +11,11 @@ library_router = APIRouter()
 # TODO: separate the functions so that they can be called not only over the API but also from code
 @library_router.get("/libraries/{library_id}", response_model=Library)
 async def read_library(library_id: int):
-    query = "SELECT * FROM library WHERE library_id=:id"
-    library = await DataAccessObject().fetch_one(query, {"id": library_id})
+
+    # query using asyncpg
+    query = "SELECT * FROM library WHERE library_id=$1 or library_name=$2"
+    library_name = "rts"
+    library = await DataAccessObject().fetch_one(query, (library_id, library_name))
     if library is None:
         raise HTTPException(status_code=404, detail="Library not found")
     return library
