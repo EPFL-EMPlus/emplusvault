@@ -5,11 +5,8 @@ services:
     build:
       context: .
       dockerfile: pgvector-Dockerfile
-
-    # image: postgres:15.2
     environment:
-      POSTGRES_USER: testuser
       POSTGRES_PASSWORD: testpassword
       POSTGRES_DB: testdb
     ports:
-      - "5433:5432"
+      - "5435:5432"
