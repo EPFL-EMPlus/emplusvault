@@ -1,10 +1,6 @@
-import pytest
 from fastapi.testclient import TestClient
 from rts.api.server import app
 from rts.api.models import LibraryCreate
-from rts.db.dao import DataAccessObject
-from rts.settings import TEST_DATABASE_URL
-from rts.db import create_database, database_exists, get_db
 from rts.utils import get_logger
 import json
 
@@ -27,5 +23,8 @@ def test_create_library():
         version="0.0.1",
         data=json.dumps({"test": "test"})
     )
-
-    client.post("/libraries/", json=library.dict())
+    response = client.post("/libraries/", json=library.dict())
+    assert response.status_code == 200
+    assert response.json()["library_name"] == "test"
+    assert response.json()["version"] == "0.0.1"
+    assert response.json()["data"] == {"test": "test"}

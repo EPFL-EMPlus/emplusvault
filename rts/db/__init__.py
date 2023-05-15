@@ -7,32 +7,8 @@ import time
 
 LOG = get_logger()
 
-async def get_db():
-    from rts.api.server import app
-    print(f"Is in test mode: {app.testing}")
-    db_url = TEST_DATABASE_URL if app.testing else DATABASE_URL
-    await DataAccessObject().connect(db_url)
-    await create_database("db/tables.sql")
-
-
 def database_exists():
     return DataAccessObject().database_exists(DB_NAME)
-
-
-def test_configure():
-    LOG.info("Running pytest_configure")
-
-    # Activate pgvector extension
-    LOG.info("Activating pgvector extension")
-    create_extension = "CREATE EXTENSION IF NOT EXISTS vector"
-    DataAccessObject().execute_query(create_extension, test=True)
-
-    # Create the test database
-    LOG.info(f"Creating test database {TEST_DATABASE_URL}")
-    start = time.time()
-    create_database("db/tables.sql")
-    end = time.time()
-    LOG.info(f"Test database created in {end - start} seconds")
 
 
 def create_database(sql_file):
