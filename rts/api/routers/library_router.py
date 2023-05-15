@@ -1,10 +1,7 @@
-from fastapi import APIRouter
-from fastapi import (APIRouter, Depends, Request, Response, HTTPException)
+from fastapi import (APIRouter, Depends, HTTPException)
 from rts.db.dao import DataAccessObject
-from rts.api.models import LibraryBase, LibraryCreate, Library
+from rts.api.models import LibraryBase
 from rts.utils import get_logger
-import sqlalchemy
-import databases
 import json
 
 LOG = get_logger()
@@ -29,7 +26,7 @@ async def read_library(library_id: int):
 
 
 @library_router.post("/libraries/")
-def create_library(library: LibraryBase):
+async def create_library(library: LibraryBase):
     
     query = """
         INSERT INTO library (library_name, version, data)

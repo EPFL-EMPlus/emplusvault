@@ -19,7 +19,11 @@ def create_database(sql_file):
     LOG.info(f"Applying {len(statements)} statements from {sql_file}")
     # Execute each statement
     for statement in statements:
-        print(statement)
+        # print(statement)
         if statement.strip() != "":
             DataAccessObject().execute_query(statement)
-            print("-- query executed --")
+            # print("-- query executed --")
+
+def reset_database():
+    # TODO: We need to apply the migrations after this command has been run
+    create_database("db/tables.sql")

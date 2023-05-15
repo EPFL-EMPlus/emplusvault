@@ -12,6 +12,13 @@ client = TestClient(app)
 
 def test_query_library():
 
+    library = LibraryCreate(
+    library_name="test",
+    version="0.0.1",
+    data=json.dumps({"test": "test"})
+    )
+    response = client.post("/libraries/", json=library.dict())
+
     response = client.get("/libraries/1")
     print(response.json())
     assert response.status_code == 200

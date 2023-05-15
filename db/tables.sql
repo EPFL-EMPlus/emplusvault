@@ -1,3 +1,10 @@
+DROP TABLE IF EXISTS map_projection_feature;
+DROP TABLE IF EXISTS atlas;
+DROP TABLE IF EXISTS projection;
+DROP TABLE IF EXISTS feature;
+DROP TABLE IF EXISTS media;
+DROP TABLE IF EXISTS library;
+
 CREATE TABLE IF NOT EXISTS library (
     library_id SERIAL PRIMARY KEY,
     library_name VARCHAR(50) NOT NULL,

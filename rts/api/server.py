@@ -10,14 +10,14 @@ from rts.utils import get_logger
 from rts.metadata import build_clips_df, build_clip_index
 from rts.db.dao import DataAccessObject
 from rts.api.routers.library_router import library_router
+from rts.api.routers.projection_router import projection_router
 from rts.settings import DATABASE_URL, DB_HOST, DB_NAME
 
 LOG = get_logger()
 
 app = get_app()
-app.testing = False
-
 app.include_router(library_router, tags=["library"])
+app.include_router(projection_router, tags=["projection"])
 
 @app.on_event("startup")
 async def startup_event():
@@ -53,6 +53,7 @@ def start_dev():
 def start_prod():
     production_mode()
     settings = get_settings()
+    
     uvicorn.run(app, host='0.0.0.0', port=int(settings.app_port))
 
 if __name__ == "__main__":
