@@ -15,7 +15,7 @@ from rts.utils import obj_from_json
 # TODO: move the mount_routers function to a separate file
 
 BYTES_PER_RESPONSE = 300000
-router = APIRouter()
+stream_router = APIRouter()
 
 
 def get_clip_id_from_image(image_id: str) -> str:
@@ -51,26 +51,16 @@ def get_index(request: Request, settings: Settings) -> HTMLResponse:
     return templates.TemplateResponse("index.html", {"request": request, "base_url": base_url})
 
 
-@router.get("/", response_class=HTMLResponse)
+@stream_router.get("/", response_class=HTMLResponse)
 async def index(request: Request, settings: Settings = Depends(get_settings)) -> HTMLResponse:
     return get_index(request, settings)
 
-
-def mount_routers(app, settings: Settings) -> None:
-    app.include_router(router)
-    if settings.mode == 'prod':
-        mount_point = settings.app_prefix if settings.app_prefix else ''
-        # print("MOUNT POINT: ", mount_point)
-        app.mount(mount_point + "/", StaticFiles(directory=get_public_folder_path(), html=True), name="public")
-    else:
-        app.mount("/", StaticFiles(directory=get_public_folder_path(), html=True), name="public")
-        
 
 def mount_static_folder(app, route_name: str, folder_path: Union[str, Path]) -> None:
     app.mount(f"/{route_name}", StaticFilesSym(directory=Path(folder_path).expanduser()), name=route_name)
 
 
-@router.get("/images/{image_id}/{zoom}")
+@stream_router.get("/images/{image_id}/{zoom}")
 def get_image(req: Request, image_id: str, zoom: int):
     clip_id = get_clip_id_from_image(image_id)
     clip = req.app.state.clips.get(clip_id)
@@ -95,40 +85,6 @@ def get_image(req: Request, image_id: str, zoom: int):
     return FileResponse(image_path)
 
 
-def _get_atlas(atlas_name: str, settings: Settings) -> Optional[str]:
-    atlas_folder = settings.get_atlases_folder()
-    atlas_folder = Path(atlas_folder) / atlas_name
-    if not atlas_folder.exists():
-        return None
-    atlas = atlas_folder / 'atlases.json'
-    if not atlas.exists():
-        return None
-    return str(atlas)
-
-
-@router.get("/atlases/{atlas_name}")
-def get_atlas(atlas_name: str = '0', settings: Settings = Depends(get_settings)):
-    atlas = _get_atlas(atlas_name, settings)
-    if not atlas:
-        raise HTTPException(status_code=404, detail=f"Atlas not found {atlas_name}")
-
-    return FileResponse(atlas)
-
-
-@router.get("/atlases/{atlas_name}/texture/{texture_id}")
-def get_atlas(req: Request, atlas_name: str = '0', texture_id: int = 0, settings: Settings = Depends(get_settings)):
-    atlas = _get_atlas(atlas_name, settings)
-    if not atlas:
-        raise HTTPException(status_code=404, detail=f"Atlas not found {atlas_name}")
-    
-    atlases = obj_from_json(atlas)
-    try:
-        texture_path = atlases['atlases'][str(texture_id)]['fullpath']
-        return FileResponse(texture_path)
-    except:
-        raise HTTPException(status_code=404, detail=f"Texture not found {texture_id}")
-
-
 def chunk_generator_from_stream(video_path: str, chunk_size: int, start: int, size: int):
     bytes_read = 0
     with open(video_path, 'rb') as stream:
@@ -139,7 +95,7 @@ def chunk_generator_from_stream(video_path: str, chunk_size: int, start: int, si
             bytes_read += bytes_to_read
 
 
-@router.get('/stream/{image_id}')
+@stream_router.get('/stream/{image_id}')
 async def stream_video(req: Request, image_id: str):
     clip_id = get_clip_id_from_image(image_id)
     clip = req.app.state.clips.get(clip_id)

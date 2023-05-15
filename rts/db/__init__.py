@@ -16,7 +16,7 @@ def create_database(sql_file):
     with open(sql_file, "r") as f:
         statements = f.read().split(";")
 
-    LOG.info(f"Applying {len(statements)} statements from {sql_file}")
+    # LOG.info(f"Applying {len(statements)} statements from {sql_file}")
     # Execute each statement
     for statement in statements:
         # print(statement)

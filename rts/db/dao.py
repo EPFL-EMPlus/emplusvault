@@ -15,6 +15,9 @@ class DataAccessObject:
     def connect(self, db_url):
         self._engine = sqlalchemy.create_engine(db_url)
 
+    def disconnect(self):
+        self._engine.dispose()
+
     def database_exists(self, db_name):
         query = f"SELECT 1 FROM pg_database WHERE datname='{db_name}'"
         return self._engine.execute(query).scalar() is not None

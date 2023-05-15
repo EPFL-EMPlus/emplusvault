@@ -27,9 +27,9 @@ async def create_projection(projection: Projection):
 
     return {"status": "Projection created"}
 
-
 @projection_router.get("/projections/")
 async def read_projections():
+    # Get the latest versions of all projections
     query = text("SELECT * FROM projection")
     return DataAccessObject().fetch_all(query)
 
