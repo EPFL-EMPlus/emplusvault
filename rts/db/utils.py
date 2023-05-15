@@ -6,6 +6,16 @@ from typing import Optional, Dict
 load_dotenv()
 
 def create_conn() -> psycopg2.extensions.connection:
+    from rts.api.server import app
+    if app.testing:
+        conn = psycopg2.connect(
+            host=os.getenv("TEST_DB_HOST"),
+            port=os.getenv("TEST_DB_PORT"),
+            dbname=os.getenv("TEST_DB_NAME"),
+            user=os.getenv("TEST_DB_USER"),
+            password=os.getenv("TEST_DB_PASSWORD"),
+        )
+        return conn
     conn = psycopg2.connect(
         host=os.getenv("DB_HOST"),
         port=os.getenv("DB_PORT"),

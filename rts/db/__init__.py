@@ -3,6 +3,7 @@ import rts.db.utils
 from rts.db.dao import DataAccessObject
 from rts.settings import DB_NAME, TEST_DATABASE_URL, DATABASE_URL
 from rts.utils import get_logger
+import time
 
 LOG = get_logger()
 
@@ -18,7 +19,23 @@ def database_exists():
     return DataAccessObject().database_exists(DB_NAME)
 
 
-async def create_database(sql_file):
+def test_configure():
+    LOG.info("Running pytest_configure")
+
+    # Activate pgvector extension
+    LOG.info("Activating pgvector extension")
+    create_extension = "CREATE EXTENSION IF NOT EXISTS vector"
+    DataAccessObject().execute_query(create_extension, test=True)
+
+    # Create the test database
+    LOG.info(f"Creating test database {TEST_DATABASE_URL}")
+    start = time.time()
+    create_database("db/tables.sql")
+    end = time.time()
+    LOG.info(f"Test database created in {end - start} seconds")
+
+
+def create_database(sql_file):
     # Read sql file and split it into individual statements
     with open(sql_file, "r") as f:
         statements = f.read().split(";")
@@ -28,5 +45,5 @@ async def create_database(sql_file):
     for statement in statements:
         print(statement)
         if statement.strip() != "":
-            await DataAccessObject().execute_query(statement)
+            DataAccessObject().execute_query(statement)
             print("-- query executed --")

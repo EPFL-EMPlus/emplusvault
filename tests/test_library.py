@@ -29,35 +29,3 @@ def test_create_library():
     )
 
     client.post("/libraries/", json=library.dict())
-
-#     print(library.dict())
-#     response = client.post("/libraries/", json=library.dict())
-#     print(response.json())
-#     assert response.status_code == 200
-    # assert response.json()["library_name"] == "test"
-    # assert response.json()["version"] == "0.0.1"
-    # assert response.json()["data"] == {"test": "test"}
-    # assert response.json()["library_id"] == 1
-
-
-# @pytest.mark.anyio
-# async def test_create_library():
-
-#     library = LibraryCreate(
-#         library_name="test",
-#         version="0.0.1",
-#         data=json.dumps({"test": "test"})
-#     )
-
-#     print(library.dict())
-    
-#     async with AsyncClient(app=app, base_url="http://test") as ac:
-#         response = await ac.post("/libraries/", json=library.dict())
-    
-#     # response = client.post("/libraries/", json=library.dict())
-#     print(response.json())
-#     assert response.status_code == 200
-    # assert response.json()["library_name"] == "test"
-    # assert response.json()["version"] == "0.0.1"
-    # assert response.json()["data"] == {"test": "test"}
-    # assert response.json()["library_id"] == 1
