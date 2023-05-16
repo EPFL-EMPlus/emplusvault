@@ -17,7 +17,6 @@ from rts.api.routers.projection_router import projection_router
 from rts.db_settings import DATABASE_URL, DB_HOST, DB_NAME
 
 LOG = get_logger()
-
 app = get_app()
 
 
@@ -47,17 +46,17 @@ async def startup_event():
     archive_folder = settings.get_archive_folder()
 
     # connect to the database
-    dao = DataAccessObject()
+    # dao = DataAccessObject()
     # LOG.info(f"Connecting to database: {DB_HOST}/{DB_NAME}")
     # await dao.connect(DATABASE_URL)
-
     try:
         # TODO: Replace the function with database calls
         df = build_clips_df(archive_folder, metadata_folder, force=False)
         app.state.clips = build_clip_index(df)
     except KeyError as e:
-        LOG.error(f'KeyError: {e}')
-        LOG.error(f'Please check that all clip files are available')
+        pass
+        # LOG.error(f'KeyError: {e}')
+        # LOG.error(f'Please check that all clip files are available')
     mount_routers(app, settings)
 
 

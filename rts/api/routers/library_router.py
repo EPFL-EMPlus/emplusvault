@@ -1,15 +1,18 @@
 from fastapi import (APIRouter, Depends, HTTPException)
 from rts.db.dao import DataAccessObject
+from rts.db.queries import create_new_library
 from rts.api.models import LibraryBase
 from rts.utils import get_logger
 import json
 
 LOG = get_logger()
 
-library_router = APIRouter() 
+library_router = APIRouter()
 
 # TODO: as we are not using an ORM, do we need to be careful about SQL injection?
 # TODO: separate the functions so that they can be called not only over the API but also from code
+
+
 @library_router.get("/libraries/{library_id}")
 async def read_library(library_id: int):
 
@@ -27,12 +30,4 @@ async def read_library(library_id: int):
 
 @library_router.post("/libraries/")
 async def create_library(library: LibraryBase):
-    
-    query = """
-        INSERT INTO library (library_name, version, data)
-        VALUES (%s, %s, %s)
-        RETURNING library_id
-    """
-    vals = library.dict()
-    library_id = DataAccessObject().execute_query(query, (vals['library_name'], vals['version'], json.dumps(vals['data'])))
-    return {**library.dict(), "library_id": library_id.fetchone()[0]}
+    return create_new_library(library)
