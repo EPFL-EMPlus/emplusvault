@@ -45,6 +45,10 @@ anyio = {extras = ["trio"], version = "^3.6.2"}
 [tool.poetry.dev-dependencies]
 poethepoet = "^0.19.0"
 
+[tool.poetry.group.dev.dependencies]
+pytest-mock = "^3.10.0"
+ipdb = "^0.13.13"
+
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
@@ -60,6 +64,8 @@ stop-weaviate = "docker compose -f docker/weaviate.yml down"
 run-pipeline = "python -m rts.cli pipeline --compute-transcript"
 atlas = "python -m rts.cli atlas"
 serve = "python -m rts.api.server"
+serve-dev = "python -m rts.api.server dev -l rts"
+serve-prod = "python -m rts.api.server prod -l rts"
 pull-cables = { "shell" = "cables -e 7DZVup -D -d public --skip-backups --no-index" }
 
 [tool.pytest.ini_options]

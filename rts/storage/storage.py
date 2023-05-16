@@ -1,5 +1,5 @@
 from supabase import create_client, Client
-from rts.settings import SUPABASE_HOST, SUPABASE_KEY
+from rts.db_settings import SUPABASE_HOST, SUPABASE_KEY
 
 
 def get_supabase_client() -> Client:

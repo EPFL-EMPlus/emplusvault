@@ -13,10 +13,6 @@ CREATE TABLE IF NOT EXISTS library (
     data JSONB NOT NULL
 );
 
-INSERT INTO library (library_name, version, data)
-VALUES ('rts', '0.1', '{}')
-RETURNING library_id;
-
 CREATE TABLE IF NOT EXISTS projection (
     projection_id SERIAL PRIMARY KEY,
     version VARCHAR(20) NOT NULL,

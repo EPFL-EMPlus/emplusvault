@@ -19,6 +19,7 @@ origins = [
     # "*" # all origins
 ]
 
+
 def get_project_root_path() -> Path:
     current_file_dir = Path(__file__).parent.parent
     project_root = current_file_dir.parent
@@ -27,13 +28,14 @@ def get_project_root_path() -> Path:
 
 
 class Settings(BaseSettings):
-    app_name: str = "RTS"
+    library_id: int = -1
     data_folder: str = "/media/data/rts/"
     library_name: str = 'default'
     app_prefix: str = ''
     mode: str = ''
     host: str = ''
     app_port: str = '9999'
+
     class Config:
         env_prefix = "rts_"
         env_file = get_project_root_path() / ".env"
@@ -41,10 +43,10 @@ class Settings(BaseSettings):
 
     def get_metadata_folder(self) -> Path:
         return Path(self.data_folder) / "metadata"
-    
+
     def get_archive_folder(self) -> Path:
         return Path(self.data_folder) / "archive"
-    
+
     def get_atlases_folder(self) -> Path:
         return Path(self.data_folder) / "atlases"
 
@@ -52,6 +54,7 @@ class Settings(BaseSettings):
 class DevSettings(Settings):
     mode = 'dev'
     host = 'localhost'
+
 
 class ProductionSettings(Settings):
     mode = 'production'
@@ -61,9 +64,18 @@ class ProductionSettings(Settings):
 
 settings = DevSettings()
 
+
 def production_mode() -> Settings:
     global settings
     settings = ProductionSettings()
+
+
+def init_library(library_id: int, is_prod: bool = False) -> None:
+    global settings
+    if is_prod:
+        production_mode()
+    settings.library_id = library_id
+
 
 @lru_cache()
 def get_settings() -> Settings:
@@ -73,6 +85,7 @@ def get_settings() -> Settings:
 def get_public_folder_path() -> Path:
     path = get_project_root_path() / "public"
     return path
+
 
 app = FastAPI(default_response_class=ORJSONResponse)
 app.add_middleware(GZipMiddleware, minimum_size=3000)
@@ -87,8 +100,5 @@ app.add_middleware(
 )
 
 
-
 def get_app():
     return app
-
-

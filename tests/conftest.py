@@ -1,11 +1,19 @@
 import pytest
-from rts.settings import TEST_DATABASE_URL
 from rts.utils import get_logger
-from rts.db import create_database
+from rts.db.utils import create_database
 from rts.db.dao import DataAccessObject
 import time
 
 LOG = get_logger()
+
+TEST_DB_HOST = "localhost"
+TEST_DB_PORT = 5435
+TEST_DB_NAME = "testdb"
+TEST_DB_USER = "postgres"
+TEST_DB_PASSWORD = "testpassword"
+
+TEST_DATABASE_URL = f"postgresql://{TEST_DB_USER}:{TEST_DB_PASSWORD}@{TEST_DB_HOST}:{TEST_DB_PORT}/{TEST_DB_NAME}"
+
 
 def pytest_configure(config):
     LOG.info("Running pytest_configure")
