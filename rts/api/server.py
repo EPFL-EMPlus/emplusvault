@@ -13,6 +13,7 @@ from rts.db.dao import DataAccessObject
 from rts.db.queries import get_library_id_from_name
 from rts.api.routers.library_router import library_router
 from rts.api.routers.projection_router import projection_router
+from rts.api.routers.media_router import media_router
 # from rts.api.router import stream_router
 from rts.db_settings import DATABASE_URL, DB_HOST, DB_NAME
 
@@ -29,6 +30,7 @@ def mount_routers(app, settings: Settings) -> None:
     # app.include_router(stream_router)
     app.include_router(library_router, tags=["library"])
     app.include_router(projection_router, tags=["projection"])
+    app.include_router(media_router, tags=["media"])
     if settings.mode == 'prod':
         mount_point = settings.app_prefix if settings.app_prefix else ''
         # print("MOUNT POINT: ", mount_point)

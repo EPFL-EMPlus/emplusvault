@@ -1,5 +1,4 @@
 from fastapi import (APIRouter, Depends, HTTPException)
-from rts.db.dao import DataAccessObject
 from rts.api.models import Projection
 from rts.utils import get_logger
 from rts.db.queries import create_projection, get_projection_by_id, get_all_projections, update_projection, delete_projection

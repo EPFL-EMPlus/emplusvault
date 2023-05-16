@@ -1,10 +1,22 @@
 from fastapi.testclient import TestClient
 import pytest
-from main import app  # Assuming main.py contains your FastAPI application
-from models import Media  # Assuming models.py contains your Pydantic models
+from rts.api.server import app
+from rts.api.models import Media, LibraryCreate
+from rts.db.utils import reset_database
+from rts.db.queries import create_library
 import json
 
-client = TestClient(app)
+@pytest.fixture
+def db_setup():
+    reset_database()
+
+@pytest.fixture
+def create_media(db_setup):
+    create_library(LibraryCreate(
+        library_name="test",
+        version="0.0.1",
+        data=json.dumps({"test": "test"})
+    ))
 
 # Example media data for testing
 media_data = {
@@ -25,37 +37,36 @@ media_data = {
 }
 
 
-@pytest.mark.asyncio
-async def test_create_media():
-    response = client.post("/media/", json=media_data)
+def test_create_media(create_media):
+    with TestClient(app) as client:
+        response = client.post("/media/", json=media_data)
     assert response.status_code == 200
     assert response.json() == media_data
 
 
-@pytest.mark.asyncio
-async def test_read_media():
-    response = client.get("/media/1")
+def test_read_media(create_media):
+    with TestClient(app) as client:
+        response = client.get("/media/1")
     assert response.status_code == 200
     assert response.json() == media_data
 
 
-@pytest.mark.asyncio
-async def test_read_medias():
-    response = client.get("/media/")
+def test_read_medias(create_media):
+    with TestClient(app) as client:
+        response = client.get("/media/")
     assert response.status_code == 200
     assert media_data in response.json()
 
-
-@pytest.mark.asyncio
-async def test_update_media():
+def test_update_media(create_media):
     updated_data = {**media_data, "media_path": "/new/path/to/media"}
-    response = client.put("/media/1", json=updated_data)
+    with TestClient(app) as client:
+        response = client.put("/media/1", json=updated_data)
     assert response.status_code == 200
     assert response.json() == updated_data
 
 
-@pytest.mark.asyncio
-async def test_delete_media():
-    response = client.delete("/media/1")
+def test_delete_media(create_media):
+    with TestClient(app) as client:
+        response = client.delete("/media/1")
     assert response.status_code == 200
     assert response.json() == {"status": "Media deleted"}
