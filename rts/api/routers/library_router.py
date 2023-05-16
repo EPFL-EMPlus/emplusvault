@@ -1,6 +1,6 @@
 from fastapi import (APIRouter, Depends, HTTPException)
 from rts.db.dao import DataAccessObject
-from rts.db.queries import create_new_library
+from rts.db.queries import create_library
 from rts.api.models import LibraryBase
 from rts.utils import get_logger
 import json
@@ -29,5 +29,5 @@ async def read_library(library_id: int):
 
 
 @library_router.post("/libraries/")
-async def create_library(library: LibraryBase):
-    return create_new_library(library)
+async def create(library: LibraryBase):
+    return create_library(library)

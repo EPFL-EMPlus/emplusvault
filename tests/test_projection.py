@@ -2,7 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 from rts.api.server import app
 from rts.db.utils import reset_database
-from rts.db.queries import create_new_library
+from rts.db.queries import create_library
 from rts.api.models import LibraryCreate
 import json
 
@@ -14,7 +14,7 @@ def db_setup():
 
 @pytest.fixture
 def create_projection(db_setup):
-    create_new_library(LibraryCreate(
+    create_library(LibraryCreate(
         library_name="test",
         version="0.0.1",
         data=json.dumps({"test": "test"})
