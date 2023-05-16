@@ -72,4 +72,4 @@ def write_media_object_db(
         ON CONFLICT (media_id) DO NOTHING;
 
     """
-    execute_write_query(_query)
+    # execute_write_query(_query)
