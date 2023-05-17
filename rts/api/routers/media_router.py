@@ -25,8 +25,6 @@ async def create_media(media: Media):
 async def read_medias():
     query = text("SELECT * FROM media")
     result = DataAccessObject().fetch_all(query)
-    for row in result:
-        row['metadata'] = json.loads(row['metadata'])
     return result
 
 
@@ -34,12 +32,10 @@ async def read_medias():
 async def read_media(media_id: int):
     query = text("SELECT * FROM media WHERE media_id = :media_id")
     result = DataAccessObject().fetch_one(query, {"media_id": media_id})
-    if result:
-        result['metadata'] = json.loads(result['metadata'])
     return result
 
 
-@media_router.put("/media/{media_id}", response_model=Media)
+@media_router.put("/media/{media_id}")
 async def update_media(media_id: int, media: Media):
     media_data = media.dict()
     media_data['metadata'] = json.dumps(media_data['metadata'])
@@ -49,7 +45,8 @@ async def update_media(media_id: int, media: Media):
         SET media_path=:media_path, original_path=:original_path, media_type=:media_type, sub_type=:sub_type, size=:size, metadata=:metadata, library_id=:library_id, hash=:hash, parent_id=:parent_id, start_ts=:start_ts, end_ts=:end_ts, start_frame=:start_frame, end_frame=:end_frame, frame_rate=:frame_rate
         WHERE media_id=:media_id
     """)
-    DataAccessObject().execute_query(query, {**media_data, "media_id": media_id})
+    DataAccessObject().execute_query(
+        query, {**media_data, "media_id": media_id})
     return {**media_data, "media_id": media_id}
 
 
