@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, Json
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 
 class LibraryBase(BaseModel):
@@ -53,3 +53,20 @@ class Media(BaseModel):
     start_frame: Optional[int] = Field(None, alias="start_frame")
     end_frame: Optional[int] = Field(None, alias="end_frame")
     frame_rate: Optional[float] = Field(None, alias="frame_rate")
+
+
+class Feature(BaseModel):
+    feature_id: Optional[int]
+    feature_type: str
+    version: str
+    created_at: Optional[datetime]
+    model_name: str
+    model_params: Dict
+    data: Dict
+
+    embedding_size: Optional[int]
+    embedding_1024: Optional[List[float]]
+    embedding_1536: Optional[List[float]]
+    embedding_2048: Optional[List[float]]
+
+    media_id: int

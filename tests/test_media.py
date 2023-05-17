@@ -8,25 +8,6 @@ import json
 from json import JSONDecodeError
 
 
-@pytest.fixture
-def db_setup():
-    reset_database()
-
-
-@pytest.fixture
-def create_media(db_setup: None):
-    create_library(LibraryCreate(
-        library_name="test",
-        version="0.0.1",
-        data=json.dumps({"test": "test"})
-    ))
-    with TestClient(app) as client:
-        response = client.post("/media/", json=media_data)
-    assert response.status_code == 200
-    return response
-
-
-# Example media data for testing
 media_data = {
     "media_path": "/path/to/media",
     "original_path": "/original/path/to/media",
@@ -45,8 +26,25 @@ media_data = {
 }
 
 
-def assert_media_response(response: dict, media_data: dict):
+@pytest.fixture
+def db_setup():
+    reset_database()
 
+
+@pytest.fixture
+def create_media(db_setup: None):
+    create_library(LibraryCreate(
+        library_name="test",
+        version="0.0.1",
+        data=json.dumps({"test": "test"})
+    ))
+    with TestClient(app) as client:
+        response = client.post("/media/", json=media_data)
+    assert response.status_code == 200
+    return response
+
+
+def assert_media_response(response: dict, media_data: dict):
     for key in media_data.keys():
         try:
             assert media_data[key] == json.loads(response[key])

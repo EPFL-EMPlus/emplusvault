@@ -79,9 +79,10 @@ def create_media(media: Media) -> dict:
     query = text("""
         INSERT INTO media (media_path, original_path, media_type, sub_type, size, metadata, library_id, hash, parent_id, start_ts, end_ts, start_frame, end_frame, frame_rate)
         VALUES (:media_path, :original_path, :media_type, :sub_type, :size, :metadata, :library_id, :hash, :parent_id, :start_ts, :end_ts, :start_frame, :end_frame, :frame_rate)
+        RETURNING media_id
     """)
-    DataAccessObject().execute_query(query, media_data)
-    return media_data
+    media_id = DataAccessObject().execute_query(query, media_data)
+    return {**media_data, "media_id": media_id.fetchone()[0]}
 
 
 def read_media_by_id(media_id: int) -> dict:
