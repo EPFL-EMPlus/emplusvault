@@ -17,7 +17,7 @@ LOCAL_VIDEOS = LOCAL_RTS_DATA + 'archive'
 def get_sample_df() -> pd.DataFrame:
     click.echo('Loading metadata')
     df = rts.metadata.load_metadata_hdf5(METADATA, 'rts_metadata')
-    return rts.metadata.get_one_percent_sample(df)
+    return rts.metadata.get_ten_percent_sample(df)
 
 
 def get_aivectors_df() -> pd.DataFrame:
@@ -43,10 +43,11 @@ def pipeline(min_seconds: int, num_images: int,
     compute_scenes: bool, compute_transcript: bool, force_media: bool, 
     force_scene: bool, force_transcript: bool) -> None:
 
-    # df = get_sample_df()
-    df = get_aivectors_df()
+    df = get_sample_df()
+    # df = get_aivectors_df()
 
     click.echo('Processing archive')
+    click.echo(f'Compute scenes: {compute_scenes}, compute transcript: {compute_transcript}')
     rts.pipeline.simple_process_archive(df, LOCAL_VIDEOS, min_seconds,
         num_images, compute_scenes, compute_transcript, force_media, force_scene, force_transcript)
 

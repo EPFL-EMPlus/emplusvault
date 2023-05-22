@@ -250,6 +250,15 @@ def get_one_percent_sample(df: pd.DataFrame,
     return sample
 
 
+def get_ten_percent_sample(df: pd.DataFrame, 
+    nested_struct: str = '0', 
+    archive_prefix: str = '/mnt/rts/') -> pd.DataFrame:
+
+    sample = df[df.mediaFolderPath.str.startswith(f"{archive_prefix}{nested_struct}")]
+    return sample
+
+
+
 def merge_location_df_with_metadata(metadata: pd.DataFrame, location: pd.DataFrame) -> pd.DataFrame:    
     fdf = metadata[['mediaFolderPath', 'publishedDate', 'title', 'collection', 'contentType']]
     location = location.join(fdf, on='mediaId', how='inner')

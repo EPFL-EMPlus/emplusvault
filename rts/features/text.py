@@ -25,7 +25,7 @@ ALL_CITIES = None
 
 def load_model(model_name: str = 'fr_core_news_lg'):
     global _model
-    if not model_name:
+    if not _model['name']:
         model_name = 'fr_core_news_lg'
         LOG.info(f'Loading spacy model: {model_name}')
         _model['model'] = spacy.load(model_name)
@@ -75,6 +75,8 @@ def find_locations(transcript: List[Dict],
     filtered_locations: Optional[Dict] = None, 
     model_name: Optional[str] = None) -> Optional[List[Dict]]:
     """Add locations using entity recognition to transcript"""
+
+    LOG.debug(f'Find locations in transcript')
     if not filtered_locations:
         filtered_locations = get_swiss_cities()
 

@@ -28,7 +28,7 @@ def get_project_root_path() -> Path:
 
 class Settings(BaseSettings):
     app_name: str = "RTS"
-    data_folder: str = "/media/data/rts/"
+    data_folder: str = "/media/data/rts"
     library_name: str = 'default'
     app_prefix: str = ''
     mode: str = ''
@@ -56,7 +56,6 @@ class DevSettings(Settings):
 class ProductionSettings(Settings):
     mode = 'production'
     host = 'emplusdemo.epfl.ch'
-    app_port = '80'
 
 
 settings = DevSettings()

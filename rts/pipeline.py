@@ -65,6 +65,7 @@ def create_optimized_media(media_folder: str, output_folder: str, force: bool = 
     def get_folder_hierarchy(p):
         return '/'.join(p.split('/')[-4:])
 
+    LOG.debug(f'Create optimized media: {media_folder} -> {output_folder}')
     media_id = rts.utils.get_media_id(media_folder)
     export_folder = Path(os.path.join(output_folder, get_folder_hierarchy(media_folder)))
     
@@ -216,9 +217,12 @@ def transcribe_media(media_folder: str, audio_path: str,
 
     p = Path(os.path.join(media_folder, 'transcript.json'))
     if not force and p.exists():
+        LOG.debug(f'Load transcript from disk: {media_folder}')
         return rts.utils.obj_from_json(p)
     
+    LOG.debug(f'Transcribing media: {audio_path}')
     d = rts.features.audio.transcribe_media(audio_path, model_name)
+    rts.utils.obj_to_json(d, p)
     # Enrich transcript with location
     transcript = rts.features.text.find_locations(d)
     rts.utils.obj_to_json(transcript, p)
@@ -280,19 +284,19 @@ def process_media(input_media_folder: str, global_output_folder: str,
                 res['error'] = 'Could not transcribe media'
                 return res
 
-            # Create clips from transcript's locations
-            clips = extract_location_clips_from_transcript(transcript,
-                media_info.get('framerate', 25),
-                remuxed.get('mediaFolder'),
-                remuxed.get('video'),
-                min_seconds=TRANSCRIPT_CLIP_MIN_SECONDS,
-                extend_duration=min_seconds,
-                num_images=num_images,
-                force=compute_transcript
-            )
-            if not clips:
-                res['error'] = 'Could not extract clips from transcript'
-                return res
+            # # Create clips from transcript's locations
+            # clips = extract_location_clips_from_transcript(transcript,
+            #     media_info.get('framerate', 25),
+            #     remuxed.get('mediaFolder'),
+            #     remuxed.get('video'),
+            #     min_seconds=TRANSCRIPT_CLIP_MIN_SECONDS,
+            #     extend_duration=min_seconds,
+            #     num_images=num_images,
+            #     force=compute_transcript
+            # )
+            # if not clips:
+            #     res['error'] = 'Could not extract clips from transcript'
+            #     return res
             
             # if compute_scenes:
                 # scenes = rts.features.text.enrich_scenes_with_transcript(scenes, transcript)
@@ -308,19 +312,22 @@ def simple_process_archive(df: pd.DataFrame,
     global_output_folder: str, 
     min_seconds: float = 6, 
     num_images: int = 3,
-    compute_scenes: bool = True,
+    compute_scenes: bool = False,
     compute_transcript: bool = True,
     force_media: bool = False,
     force_scene: bool = False,
-    force_trans: bool = True) -> None:
+    force_trans: bool = False) -> None:
 
-    LOG.setLevel('INFO')
+    LOG.setLevel('DEBUG')
     total_duration = df.mediaDuration.sum()
     with tqdm(total=total_duration, file=sys.stdout) as pbar:
         for _, row in df.iterrows():
             status = process_media(row.mediaFolderPath, global_output_folder, row.to_dict(), 
                 min_seconds, num_images, compute_scenes, compute_transcript, force_media, force_scene, force_trans)
-            LOG.debug(f"{status['mediaId']} - {status['status']}")
+            if status['status'] == 'fail':
+                LOG.error(f"{status['mediaId']} - {status['error']}")
+            else:
+                LOG.info(f"{status['mediaId']} - {status['status']}")
             pbar.update(row.mediaDuration)
 
 
