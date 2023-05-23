@@ -2,8 +2,10 @@ import pytest
 from fastapi.testclient import TestClient
 from rts.api.server import app
 from rts.api.models import Feature
-from .test_media import create_media
+from .test_media import create_media, assert_media_response
 from rts.db.utils import reset_database
+from json import JSONDecodeError
+import json
 
 # Example feature data for testing
 feature_data = {
@@ -30,43 +32,44 @@ def create_test_feature(create_media):
     response = create_media
     with TestClient(app) as client:
         response = client.post(
-            "/feature/", json={**feature_data, "media_id": response.json()["media_id"]})
+            "/feature/", json={**feature_data, "media_id": create_media.json()["media_id"]})
     return response
 
 
 def test_create_feature(create_test_feature):
     response = create_test_feature
     assert response.status_code == 200
-    assert response.json() == feature_data
+    assert_media_response(response.json(), feature_data)
 
 
 def test_read_feature(create_test_feature):
-    feature_id = create_test_feature["feature_id"]
+    feature_id = create_test_feature.json()["feature_id"]
     with TestClient(app) as client:
         response = client.get(f"/feature/{feature_id}")
     assert response.status_code == 200
-    assert response.json() == feature_data
+    assert_media_response(response.json(), feature_data)
 
 
 def test_read_features(create_test_feature):
     with TestClient(app) as client:
         response = client.get("/features/")
     assert response.status_code == 200
-    assert feature_data in response.json()
+    for row in response.json():
+        assert_media_response(row, feature_data)
 
 
 def test_update_feature(create_test_feature):
-    feature_id = create_test_feature["feature_id"]
+    feature_id = create_test_feature.json()["feature_id"]
     updated_data = {**feature_data, "version": "0.0.2"}
     with TestClient(app) as client:
         response = client.put(f"/feature/{feature_id}", json=updated_data)
     assert response.status_code == 200
-    assert response.json() == updated_data
+    assert_media_response(response.json(), updated_data)
 
 
 def test_delete_feature(create_test_feature):
-    feature_id = create_test_feature["feature_id"]
+    feature_id = create_test_feature.json()["feature_id"]
     with TestClient(app) as client:
         response = client.delete(f"/feature/{feature_id}")
     assert response.status_code == 200
-    assert response.json() == feature_data
+    assert_media_response(response.json(), feature_data)
