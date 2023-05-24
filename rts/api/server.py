@@ -50,9 +50,9 @@ async def startup_event():
     archive_folder = settings.get_archive_folder()
 
     # connect to the database
-    # dao = DataAccessObject()
-    # LOG.info(f"Connecting to database: {DB_HOST}/{DB_NAME}")
-    # await dao.connect(DATABASE_URL)
+    dao = DataAccessObject()
+    LOG.info(f"Connecting to database: {DB_HOST}/{DB_NAME}")
+    dao.connect(DATABASE_URL)
     try:
         # TODO: Replace the function with database calls
         df = build_clips_df(archive_folder, metadata_folder, force=False)
@@ -74,6 +74,8 @@ async def on_shutdown():
 @click.option('--library', '-l', default='rts', help='Video collection (default: rts)')
 def start_dev(library: str):
     DataAccessObject().connect(DATABASE_URL)
+    LOG.info("Starting server in development mode")
+    # LOG.info(f"Connecting to database {DATABASE_URL}")
     library_id = get_library_id_from_name(library)
     if not library_id:
         LOG.error(

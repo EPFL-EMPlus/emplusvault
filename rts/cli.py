@@ -7,7 +7,9 @@ import rts.io.media
 import rts.features.audio
 import rts.features.text
 import rts.pipeline
-
+from rts.db.dao import DataAccessObject
+from rts.db_settings import DEV_DATABASE_URL, DEV_DB_HOST, DEV_DB_NAME, DEV_DB_PORT
+from rts.db.utils import create_database
 
 LOCAL_RTS_DATA = "/media/data/rts/"
 METADATA = LOCAL_RTS_DATA + 'metadata'
@@ -22,7 +24,8 @@ def get_sample_df() -> pd.DataFrame:
 
 def get_aivectors_df() -> pd.DataFrame:
     click.echo('Loading AI vectors subset')
-    df = rts.utils.dataframe_from_hdf5(LOCAL_RTS_DATA + '/metadata', 'rts_aivectors')
+    df = rts.utils.dataframe_from_hdf5(
+        LOCAL_RTS_DATA + '/metadata', 'rts_aivectors')
     return df
 
 
@@ -39,16 +42,16 @@ def cli():
 @click.option('--force-media', is_flag=True, help='Force processing')
 @click.option('--force-scene', is_flag=True, help='Force processing')
 @click.option('--force-transcript', is_flag=True, help='Force processing')
-def pipeline(min_seconds: int, num_images: int, 
-    compute_scenes: bool, compute_transcript: bool, force_media: bool, 
-    force_scene: bool, force_transcript: bool) -> None:
+def pipeline(min_seconds: int, num_images: int,
+             compute_scenes: bool, compute_transcript: bool, force_media: bool,
+             force_scene: bool, force_transcript: bool) -> None:
 
     # df = get_sample_df()
     df = get_aivectors_df()
 
     click.echo('Processing archive')
     rts.pipeline.simple_process_archive(df, LOCAL_VIDEOS, min_seconds,
-        num_images, compute_scenes, compute_transcript, force_media, force_scene, force_transcript)
+                                        num_images, compute_scenes, compute_transcript, force_media, force_scene, force_transcript)
 
 
 @cli.command()
@@ -57,11 +60,11 @@ def pipeline(min_seconds: int, num_images: int,
 def atlas(tile_size: int, name: str) -> None:
     df = rts.metadata.build_clips_df(LOCAL_VIDEOS, METADATA, force=True)
     rts.metadata.create_clip_texture_atlases(df, LOCAL_RTS_DATA,
-                                                    name, # folder name
-                                                    tile_size=tile_size,
-                                                    flip=True,
-                                                    no_border=True, 
-                                                    format='jpg')
+                                             name,  # folder name
+                                             tile_size=tile_size,
+                                             flip=True,
+                                             no_border=True,
+                                             format='jpg')
 
 
 @cli.command()
@@ -73,6 +76,35 @@ def location() -> None:
     fts = rts.metadata.merge_location_df_with_metadata(sample_df, fts)
 
 
+@cli.command()
+def init_db():
+    click.echo(f"Connecting to {DEV_DB_HOST}:{DEV_DB_PORT}/{DEV_DB_NAME}")
+    DataAccessObject().connect(DEV_DATABASE_URL)
+
+    confirm = click.prompt(
+        'Are you sure you want to initialize the database? This will overwrite the current database [yes/no]')
+    if confirm.lower() == 'yes':
+        click.echo('Initializing database...')
+        create_database("db/tables.sql")
+        click.echo('Database has been successfully initialized.')
+    else:
+        click.echo('Database initialization has been canceled.')
+
+
+@cli.command()
+def new_sample_project():
+    click.echo(f"Connecting to {DEV_DB_HOST}:{DEV_DB_PORT}/{DEV_DB_NAME}")
+    DataAccessObject().connect(DEV_DATABASE_URL)
+
+    confirm = click.prompt(
+        'Are you sure you want to create a new sample project on the database? This will overwrite the current database [yes/no]')
+    if confirm.lower() == 'yes':
+        # This is where you would put the code to create a new sample project.
+        click.echo('Creating a new sample project...')
+        # After the project creation code, you can confirm that the project has been created.
+        click.echo('New sample project has been successfully created.')
+    else:
+        click.echo('Project creation has been canceled.')
 
 
 if __name__ == '__main__':
