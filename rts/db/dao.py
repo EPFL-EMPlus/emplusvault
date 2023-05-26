@@ -16,6 +16,11 @@ class DataAccessObject:
         return cls._instance
 
     def connect(self, db_url):
+        if self._engine:
+            LOG.warning(
+                "A connection to the database already exists, dispose first")
+            return
+
         try:
             self._engine = sqlalchemy.create_engine(db_url)
         except sqlalchemy.exc.SQLAlchemyError as e:
@@ -25,6 +30,7 @@ class DataAccessObject:
 
     def disconnect(self):
         self._engine.dispose()
+        self._engine = None
 
     def database_exists(self, db_name):
         query = f"SELECT 1 FROM pg_database WHERE datname='{db_name}'"
