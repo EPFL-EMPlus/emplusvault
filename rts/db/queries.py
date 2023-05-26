@@ -1,7 +1,7 @@
 from sqlalchemy.sql import text
 from rts.db.dao import DataAccessObject
 from typing import Optional
-from rts.api.models import LibraryBase, Projection, Media
+from rts.api.models import LibraryBase, Projection, Media, Feature
 import json
 
 
@@ -113,3 +113,58 @@ def delete_media(media_id: int):
     query = text("DELETE FROM media WHERE media_id = :media_id")
     DataAccessObject().execute_query(query, {"media_id": media_id})
     return {"status": "Media deleted"}
+
+
+def create_feature(feature: Feature):
+    query = text("""
+        INSERT INTO feature (feature_type, version, model_name, model_params, data, 
+        embedding_size, embedding_1024, embedding_1536, embedding_2048, media_id)
+        VALUES (:feature_type, :version, :model_name, :model_params, :data, 
+        :embedding_size, :embedding_1024, :embedding_1536, :embedding_2048, :media_id)
+        RETURNING feature_id
+    """)
+    feature_dict = feature.dict()
+    feature_dict["model_params"] = json.dumps(feature_dict["model_params"])
+    feature_dict["data"] = json.dumps(feature_dict["data"])
+    result = DataAccessObject().execute_query(query, feature_dict)
+    return {**feature_dict, "feature_id": result.fetchone()[0]}
+
+
+def read_feature_by_id(feature_id: int):
+    query = text("SELECT * FROM feature WHERE feature_id = :feature_id")
+    result = DataAccessObject().fetch_one(query, {"feature_id": feature_id})
+    return result
+
+
+def get_features():
+    query = text("SELECT * FROM feature")
+    result = DataAccessObject().fetch_all(query)
+    return result
+
+
+def update_feature(feature_id: int, feature: Feature):
+    feature_dict = feature.dict()
+    feature_dict["model_params"] = json.dumps(feature_dict["model_params"])
+    feature_dict["data"] = json.dumps(feature_dict["data"])
+    query = text("""
+        UPDATE feature
+        SET feature_type = :feature_type, version = :version, model_name = :model_name, 
+        model_params = :model_params, data = :data, embedding_size = :embedding_size, 
+        embedding_1024 = :embedding_1024, embedding_1536 = :embedding_1536, 
+        embedding_2048 = :embedding_2048, media_id = :media_id
+        WHERE feature_id = :feature_id
+        RETURNING *
+    """)
+    result = DataAccessObject().fetch_one(
+        query, {**feature_dict, "feature_id": feature_id})
+    return result
+
+
+def delete_feature(feature_id: int):
+    query = text("""
+        DELETE FROM feature
+        WHERE feature_id = :feature_id
+        RETURNING *
+    """)
+    result = DataAccessObject().fetch_one(query, {"feature_id": feature_id})
+    return result
