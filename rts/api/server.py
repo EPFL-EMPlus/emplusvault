@@ -51,7 +51,7 @@ async def startup_event():
 
     # connect to the database
     dao = DataAccessObject()
-    LOG.info(f"Connecting to database: {DB_HOST}/{DB_NAME}")
+    # LOG.info(f"Connecting to database: {DB_HOST}/{DB_NAME}")
     dao.connect(DATABASE_URL)
     try:
         # TODO: Replace the function with database calls
