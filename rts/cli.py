@@ -10,6 +10,8 @@ import rts.pipeline
 from rts.db.dao import DataAccessObject
 from rts.db_settings import DEV_DATABASE_URL, DEV_DB_HOST, DEV_DB_NAME, DEV_DB_PORT
 from rts.db.utils import create_database
+from rts.db.queries import create_library
+from rts.api.models import LibraryCreate
 
 LOCAL_RTS_DATA = "/media/data/rts/"
 METADATA = LOCAL_RTS_DATA + 'metadata'
@@ -100,6 +102,14 @@ def new_sample_project():
         'Are you sure you want to create a new sample project on the database? This will add data to the database database [yes/no]')
     if confirm.lower() == 'yes':
         click.echo('Creating a new sample project...')
+
+        # Create library
+        create_library(LibraryCreate(
+            library_name="rts",
+            version="0.0.1",
+            library_id=1,
+            data='{}'
+        ))
 
         click.echo('New sample project has been successfully created.')
     else:
