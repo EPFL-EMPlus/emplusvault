@@ -97,11 +97,10 @@ def new_sample_project():
     DataAccessObject().connect(DEV_DATABASE_URL)
 
     confirm = click.prompt(
-        'Are you sure you want to create a new sample project on the database? This will overwrite the current database [yes/no]')
+        'Are you sure you want to create a new sample project on the database? This will add data to the database database [yes/no]')
     if confirm.lower() == 'yes':
-        # This is where you would put the code to create a new sample project.
         click.echo('Creating a new sample project...')
-        # After the project creation code, you can confirm that the project has been created.
+
         click.echo('New sample project has been successfully created.')
     else:
         click.echo('Project creation has been canceled.')
