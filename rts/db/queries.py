@@ -1,7 +1,7 @@
 from sqlalchemy.sql import text
 from rts.db.dao import DataAccessObject
 from typing import Optional
-from rts.api.models import LibraryBase, Projection, Media, Feature
+from rts.api.models import LibraryBase, Projection, Media, Feature, MapProjectionFeatureCreate
 import json
 
 
@@ -167,4 +167,25 @@ def delete_feature(feature_id: int):
         RETURNING *
     """)
     result = DataAccessObject().fetch_one(query, {"feature_id": feature_id})
+    return result
+
+
+def create_map_projection_feature(map_projection_feature: MapProjectionFeatureCreate):
+    query = text("""
+        INSERT INTO map_projection_feature (projection_id, feature_id, media_id, atlas_order, coordinates)
+        VALUES (:projection_id, :feature_id, :media_id, :atlas_order, ST_Point(:latitude, :longitude))
+        RETURNING map_projection_feature_id, projection_id, feature_id, media_id, atlas_order, ST_AsText(coordinates) as coordinates
+    """)
+    params = map_projection_feature.dict()
+    params["latitude"], params["longitude"] = map_projection_feature.coordinates
+    result = DataAccessObject().execute_query(query, params)
+    return result
+
+
+def read_map_projection_features():
+    query = """
+    SELECT map_projection_feature_id, projection_id, feature_id, media_id, atlas_order, ST_AsText(coordinates) as coordinates
+    FROM map_projection_feature
+    """
+    result = DataAccessObject().fetch_all(query)
     return result

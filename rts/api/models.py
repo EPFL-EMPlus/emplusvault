@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, Json
 from datetime import datetime
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Tuple
 
 
 class LibraryBase(BaseModel):
@@ -70,3 +70,22 @@ class Feature(BaseModel):
     embedding_2048: Optional[List[float]]
 
     media_id: int
+
+
+class MapProjectionFeatureBase(BaseModel):
+    projection_id: int
+    atlas_order: int
+    # Represented as (latitude, longitude) or (x, y)
+    coordinates: Tuple[float, float]
+
+
+class MapProjectionFeatureCreate(MapProjectionFeatureBase):
+    feature_id: Optional[int] = None
+    media_id: Optional[int] = None
+
+
+class MapProjectionFeature(MapProjectionFeatureBase):
+    map_projection_feature_id: int
+
+    class Config:
+        orm_mode = True
