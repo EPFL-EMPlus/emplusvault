@@ -102,8 +102,6 @@ CREATE TABLE IF NOT EXISTS map_projection_feature (
 
     CONSTRAINT FK_map_projection_feature_projection_id FOREIGN KEY (projection_id)
         REFERENCES projection (projection_id),
-    CONSTRAINT FK_map_projection_feature_feature_id FOREIGN KEY (feature_id)
-        REFERENCES feature (feature_id),
     CONSTRAINT FK_map_projection_feature_media_id FOREIGN KEY (media_id)
         REFERENCES media (media_id)
 );
