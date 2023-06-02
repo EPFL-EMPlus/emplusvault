@@ -1,7 +1,7 @@
 from sqlalchemy.sql import text
 from rts.db.dao import DataAccessObject
 from typing import Optional
-from rts.api.models import LibraryBase, Projection, Media, Feature, MapProjectionFeatureCreate
+from rts.api.models import LibraryBase, Projection, Media, Feature, MapProjectionFeatureCreate, AtlasCreate
 import json
 
 
@@ -189,3 +189,25 @@ def read_map_projection_features():
     """
     result = DataAccessObject().fetch_all(query)
     return result
+
+
+def get_atlas(atlas_id: int):
+    query = text("SELECT * FROM atlas WHERE atlas_id = :atlas_id")
+    return DataAccessObject().fetch_one(query, {"atlas_id": atlas_id})
+
+
+def get_atlases():
+    query = text("SELECT * FROM atlas")
+    return DataAccessObject().fetch_all(query)
+
+
+def create_atlas(atlas: AtlasCreate):
+
+    query = text("""
+        INSERT INTO atlas (projection_id, atlas_order, atlas_path, atlas_size, tile_size, tile_count, rows, cols, tiles_per_atlas)
+        VALUES (:projection_id, :atlas_order, :atlas_path, :atlas_size, :tile_size, :tile_count, :rows, :cols, :tiles_per_atlas)
+        RETURNING atlas_id
+        """)
+    atlas_dict = atlas.dict()
+    result = DataAccessObject().execute_query(query, atlas_dict)
+    return {**atlas_dict, "atlas_id": result.fetchone()[0]}

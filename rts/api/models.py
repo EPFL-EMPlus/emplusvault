@@ -89,3 +89,26 @@ class MapProjectionFeature(MapProjectionFeatureBase):
 
     class Config:
         orm_mode = True
+
+
+class AtlasBase(BaseModel):
+    projection_id: int
+    atlas_order: int
+    atlas_path: str
+    atlas_size: List[float]
+    tile_size: List[float]
+    tile_count: int
+    rows: int
+    cols: int
+    tiles_per_atlas: int
+
+
+class AtlasCreate(AtlasBase):
+    pass
+
+
+class Atlas(AtlasBase):
+    atlas_id: int
+
+    class Config:
+        orm_mode = True

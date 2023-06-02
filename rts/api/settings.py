@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 origins = [
     "http://localhost",
     "https://localhost",
+    "http://localhost:8080",
     "https://dev.cables.gl",
     "https://cables.gl",
     "https://emplusdemo.epfl.ch",
