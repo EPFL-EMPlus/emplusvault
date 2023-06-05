@@ -16,6 +16,7 @@ from rts.api.routers.projection_router import projection_router
 from rts.api.routers.media_router import media_router
 from rts.api.routers.feature_router import feature_router
 from rts.api.routers.atlas_router import atlas_router
+from rts.api.routers.stream_router import stream_router
 # from rts.api.router import stream_router
 from rts.db_settings import DATABASE_URL, DB_HOST, DB_NAME
 
@@ -35,6 +36,7 @@ def mount_routers(app, settings: Settings) -> None:
     app.include_router(media_router, tags=["media"])
     app.include_router(feature_router, tags=["feature"])
     app.include_router(atlas_router, tags=["atlas"])
+    app.include_router(stream_router, tags=["stream"])
     if settings.mode == 'prod':
         mount_point = settings.app_prefix if settings.app_prefix else ''
         # print("MOUNT POINT: ", mount_point)
