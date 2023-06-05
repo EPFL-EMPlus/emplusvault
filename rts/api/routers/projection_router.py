@@ -1,7 +1,7 @@
 from fastapi import (APIRouter, Depends, HTTPException)
 from rts.api.models import Projection
 from rts.utils import get_logger
-from rts.db.queries import create_projection, get_projection_by_id, get_all_projections, update_projection, delete_projection
+from rts.db.queries import create_projection, get_projection_by_id, get_all_projections, update_projection, delete_projection, get_projection_coordinates
 from sqlalchemy.sql import text
 import json
 
@@ -40,3 +40,8 @@ async def update(projection_id: int, projection: Projection):
 async def delete(projection_id: int):
     delete_projection(projection_id)
     return {"status": "Projection deleted"}
+
+
+@projection_router.get("/coordinates/{projection_id}")
+async def get_coordinates(projection_id: int):
+    return get_projection_coordinates(projection_id)

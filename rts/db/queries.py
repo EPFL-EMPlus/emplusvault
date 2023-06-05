@@ -191,6 +191,17 @@ def read_map_projection_features():
     return result
 
 
+def get_projection_coordinates(projection_id: int):
+    query = text("""
+        SELECT ST_X(coordinates) as x, ST_Y(coordinates) as y
+        FROM map_projection_feature
+        WHERE projection_id = :projection_id
+    """)
+    result = DataAccessObject().fetch_all(
+        query, {"projection_id": projection_id})
+    return result
+
+
 def get_atlas(atlas_id: int):
     query = text("SELECT * FROM atlas WHERE atlas_id = :atlas_id")
     return DataAccessObject().fetch_one(query, {"atlas_id": atlas_id})
