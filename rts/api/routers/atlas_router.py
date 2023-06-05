@@ -35,6 +35,26 @@ def _get_atlas(atlas_name: str, settings: Settings) -> Optional[str]:
 
 #     return FileResponse(atlas)
 
+@atlas_router.get("/images/{image_id}/{zoom}")
+def get_image(req: Request, image_id: str, zoom: int):
+
+    sizes = {
+        0: '32px',
+        1: '64px',
+        2: '128px',
+        3: '256px',
+        4: '512px',
+        5: 'original'
+    }
+    size = sizes.get(zoom, 'original')
+
+    try:
+        image = get_supabase_client().storage.from_(
+            BUCKET_NAME).download(f'rts/images/{size}/{image_id}.jpg')
+    except StorageException as e:
+        raise HTTPException(status_code=404, detail="Atlas not found")
+    return Response(content=image, media_type="image/jpeg")
+
 
 @atlas_router.get("/atlases/{atlas_id}")
 async def get_atlas_by_id(atlas_id: int):

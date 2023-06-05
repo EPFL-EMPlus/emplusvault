@@ -28,6 +28,7 @@ def get_clip_id_from_image(image_id: str) -> str:
 
 class StaticFilesSym(StaticFiles):
     "subclass StaticFiles middleware to allow symlinks"
+
     def lookup_path(self, path) -> Tuple[str, Any]:
         for directory in self.all_directories:
             full_path = os.path.realpath(os.path.join(directory, path))
@@ -57,32 +58,8 @@ async def index(request: Request, settings: Settings = Depends(get_settings)) ->
 
 
 def mount_static_folder(app, route_name: str, folder_path: Union[str, Path]) -> None:
-    app.mount(f"/{route_name}", StaticFilesSym(directory=Path(folder_path).expanduser()), name=route_name)
-
-
-@stream_router.get("/images/{image_id}/{zoom}")
-def get_image(req: Request, image_id: str, zoom: int):
-    clip_id = get_clip_id_from_image(image_id)
-    clip = req.app.state.clips.get(clip_id)
-
-    if not clip:
-        raise HTTPException(status_code=404, detail=f"Image not found {image_id}")
-
-    sizes = {
-        0: '32px',
-        1: '64px',
-        2: '128px',
-        3: '256px',
-        4: '512px',
-        5: 'original'
-    }
-
-    size = sizes.get(zoom, 'original')
-    image_path = Path(clip['clip_folder']) / 'images' / size / f'{image_id}.jpg'    
-    if not image_path.exists():
-        raise HTTPException(status_code=404, detail=f"Image not found {image_id}")
-    
-    return FileResponse(image_path)
+    app.mount(f"/{route_name}",
+              StaticFilesSym(directory=Path(folder_path).expanduser()), name=route_name)
 
 
 def chunk_generator_from_stream(video_path: str, chunk_size: int, start: int, size: int):
@@ -100,11 +77,13 @@ async def stream_video(req: Request, image_id: str):
     clip_id = get_clip_id_from_image(image_id)
     clip = req.app.state.clips.get(clip_id)
     if not clip:
-        raise HTTPException(status_code=404, detail=f"Media not found {clip_id}")
-    
+        raise HTTPException(
+            status_code=404, detail=f"Media not found {clip_id}")
+
     video_path = Path(clip['clip_folder']) / 'videos' / f'{clip_id}.mp4'
     if not video_path.exists():
-        raise HTTPException(status_code=404, detail=f"Media not found {clip_id}")
+        raise HTTPException(
+            status_code=404, detail=f"Media not found {clip_id}")
 
     total_size = int(os.path.getsize(video_path))
     byte_ranges = [0, total_size]
@@ -120,11 +99,13 @@ async def stream_video(req: Request, image_id: str):
             end_byte_requested = int(byte_ranges[1])
 
     # End byte is included, need to remove 1
-    end_byte_planned = min(start_byte_requested + BYTES_PER_RESPONSE, total_size) - 1
+    end_byte_planned = min(start_byte_requested +
+                           BYTES_PER_RESPONSE, total_size) - 1
     if end_byte_requested:
         end_byte_planned = min(end_byte_requested, end_byte_planned)
 
-    size_chunk = min(BYTES_PER_RESPONSE, end_byte_planned + 1 - start_byte_requested)
+    size_chunk = min(BYTES_PER_RESPONSE, end_byte_planned +
+                     1 - start_byte_requested)
     chunk_generator = chunk_generator_from_stream(
         video_path,
         chunk_size=BYTES_PER_RESPONSE,
@@ -141,4 +122,4 @@ async def stream_video(req: Request, image_id: str):
             "Content-Length": f"{end_byte_planned + 1 - start_byte_requested}"
         },
         status_code=206
-    )    
+    )
