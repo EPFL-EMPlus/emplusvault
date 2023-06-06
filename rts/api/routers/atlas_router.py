@@ -26,15 +26,6 @@ def _get_atlas(atlas_name: str, settings: Settings) -> Optional[str]:
     return str(atlas)
 
 
-# @atlas_router.get("/atlases/{atlas_name}")
-# def get_atlas(atlas_name: str = '0', settings: Settings = Depends(get_settings)):
-#     atlas = _get_atlas(atlas_name, settings)
-#     if not atlas:
-#         raise HTTPException(
-#             status_code=404, detail=f"Atlas not found {atlas_name}")
-
-#     return FileResponse(atlas)
-
 @atlas_router.get("/images/{image_id}/{zoom}")
 def get_image(req: Request, image_id: str, zoom: int):
 
@@ -65,8 +56,8 @@ async def get_atlas_by_id(atlas_id: int):
     return result
 
 
-@atlas_router.get("/atlas_image/{atlas_id}")
-async def get_atlas_image(atlas_id: int):
+@atlas_router.get("/atlases/{atlas_id}/texture/{texture_id}")
+async def get_atlas_image(atlas_id: int, texture_id: int):
 
     atlas_entry = get_atlas(atlas_id)
     if atlas_entry is None:
@@ -87,19 +78,3 @@ async def create(atlas: AtlasCreate):
 @atlas_router.get("/atlases/")
 async def get_all_atlases():
     return get_atlases()
-
-
-# @atlas_router.get("/atlases/{atlas_name}/texture/{texture_id}")
-# async def get_atlas(req: Request, atlas_name: str = '0', texture_id: int = 0, settings: Settings = Depends(get_settings)):
-#     atlas = _get_atlas(atlas_name, settings)
-#     if not atlas:
-#         raise HTTPException(
-#             status_code=404, detail=f"Atlas not found {atlas_name}")
-
-#     atlases = obj_from_json(atlas)
-#     try:
-#         texture_path = atlases['atlases'][str(texture_id)]['fullpath']
-#         return FileResponse(texture_path)
-#     except:
-#         raise HTTPException(
-#             status_code=404, detail=f"Texture not found {texture_id}")

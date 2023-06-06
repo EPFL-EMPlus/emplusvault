@@ -2,19 +2,10 @@ from fastapi import (APIRouter, Depends, Request, Response, HTTPException)
 from fastapi.responses import HTMLResponse, StreamingResponse, FileResponse
 from io import BytesIO
 from rts.storage.storage import get_supabase_client
+from rts.db_settings import BUCKET_NAME
 
 BYTES_PER_RESPONSE = 300000
 stream_router = APIRouter()
-
-
-# def chunk_generator_from_stream(video_path: str, chunk_size: int, start: int, size: int):
-#     bytes_read = 0
-#     with open(video_path, 'rb') as stream:
-#         stream.seek(start)
-#         while bytes_read < size:
-#             bytes_to_read = min(chunk_size, size - bytes_read)
-#             yield stream.read(bytes_to_read)
-#             bytes_read += bytes_to_read
 
 
 def chunk_generator_from_stream(stream, chunk_size: int, start: int, size: int):
@@ -36,18 +27,13 @@ def get_clip_id_from_image(image_id: str) -> str:
 
 @stream_router.get('/stream/{image_id}')
 async def stream_video(req: Request, image_id: str):
-    # clip_id = get_clip_id_from_image(image_id)
-    # clip = req.app.state.clips.get(clip_id)
-    # if not clip:
-    #     raise HTTPException(
-    #         status_code=404, detail=f"Media not found {clip_id}")
 
-    # video_path = Path(clip['clip_folder']) / 'videos' / f'{clip_id}.mp4'
-    # if not video_path.exists():
-    #     raise HTTPException(
-    #         status_code=404, detail=f"Media not found {clip_id}")
-    r = get_supabase_client().storage.from_("rts").download(
-        "rts/videos/ZB001020-L000.mp4")
+    # Get bucket ID from the database
+
+    video_name = "ZB001020-L000.mp4"
+
+    r = get_supabase_client().storage.from_(BUCKET_NAME).download(
+        f"{BUCKET_NAME}/videos/{video_name}")
     stream_video = BytesIO(r)
 
     total_size = stream_video.getbuffer().nbytes
