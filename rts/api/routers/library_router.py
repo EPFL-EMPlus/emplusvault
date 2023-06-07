@@ -28,6 +28,26 @@ async def read_library(library_id: int):
     return library
 
 
+@library_router.get("/libraries/")
+async def read_libraries():
+    query = "SELECT * FROM library"
+    libraries = DataAccessObject().fetch_all(query)
+
+    if not libraries:
+        raise HTTPException(status_code=404, detail="Libraries not found")
+    return libraries
+
+
+@library_router.get("/libraries/{library_id}/projections")
+async def read_library_projections(library_id: int):
+    query = "SELECT * FROM projection WHERE library_id=%s"
+    projections = DataAccessObject().fetch_all(query, (library_id,))
+
+    if not projections:
+        raise HTTPException(status_code=404, detail="Projections not found")
+    return projections
+
+
 @library_router.post("/libraries/")
 async def create(library: LibraryBase):
     return create_library(library)

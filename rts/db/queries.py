@@ -202,6 +202,17 @@ def get_projection_coordinates(projection_id: int):
     return result
 
 
+def get_projection_atlases(projection_id: int):
+    query = text("""
+        SELECT atlas_id, atlas_path, atlas_size, tile_size, tile_count, rows, cols, tiles_per_atlas
+        FROM atlas
+        WHERE projection_id = :projection_id
+    """)
+    result = DataAccessObject().fetch_all(
+        query, {"projection_id": projection_id})
+    return result
+
+
 def get_atlas(atlas_id: int):
     query = text("SELECT * FROM atlas WHERE atlas_id = :atlas_id")
     return DataAccessObject().fetch_one(query, {"atlas_id": atlas_id})

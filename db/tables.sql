@@ -7,7 +7,7 @@ DROP TABLE IF EXISTS library;
 
 CREATE TABLE IF NOT EXISTS library (
     library_id SERIAL PRIMARY KEY,
-    library_name VARCHAR(50) NOT NULL,
+    library_name VARCHAR(50) UNIQUE,
     version VARCHAR(20) NOT NULL,
     created_at TIMESTAMP DEFAULT NOW(),
     data JSONB NOT NULL
