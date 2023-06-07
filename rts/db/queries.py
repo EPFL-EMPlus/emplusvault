@@ -193,12 +193,29 @@ def read_map_projection_features():
 
 def get_projection_coordinates(projection_id: int):
     query = text("""
-        SELECT ST_X(coordinates) as x, ST_Y(coordinates) as y
+        SELECT ST_X(map_projection_feature.coordinates) as x, ST_Y(map_projection_feature.coordinates) as y,
+            media.media_path
         FROM map_projection_feature
-        WHERE projection_id = :projection_id
+        LEFT JOIN media ON media.media_id = map_projection_feature.media_id
+        WHERE map_projection_feature.projection_id = :projection_id
+
     """)
     result = DataAccessObject().fetch_all(
         query, {"projection_id": projection_id})
+    return result
+
+
+def get_projection_coordinates_by_atlas(projection_id: int, atlas_order: int):
+    query = text("""
+        SELECT ST_X(map_projection_feature.coordinates) as x, ST_Y(map_projection_feature.coordinates) as y,
+            media.media_path
+        FROM map_projection_feature
+        LEFT JOIN media ON media.media_id = map_projection_feature.media_id
+        WHERE map_projection_feature.projection_id = :projection_id
+        AND map_projection_feature.atlas_order = :atlas_order
+    """)
+    result = DataAccessObject().fetch_all(
+        query, {"projection_id": projection_id, "atlas_order": atlas_order})
     return result
 
 
