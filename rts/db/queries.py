@@ -37,8 +37,10 @@ def create_projection(projection: Projection):
             tile_size, atlas_count, total_tiles, tiles_per_atlas) 
         VALUES (:version, :library_id, :model_name, :model_params, :data, :dimension, :atlas_folder_path, 
             :atlas_width, :tile_size, :atlas_count, :total_tiles, :tiles_per_atlas)
+        RETURNING projection_id
     """)
-    DataAccessObject().execute_query(query, projection_data)
+    projection_id = DataAccessObject().execute_query(query, projection_data)
+    return {**projection.dict(), "projection_id": projection_id.fetchone()[0]}
 
 
 def get_projection_by_id(projection_id: int):
