@@ -99,6 +99,7 @@ CREATE TABLE IF NOT EXISTS map_projection_feature (
     media_id INTEGER,
     atlas_order INTEGER NOT NULL,
     coordinates GEOMETRY(Point) NOT NULL,
+    index_in_atlas INTEGER NOT NULL,
 
     CONSTRAINT FK_map_projection_feature_projection_id FOREIGN KEY (projection_id)
         REFERENCES projection (projection_id),
