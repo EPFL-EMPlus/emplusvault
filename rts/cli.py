@@ -12,6 +12,8 @@ from rts.db_settings import DEV_DATABASE_URL, DEV_DB_HOST, DEV_DB_NAME, DEV_DB_P
 from rts.db.utils import create_database
 from rts.db.queries import create_library
 from rts.api.models import LibraryCreate
+from rts.storage.storage import get_supabase_client
+from rts.db_settings import BUCKET_NAME
 
 LOCAL_RTS_DATA = "/media/data/rts/"
 METADATA = LOCAL_RTS_DATA + 'metadata'
@@ -94,6 +96,28 @@ def init_db():
 
 
 @cli.command()
+@click.option('--library-name', type=str, default='rts', help='Library name')
+@click.option('--version', type=str, default='0.0.1', help='Library version')
+@click.option('--data', type=str, default='{}', help='Library data')
+def new_library(library_name: str, version: str, data: str):
+    click.echo(f"Connecting to {DEV_DB_HOST}:{DEV_DB_PORT}/{DEV_DB_NAME}")
+    DataAccessObject().connect(DEV_DATABASE_URL)
+
+    create_library(LibraryCreate(
+        library_name=library_name,
+        version=version,
+        data=data
+    ))
+    click.echo('New library has been successfully created.')
+
+
+@cli.command()
+def ingest_data():
+    click.echo(f"Connecting to {DEV_DB_HOST}:{DEV_DB_PORT}/{DEV_DB_NAME}")
+    DataAccessObject().connect(DEV_DATABASE_URL)
+
+
+@cli.command()
 def new_sample_project():
     click.echo(f"Connecting to {DEV_DB_HOST}:{DEV_DB_PORT}/{DEV_DB_NAME}")
     DataAccessObject().connect(DEV_DATABASE_URL)
@@ -107,7 +131,6 @@ def new_sample_project():
         create_library(LibraryCreate(
             library_name="rts",
             version="0.0.1",
-            library_id=1,
             data='{}'
         ))
 

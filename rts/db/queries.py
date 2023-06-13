@@ -174,9 +174,9 @@ def delete_feature(feature_id: int):
 
 def create_map_projection_feature(map_projection_feature: MapProjectionFeatureCreate):
     query = text("""
-        INSERT INTO map_projection_feature (projection_id, feature_id, media_id, atlas_order, coordinates)
-        VALUES (:projection_id, :feature_id, :media_id, :atlas_order, ST_Point(:latitude, :longitude))
-        RETURNING map_projection_feature_id, projection_id, feature_id, media_id, atlas_order, ST_AsText(coordinates) as coordinates
+        INSERT INTO map_projection_feature (projection_id, feature_id, media_id, atlas_order, coordinates, index_in_atlas)
+        VALUES (:projection_id, :feature_id, :media_id, :atlas_order, ST_Point(:latitude, :longitude), :index_in_atlas)
+        RETURNING map_projection_feature_id, projection_id, feature_id, media_id, atlas_order, ST_AsText(coordinates) as coordinates, index_in_atlas
     """)
     params = map_projection_feature.dict()
     params["latitude"], params["longitude"] = map_projection_feature.coordinates

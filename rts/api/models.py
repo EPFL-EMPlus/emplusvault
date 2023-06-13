@@ -77,6 +77,7 @@ class MapProjectionFeatureBase(BaseModel):
     atlas_order: int
     # Represented as (latitude, longitude) or (x, y)
     coordinates: Tuple[float, float]
+    index_in_atlas: int
 
 
 class MapProjectionFeatureCreate(MapProjectionFeatureBase):

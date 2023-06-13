@@ -1,3 +1,4 @@
+import hashlib
 import os
 import shutil
 import logging
@@ -8,6 +9,7 @@ from typing import Dict, List, Optional, Tuple, Any, Union
 from io import BytesIO
 
 import numpy as np
+import pandas as pd
 import av
 import ffmpeg
 import cv2
@@ -17,12 +19,13 @@ import scenedetect
 from PIL import Image, ImageOps
 from scenedetect import open_video, SceneManager, ContentDetector
 from scenedetect.frame_timecode import FrameTimecode
+from storage3.utils import StorageException
 
 import rts.utils
 from rts.db_settings import BUCKET_NAME
-from rts.db.queries import create_atlas
+from rts.db.queries import create_atlas, create_media, create_projection
 from rts.storage.storage import get_supabase_client
-from rts.api.models import AtlasCreate
+from rts.api.models import AtlasCreate, Media, Projection
 
 LOG = rts.utils.get_logger()
 
@@ -505,7 +508,7 @@ def create_square_atlases(atlas_name: str,
                                      square=True, no_border=no_border, flip=flip,
                                      keep_only_ids=keep_only_ids, bg_color=bg_color)
         atlas['texture_id'] = k
-        atlases[str(k)] = atlas
+        atlases[k] = atlas
 
         # save atlas image and create db entry
         res_image = atlas['atlas_image']
@@ -530,3 +533,117 @@ def create_square_atlases(atlas_name: str,
         r = create_atlas(atlas)
 
     return atlases
+
+
+def upload_clips(clip_df: pd.DataFrame, data_path: str, bucket_name: str = BUCKET_NAME):
+
+    for index, row in clip_df.iterrows():
+        video_path = row['mediaFolderPath'].split("/")[-1]
+        video_path = os.path.join(data_path, video_path, 'clips', 'videos')
+        # List all files in the directory
+        try:
+            files = os.listdir(video_path)
+        except FileNotFoundError:
+            continue
+
+        print(video_path)
+        for file in files:
+            if file.endswith(".mp4"):
+                # print(file)
+                file_path = os.path.join(video_path, file)
+                # print(file_path)
+                try:
+                    get_supabase_client().storage.from_(bucket_name).upload(
+                        f"{bucket_name}/videos/{file}", file_path)
+                except StorageException as e:
+                    print(e.args[0]['error'])
+                    if e.args[0]['error'] != 'Duplicate':
+                        raise e
+                media_path = f"{bucket_name}/videos/{file}"
+                media = Media(
+                    original_path=row['mediaFolderPath'],
+                    media_path=media_path,
+                    media_type="video",
+                    sub_type="clip",
+                    size=0,
+                    metadata={},
+                    library_id=1,
+                    hash=hashlib.md5(media_path.encode()).hexdigest(),
+                    parent_id=1,
+                    start_ts=0,
+                    ebd_ts=10,
+                    start_frame=0,
+                    end_frame=10,
+                    frame_rate=30,
+                )
+
+                create_media(media)
+
+
+def upload_images(clip_df: pd.DataFrame, data_path: str, bucket_name: str = BUCKET_NAME, image_size: str = '256px'):
+    for index, row in clip_df.iterrows():
+        video_path = row['mediaFolderPath'].split("/")[-1]
+        video_path = os.path.join(
+            data_path, video_path, 'clips', 'images', '256px')
+        print(video_path)
+        # List all files in the directory
+        try:
+            files = os.listdir(video_path)
+        except FileNotFoundError:
+            continue
+        # print(video_path)
+        for file in files:
+            if file.endswith(".jpg"):
+                # print(file)
+                file_path = os.path.join(video_path, file)
+                # print(file_path)
+                try:
+                    get_supabase_client().storage.from_(bucket_name).upload(
+                        f"{bucket_name}/images/{image_size}/{file}", file_path)
+                except StorageException as e:
+                    print(e.args[0]['error'])
+                    if e.args[0]['error'] != 'Duplicate':
+                        raise e
+
+                # images need to reference the clip and not the source video
+                media_path = f"{bucket_name}/images/{image_size}/{file}"
+                media = Media(
+                    original_path=row['mediaFolderPath'],
+                    media_path=media_path,
+                    media_type="image",
+                    sub_type="screenshot",
+                    size=0,
+                    metadata={},
+                    library_id=1,
+                    hash=hashlib.md5(media_path.encode()).hexdigest(),
+                    parent_id=1,
+                    start_ts=0,
+                    ebd_ts=10,
+                    start_frame=0,
+                    end_frame=10,
+                    frame_rate=30,
+                )
+
+                result = create_media(media)
+                media_id = result['media_id']
+
+
+def upload_projection(projection_name: str, version: str, library_id: int, model_name: str,
+                      model_params: Dict = {}, data: Dict = {}, dimension: int = 2, atlas_folder_path: str = "",
+                      atlas_width: int = 1024, tile_size: int = 256, atlas_count: int = 1, total_tiles: int = 8, tiles_per_atlas: int = 8):
+    projection = Projection(
+        projection_name=projection_name,
+        version=version,
+        library_id=library_id,
+        model_name=model_name,
+        model_params=model_params,
+        data=data,
+        dimension=dimension,
+        atlas_folder_path=atlas_folder_path,
+        atlas_width=atlas_width,
+        tile_size=tile_size,
+        atlas_count=atlas_count,
+        total_tiles=total_tiles,
+        tiles_per_atlas=tiles_per_atlas,
+    )
+    return create_projection(projection)
