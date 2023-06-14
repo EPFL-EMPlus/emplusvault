@@ -12,8 +12,7 @@ from rts.db_settings import DEV_DATABASE_URL, DEV_DB_HOST, DEV_DB_NAME, DEV_DB_P
 from rts.db.utils import create_database
 from rts.db.queries import create_library
 from rts.api.models import LibraryCreate
-from rts.storage.storage import get_supabase_client
-from rts.db_settings import BUCKET_NAME
+
 
 LOCAL_RTS_DATA = "/media/data/rts/"
 METADATA = LOCAL_RTS_DATA + 'metadata'
@@ -113,6 +112,9 @@ def new_library(library_name: str, version: str, data: str):
 
 @cli.command()
 def ingest_data():
+
+    from rts.io.media import upload_clips, upload_images, upload_projection
+
     click.echo(f"Connecting to {DEV_DB_HOST}:{DEV_DB_PORT}/{DEV_DB_NAME}")
     DataAccessObject().connect(DEV_DATABASE_URL)
 

@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS media (
     media_id SERIAL PRIMARY KEY,
     media_path VARCHAR(500) UNIQUE,
     original_path VARCHAR(500) NOT NULL,
+    original_id VARCHAR(50) NOT NULL,
     created_at TIMESTAMP DEFAULT NOW(),
     media_type VARCHAR(50) NOT NULL,
     sub_type VARCHAR(50) NOT NULL,
@@ -70,6 +71,8 @@ CREATE TABLE IF NOT EXISTS media (
     CONSTRAINT FK_media_library_id FOREIGN KEY (library_id)
         REFERENCES library (library_id)
 );
+
+COMMENT ON COLUMN media.original_id IS 'The original id (ex. ZE004015 for rts) to identify the media file in the original archive.';
 
 CREATE TABLE IF NOT EXISTS feature (
     feature_id SERIAL PRIMARY KEY,
