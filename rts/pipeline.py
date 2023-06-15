@@ -318,7 +318,7 @@ def simple_process_archive(df: pd.DataFrame,
     force_scene: bool = False,
     force_trans: bool = False) -> None:
 
-    LOG.setLevel('DEBUG')
+    LOG.setLevel('INFO')
     total_duration = df.mediaDuration.sum()
     with tqdm(total=total_duration, file=sys.stdout) as pbar:
         for _, row in df.iterrows():

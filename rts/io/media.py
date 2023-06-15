@@ -174,6 +174,7 @@ def trim(input_path: Union[str, Path], output_path: Union[str, Path], start_ts: 
         input_stream.video
         .trim(start=start_ts, end=end_ts)
         .setpts('PTS-STARTPTS')
+        
     )
     aud = (
         input_stream.audio
@@ -185,7 +186,10 @@ def trim(input_path: Union[str, Path], output_path: Union[str, Path], start_ts: 
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     joined = ffmpeg.concat(vid, aud, v=1, a=1).node
-    output = ffmpeg.output(joined[0], joined[1], str(output_path)).overwrite_output()
+    output = ffmpeg.output(joined[0], joined[1], str(output_path), 
+                movflags='faststart').overwrite_output()
+    # args = output.get_args()
+    # print(f'Args: {args}')
     try:
         output.run(capture_stdout=False)
         return True
