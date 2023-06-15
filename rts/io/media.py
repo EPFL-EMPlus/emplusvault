@@ -535,94 +535,26 @@ def create_square_atlases(atlas_name: str,
     return atlases
 
 
-def upload_clips(library_id: int, clip_df: pd.DataFrame, data_path: str, bucket_name: str = BUCKET_NAME):
-
-    for index, row in clip_df.iterrows():
-        video_path = row['mediaFolderPath'].split("/")[-1]
-        video_path = os.path.join(data_path, video_path, 'clips', 'videos')
-        # List all files in the directory
-        try:
-            files = os.listdir(video_path)
-        except FileNotFoundError:
-            continue
-
-        for file in files:
-            if file.endswith(".mp4"):
-                file_path = os.path.join(video_path, file)
-                try:
-                    get_supabase_client().storage.from_(bucket_name).upload(
-                        f"{bucket_name}/videos/{file}", file_path)
-                except StorageException as e:
-                    print(e.args[0]['error'])
-                    if e.args[0]['error'] != 'Duplicate':
-                        raise e
-                media_path = f"{bucket_name}/videos/{file}"
-                media = Media(
-                    original_path=row['mediaFolderPath'],
-                    media_path=media_path,
-                    media_type="video",
-                    sub_type="clip",
-                    size=os.path.getsize(str(file_path)),
-                    metadata={},
-                    library_id=library_id,
-                    hash=hashlib.md5(media_path.encode()).hexdigest(),
-                    parent_id=1,
-                    start_ts=0,
-                    ebd_ts=10,
-                    start_frame=0,
-                    end_frame=10,
-                    frame_rate=30,
-                )
-
-                create_media(media)
+def upload_media(media: Media, bucket_name: str = BUCKET_NAME):
+    try:
+        get_supabase_client().storage.from_(bucket_name).upload(
+            media.media_path, media.original_path)
+    except StorageException as e:
+        print(e.args[0]['error'])
+        if e.args[0]['error'] != 'Duplicate':
+            raise e
+    return create_media(media)
 
 
-def upload_images(clip_df: pd.DataFrame, data_path: str, bucket_name: str = BUCKET_NAME, image_size: str = '256px'):
-    for index, row in clip_df.iterrows():
-        video_path = row['mediaFolderPath'].split("/")[-1]
-        video_path = os.path.join(
-            data_path, video_path, 'clips', 'images', '256px')
-        # print(video_path)
-        # List all files in the directory
-        try:
-            files = os.listdir(video_path)
-        except FileNotFoundError:
-            continue
-        # print(video_path)
-        for file in files:
-            if file.endswith(".jpg"):
-                # print(file)
-                file_path = os.path.join(video_path, file)
-                # print(file_path)
-                try:
-                    get_supabase_client().storage.from_(bucket_name).upload(
-                        f"{bucket_name}/images/{image_size}/{file}", file_path)
-                except StorageException as e:
-                    print(e.args[0]['error'])
-                    if e.args[0]['error'] != 'Duplicate':
-                        raise e
+def upload_media_files(media_files: List[Media], bucket_name: str = BUCKET_NAME):
+    uploaded_clips = []
 
-                # images need to reference the clip and not the source video
-                media_path = f"{bucket_name}/images/{image_size}/{file}"
-                media = Media(
-                    original_path=row['mediaFolderPath'],
-                    media_path=media_path,
-                    media_type="image",
-                    sub_type="screenshot",
-                    size=0,
-                    metadata={},
-                    library_id=1,
-                    hash=hashlib.md5(media_path.encode()).hexdigest(),
-                    parent_id=1,
-                    start_ts=0,
-                    ebd_ts=10,
-                    start_frame=0,
-                    end_frame=10,
-                    frame_rate=30,
-                )
-
-                result = create_media(media)
-                media_id = result['media_id']
+    for mf in media_files:
+        uploaded_clips.append(upload_media(
+            media=mf,
+            bucket_name=bucket_name,
+        ))
+    return uploaded_clips
 
 
 def upload_projection(projection_name: str, version: str, library_id: int, model_name: str,

@@ -79,8 +79,8 @@ def create_media(media: Media) -> dict:
     media_data['metadata'] = json.dumps(media_data['metadata'])
 
     query = text("""
-        INSERT INTO media (media_path, original_path, media_type, sub_type, size, metadata, library_id, hash, parent_id, start_ts, end_ts, start_frame, end_frame, frame_rate)
-        VALUES (:media_path, :original_path, :media_type, :sub_type, :size, :metadata, :library_id, :hash, :parent_id, :start_ts, :end_ts, :start_frame, :end_frame, :frame_rate)
+        INSERT INTO media (media_path, original_path, original_id, media_type, sub_type, size, metadata, library_id, hash, parent_id, start_ts, end_ts, start_frame, end_frame, frame_rate)
+        VALUES (:media_path, :original_path, :original_id, :media_type, :sub_type, :size, :metadata, :library_id, :hash, :parent_id, :start_ts, :end_ts, :start_frame, :end_frame, :frame_rate)
         RETURNING media_id
     """)
     media_id = DataAccessObject().execute_query(query, media_data)
