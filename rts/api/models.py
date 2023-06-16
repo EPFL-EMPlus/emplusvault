@@ -37,13 +37,13 @@ class Projection(BaseModel):
 
 
 class Media(BaseModel):
-    media_id: Optional[int] = Field(None, alias="media_id")
+    # media_id: Optional[int] = Field(None, alias="media_id")
     media_path: str = Field(..., alias="media_path", max_length=500)
     original_path: str = Field(..., alias="original_path", max_length=500)
     original_id: str = Field(..., alias="original_id")
     created_at: Optional[datetime] = Field(None, alias="created_at")
     media_type: str = Field(..., alias="media_type", max_length=50)
-    media_id: str = Field(..., alias="media_id", max_length=50)
+    file_id: str = Field(..., alias="file_id", max_length=50)
     sub_type: str = Field(..., alias="sub_type", max_length=50)
     size: int = Field(..., alias="size")
     metadata: Dict = Field(..., alias="metadata")
