@@ -92,6 +92,17 @@ def read_media_by_id(media_id: int) -> dict:
     return DataAccessObject().fetch_one(query, {"media_id": media_id})
 
 
+def read_media_by_library_id(library_id: int, media_type: str = None, sub_type: str = None) -> dict:
+    query = "SELECT * FROM media WHERE library_id = :library_id"
+    if media_type:
+        query = query + " AND media_type = :media_type"
+    if sub_type:
+        query = query + " AND sub_type = :sub_type"
+
+    query = text(query)
+    return DataAccessObject().fetch_all(query, {"library_id": library_id, "media_type": media_type, "sub_type": sub_type})
+
+
 def read_media_by_source_file_id(file_id: str) -> dict:
     query = text("SELECT * FROM media WHERE file_id = :file_id")
     return DataAccessObject().fetch_one(query, {"file_id": file_id})

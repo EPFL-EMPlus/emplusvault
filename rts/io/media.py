@@ -528,7 +528,7 @@ def create_square_atlases(atlas_name: str,
             tile_count=atlas['rows'] * atlas['cols'],
             rows=atlas['rows'],
             cols=atlas['cols'],
-            tiles_per_atlas=atlas['rows'] * atlas['cols'],
+            tiles_per_atlas=atlas['image_count'],
         )
         r = create_atlas(atlas)
 
