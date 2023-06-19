@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, Json
 from datetime import datetime
-from typing import Dict, Optional, List, Tuple
+from typing import Dict, Optional, List, Tuple, Union
 
 
 class LibraryBase(BaseModel):
@@ -78,7 +78,7 @@ class MapProjectionFeatureBase(BaseModel):
     projection_id: int
     atlas_order: int
     # Represented as (latitude, longitude) or (x, y)
-    coordinates: Tuple[float, float]
+    coordinates: Union[Tuple[float, float], Tuple[float, float, float]]
     index_in_atlas: int
 
 
