@@ -188,6 +188,46 @@ def delete_feature(feature_id: int):
     return result
 
 
+def get_nearest_neighbors(media_id: int, feature_type: str, model_name: str, version: str, k: int = 10):
+    _query = """
+        WITH target_embedding AS (
+        SELECT
+            media_id,
+            CASE
+                WHEN embedding_size = 1024 THEN embedding_1024
+                WHEN embedding_size = 2048 THEN embedding_2048
+                ELSE NULL
+            END AS embedding_vector
+        FROM 
+            feature
+        WHERE 
+            media_id = :media_id AND feature_type = :feature_type AND model_name = :model_name 
+        )
+
+        SELECT
+        f.media_id,
+        (target.embedding_vector <-> 
+            CASE
+            WHEN f.embedding_size = 1024 THEN f.embedding_1024
+            WHEN f.embedding_size = 2048 THEN f.embedding_2048
+            ELSE NULL
+            END
+        ) AS distance
+        FROM
+        feature f,
+        target_embedding target
+        WHERE
+        f.media_id != target.media_id
+        ORDER BY
+        distance ASC
+        LIMIT :k;
+    """
+    query = text(_query)
+    result = DataAccessObject().fetch_all(
+        query, {"media_id": media_id, "k": k, "feature_type": feature_type, "model_name": model_name, "version": version})
+    return result
+
+
 def create_map_projection_feature(map_projection_feature: MapProjectionFeatureCreate):
     query = text("""
         INSERT INTO map_projection_feature (projection_id, feature_id, media_id, atlas_order, coordinates, index_in_atlas)
