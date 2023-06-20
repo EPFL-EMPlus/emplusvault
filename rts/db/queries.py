@@ -113,6 +113,11 @@ def read_media() -> dict:
     return DataAccessObject().fetch_all(query)
 
 
+def read_media_by_metadata(key: str, value: str) -> dict:
+    query = text("SELECT * FROM media WHERE metadata->>:key = :value")
+    return DataAccessObject().fetch_all(query, {"key": key, "value": value})
+
+
 def update_media(media_id: int, media: Media):
     media_data = media.dict()
     media_data['metadata'] = json.dumps(media_data['metadata'])
