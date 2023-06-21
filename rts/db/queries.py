@@ -118,6 +118,18 @@ def read_media_by_metadata(key: str, value: str) -> dict:
     return DataAccessObject().fetch_all(query, {"key": key, "value": value})
 
 
+def read_media_by_feature_data(key: str, value: str) -> dict:
+
+    # query feature table and join with media table
+    query = text("""
+        SELECT * FROM media
+        JOIN feature ON media.media_id = feature.media_id
+        WHERE feature.data->>:key LIKE :value
+    """)
+    # WHERE data->>'ner' LIKE '%{person}%';
+    return DataAccessObject().fetch_all(query, {"key": key, "value": f"%{value}%"})
+
+
 def update_media(media_id: int, media: Media):
     media_data = media.dict()
     media_data['metadata'] = json.dumps(media_data['metadata'])
