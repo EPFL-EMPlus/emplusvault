@@ -3,6 +3,8 @@ from rts.db.dao import DataAccessObject
 from rts.db.queries import create_library
 from rts.api.models import LibraryBase
 from rts.utils import get_logger
+from rts.api.routers.auth_router import authenticate
+from supabase import Client
 import json
 
 LOG = get_logger()
@@ -14,7 +16,7 @@ library_router = APIRouter()
 
 
 @library_router.get("/libraries/{library_id}")
-async def read_library(library_id: int):
+async def read_library(library_id: int, supabase: Client = Depends(authenticate)):
 
     # put query as sqlalchemy statement to resolve it to a string
 
@@ -29,7 +31,7 @@ async def read_library(library_id: int):
 
 
 @library_router.get("/libraries/")
-async def read_libraries():
+async def read_libraries(supabase: Client = Depends(authenticate)):
     query = "SELECT * FROM library"
     libraries = DataAccessObject().fetch_all(query)
 
@@ -39,7 +41,7 @@ async def read_libraries():
 
 
 @library_router.get("/libraries/{library_id}/projections")
-async def read_library_projections(library_id: int):
+async def read_library_projections(library_id: int, supabase: Client = Depends(authenticate)):
     query = "SELECT * FROM projection WHERE library_id=%s"
     projections = DataAccessObject().fetch_all(query, (library_id,))
 
@@ -49,5 +51,5 @@ async def read_library_projections(library_id: int):
 
 
 @library_router.post("/libraries/")
-async def create(library: LibraryBase):
+async def create(library: LibraryBase, supabase: Client = Depends(authenticate)):
     return create_library(library)

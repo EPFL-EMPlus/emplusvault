@@ -2,6 +2,7 @@ import click
 import uvicorn
 
 from fastapi.staticfiles import StaticFiles
+from fastapi import FastAPI, HTTPException, Depends, Form
 from pathlib import Path
 # Local imports
 from rts.api.settings import Settings, get_settings, get_app, init_library, get_public_folder_path
@@ -17,8 +18,13 @@ from rts.api.routers.media_router import media_router
 from rts.api.routers.feature_router import feature_router
 from rts.api.routers.atlas_router import atlas_router
 from rts.api.routers.stream_router import stream_router
-# from rts.api.router import stream_router
-from rts.db_settings import DATABASE_URL, DB_HOST, DB_NAME
+from rts.api.routers.auth_router import auth_router
+from rts.db_settings import DATABASE_URL, DB_HOST, DB_NAME, SUPABASE_HOST, SUPABASE_KEY
+from fastapi.security import OAuth2PasswordBearer
+from pydantic import BaseModel
+from supabase import create_client, Client
+from rts.storage.storage import get_supabase_client
+
 
 LOG = get_logger()
 app = get_app()
@@ -37,6 +43,8 @@ def mount_routers(app, settings: Settings) -> None:
     app.include_router(feature_router, tags=["feature"])
     app.include_router(atlas_router, tags=["atlas"])
     app.include_router(stream_router, tags=["stream"])
+    app.include_router(auth_router, tags=["auth"])
+
     if settings.mode == 'prod':
         mount_point = settings.app_prefix if settings.app_prefix else ''
         # print("MOUNT POINT: ", mount_point)
@@ -55,8 +63,8 @@ async def startup_event():
 
     # connect to the database
     dao = DataAccessObject()
-    # LOG.info(f"Connecting to database: {DB_HOST}/{DB_NAME}")
     dao.connect(DATABASE_URL)
+
     try:
         # TODO: Replace the function with database calls
         df = build_clips_df(archive_folder, metadata_folder, force=False)
@@ -88,6 +96,7 @@ def start_dev(library: str):
 
     init_library(library_id, is_prod=False)
     settings = get_settings()
+
     uvicorn.run("rts.api.server:app", host='0.0.0.0',
                 port=int(settings.app_port), reload=True)
 
