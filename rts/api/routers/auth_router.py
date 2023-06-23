@@ -31,13 +31,13 @@ async def authenticate(token: str = Depends(oauth2_scheme)):
     return supabase
 
 
-@auth_router.get("/users/me/")
-async def read_users_me(supabase: Client = Depends(authenticate)):
-    return {"success": True}
+# @auth_router.get("/users/me/")
+# async def read_users_me(supabase: Client = Depends(authenticate)):
+#     return {"success": True}
 
 
-@auth_router.get("/read/media/")
-async def read_media_files(supabase: Client = Depends(authenticate)):
-    # return supabase.table('media').select("*").execute()
-    from rts.db.queries import read_media
-    return read_media()
+# @auth_router.get("/read/media/")
+# async def read_media_files(supabase: Client = Depends(authenticate)):
+#     # return supabase.table('media').select("*").execute()
+#     from rts.db.queries import read_media
+#     return read_media()

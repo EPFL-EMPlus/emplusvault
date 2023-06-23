@@ -2,6 +2,7 @@ import pytest
 from rts.utils import get_logger
 from rts.db.utils import create_database
 from rts.db.dao import DataAccessObject
+from rts.api.routers.auth_router import authenticate
 import time
 
 LOG = get_logger()
@@ -21,6 +22,9 @@ def pytest_configure(config):
     # Activate pgvector extension
     LOG.info("Activating pgvector extension")
     create_extension = "CREATE EXTENSION IF NOT EXISTS vector"
+    DataAccessObject().execute_query(create_extension)
+
+    create_extension = "CREATE EXTENSION IF NOT EXISTS postgis;"
     DataAccessObject().execute_query(create_extension)
 
     # Create the test database
