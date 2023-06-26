@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  postgres_test:
+    build:
+      context: .
+      dockerfile: pgvector-Dockerfile
+    environment:
+      POSTGRES_PASSWORD: testpassword
+      POSTGRES_DB: testdb
+    ports:
+      - "5435:5432"

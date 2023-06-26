@@ -53,3 +53,49 @@ rsync -am /media/data/rts/metadata/ root@128.178.218.107:/media/data/rts/metadat
 
 
 ```
+
+# Development
+
+## Run the server
+```
+uvicorn server:app --host 0.0.0.0 --port 8763 --reload
+```
+
+## Run infrastructure locally
+
+Follow the instructions from supabase self-hosting with docker: https://supabase.com/docs/guides/self-hosting/docker
+The settings in the .env file should be changed before the first docker compose up command.
+
+```
+# Get the code
+git clone --depth 1 https://github.com/supabase/supabase
+
+# Go to the docker folder
+cd supabase/docker
+
+# Copy the fake env vars
+cp .env.example .env
+
+# Start
+docker compose up
+```
+
+In addition, the following steps need to be taken in the rts project:
+
+1. Copy the `.env.example` file to and name it `.env` and fill the empty fields with the credientials used for the supabase images
+2. Activate the vector extension in supabase: Database -> Extensions -> Enable vector
+3. Create the rts bucket in the supabase interface and create a policy allowing read and write access to the bucket
+4. Run the initialization script: `python init_project.py`
+
+
+# Tests
+
+Running the tests needs the pgvector docker image to be running. To start it, run the following command:
+```
+docker compose up 
+```
+
+## Run tests
+```
+pytest tests
+```

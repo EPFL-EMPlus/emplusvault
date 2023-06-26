@@ -1,3 +1,4 @@
+import hashlib
 import os
 import shutil
 import logging
@@ -5,19 +6,26 @@ import math
 from pathlib import Path
 from string import Template
 from typing import Dict, List, Optional, Tuple, Any, Union
+from io import BytesIO
 
 import numpy as np
+import pandas as pd
 import av
 import ffmpeg
 import cv2
 import PIL
 import scenedetect
 
-from PIL import Image
+from PIL import Image, ImageOps
 from scenedetect import open_video, SceneManager, ContentDetector
 from scenedetect.frame_timecode import FrameTimecode
+from storage3.utils import StorageException
 
 import rts.utils
+from rts.db_settings import BUCKET_NAME
+from rts.db.queries import create_atlas, create_media, create_projection
+from rts.storage.storage import get_supabase_client
+from rts.api.models import AtlasCreate, Media, Projection
 
 LOG = rts.utils.get_logger()
 
@@ -26,7 +34,7 @@ logger.setLevel(logging.ERROR)
 
 
 @rts.utils.timeit
-# noinspection PyUnresolvedReferences
+# noinspection PyUnresolvedReferenceskeep_only_ids
 def to_wav(in_path: str, out_path: str = None, sample_rate: int = 48000) -> str:
     """Arbitrary media files to wav"""
     if out_path is None:
@@ -103,7 +111,7 @@ def merge_video_audio_files(video_path: str, audio_path: str, out_path: str) -> 
                 continue
             packet.stream = out_stream
             out_container.mux(packet)
-    
+
     try:
         out_path = str(Path(out_path).with_suffix(f'.mp4'))
         with av.open(str(video_path)) as in_video:
@@ -112,7 +120,8 @@ def merge_video_audio_files(video_path: str, audio_path: str, out_path: str) -> 
                 in_astream = in_audio.streams.audio[0]
                 with av.open(out_path, 'w') as out_container:
                     true_fps = int(in_vstream.guessed_rate)
-                    out_vstream = out_container.add_stream(template=in_vstream, rate=true_fps)
+                    out_vstream = out_container.add_stream(
+                        template=in_vstream, rate=true_fps)
                     # Fix missing framerate
                     out_vstream.framerate = str(true_fps)
                     out_astream = out_container.add_stream(template=in_astream)
@@ -138,7 +147,8 @@ def get_media_info(media_path: str) -> Dict:
     try:
         info['path'] = str(media_path)
         info['filesize'] = os.path.getsize(str(media_path))
-        info['human_filesize'] = rts.utils.human_readable_size(info['filesize'])
+        info['human_filesize'] = rts.utils.human_readable_size(
+            info['filesize'])
         with av.open(str(media_path)) as container:
             info['duration'] = container.duration / 1000000
             info['video'] = {}
@@ -148,15 +158,18 @@ def get_media_info(media_path: str) -> Dict:
                     info['video']['codec'] = stream.codec_context.name
                     info['video']['width'] = stream.codec_context.width
                     info['video']['height'] = stream.codec_context.height
-                    info['video']['framerate'] = format_framerate(stream.guessed_rate)
+                    info['video']['framerate'] = format_framerate(
+                        stream.guessed_rate)
                     info['video']['bitrate'] = stream.codec_context.bit_rate
-                    info['video']['human_bitrate'] = rts.utils.human_readable_bitrate(stream.codec_context.bit_rate)
+                    info['video']['human_bitrate'] = rts.utils.human_readable_bitrate(
+                        stream.codec_context.bit_rate)
                 elif stream.type == 'audio':
                     info['audio']['codec'] = stream.codec_context.name
                     info['audio']['channels'] = stream.codec_context.channels
                     info['audio']['sample_rate'] = stream.codec_context.sample_rate
                     info['audio']['bitrate'] = stream.codec_context.bit_rate
-                    info['audio']['human_bitrate'] = rts.utils.human_readable_bitrate(stream.codec_context.bit_rate)
+                    info['audio']['human_bitrate'] = rts.utils.human_readable_bitrate(
+                        stream.codec_context.bit_rate)
 
             if not info['video']:
                 del info['video']
@@ -169,7 +182,8 @@ def get_media_info(media_path: str) -> Dict:
 
 
 def trim(input_path: Union[str, Path], output_path: Union[str, Path], start_ts: float, end_ts: float) -> bool:
-    input_stream = ffmpeg.input(str(input_path), hide_banner=None, loglevel='error')
+    input_stream = ffmpeg.input(
+        str(input_path), hide_banner=None, loglevel='error')
     vid = (
         input_stream.video
         .trim(start=start_ts, end=end_ts)
@@ -195,7 +209,7 @@ def trim(input_path: Union[str, Path], output_path: Union[str, Path], start_ts: 
         return True
     except ffmpeg.Error as e:
         LOG.error(e)
-    
+
     return False
 
 
@@ -248,11 +262,11 @@ def filter_scenes(scenes: Any, min_seconds: float = 10) -> Any:
 
 
 def save_clips_images(timecodes: Any,
-    video_path: str, 
-    media_folder: str,
-    out_folder_name: str = 'clips',
-    num_images: int = 3,
-    clip_prefix_id: str = 'S') -> Optional[Dict]:
+                      video_path: str,
+                      media_folder: str,
+                      out_folder_name: str = 'clips',
+                      num_images: int = 3,
+                      clip_prefix_id: str = 'S') -> Optional[Dict]:
 
     def inner():
         # Adapted from https://github.com/Breakthrough/PySceneDetect/blob/master/scenedetect/scene_manager.py
@@ -261,31 +275,33 @@ def save_clips_images(timecodes: Any,
         framerate = timecodes[0][0].framerate
         frame_margin = 1
         scene_num_format = '%0'
-        scene_num_format += str(max(3, math.floor(math.log(len(timecodes), 10)) + 1)) + 'd'
+        scene_num_format += str(max(3,
+                                math.floor(math.log(len(timecodes), 10)) + 1)) + 'd'
         image_num_format = '%0'
         image_num_format += str(math.floor(math.log(num_images, 10)) + 2) + 'd'
         timecode_list = [
             [
                 FrameTimecode(int(f), fps=framerate) for f in [
-                                                                                                # middle frames
+                    # middle frames
                     a[len(a) // 2] if (0 < j < num_images - 1) or num_images == 1
 
-                                                                                                # first frame
+                    # first frame
                     else min(a[0] + frame_margin, a[-1]) if j == 0
 
-                                                                                                # last frame
+                    # last frame
                     else max(a[-1] - frame_margin, a[0])
 
-                                                                                                # for each evenly-split array of frames in the scene list
+                    # for each evenly-split array of frames in the scene list
                     for j, a in enumerate(np.array_split(r, num_images))
                 ]
             ] for i, r in enumerate([
-                                                                                                # pad ranges to number of images
-                r if 1 + r[-1] - r[0] >= num_images else list(r) + [r[-1]] * (num_images - len(r))
-                                                                                                # create range of frames in scene
+                # pad ranges to number of images
+                r if 1 + \
+                r[-1] - r[0] >= num_images else list(r) + [r[-1]] * (num_images - len(r))
+                # create range of frames in scene
                 for r in (
                     range(start.get_frames(), end.get_frames())
-                                                                                                # for each scene in scene list
+                    # for each scene in scene list
                     for start, end in timecodes)
             ])
         ]
@@ -297,25 +313,26 @@ def save_clips_images(timecodes: Any,
             scene_framenames = []
             for j, image_timecode in enumerate(scene_timecodes):
                 video.seek(image_timecode)
-                frame_im = video.read().astype(np.uint8) 
+                frame_im = video.read().astype(np.uint8)
                 if frame_im is None:
                     continue
 
                 filename = '%s' % (filename_template.safe_substitute(
-                VIDEO_NAME=media_id,
-                PREFIX=clip_prefix_id,
-                SCENE_NUMBER=scene_num,
-                IMAGE_NUMBER=image_num_format % j,
-                FRAME_NUMBER=image_timecode.get_frames()))
+                    VIDEO_NAME=media_id,
+                    PREFIX=clip_prefix_id,
+                    SCENE_NUMBER=scene_num,
+                    IMAGE_NUMBER=image_num_format % j,
+                    FRAME_NUMBER=image_timecode.get_frames()))
 
                 fullname = f'{filename}.jpg'
                 scene_framenames.append(fullname)
 
                 color_converted = cv2.cvtColor(frame_im, cv2.COLOR_BGR2RGB)
                 im = Image.fromarray(color_converted)
-                images = save_image_pyramid(im, images_folder, filename, split_folders=True)
-                
-                if not resolutions: # fill available resolutions
+                images = save_image_pyramid(
+                    im, images_folder, filename, split_folders=True)
+
+                if not resolutions:  # fill available resolutions
                     resolutions = list(images.keys())
 
             image_names.append(scene_framenames)
@@ -374,47 +391,46 @@ def cut_video_to_clips(clips_payload: Dict, force: bool = False) -> bool:
         clip_path = video_folder / f'{clip_id}.mp4'
         if clip_path.exists() and not force:
             return clip_path
-        
-        video_path = Path(clips_payload['media_folder']) / f"{clips_payload['mediaId']}.mp4"
+
+        video_path = Path(
+            clips_payload['media_folder']) / f"{clips_payload['mediaId']}.mp4"
         ok = trim(video_path, clip_path, start, end)
         if not ok:
             has_errors = True
-            LOG.error(f'Error cutting clip {clip_id} from {video_path} to {clip_path}')
-    
-    return not has_errors
-    
+            LOG.error(
+                f'Error cutting clip {clip_id} from {video_path} to {clip_path}')
 
-def create_image_grid(images: List[Image.Image], 
-    out_file: str,
-    flip: bool = False,
-    grid_size: Tuple[int, int] = (3, 3), 
-    grid_spacing: int = 10, 
-    grid_border: int = 10, 
-    grid_bg_color: Tuple[int, int, int, int] = (0, 0, 0, 0)) -> None:
+    return not has_errors
+
+
+def create_image_grid(images: List[Image.Image],
+                      flip: bool = False,
+                      grid_size: Tuple[int, int] = (3, 3),
+                      grid_spacing: int = 10,
+                      grid_border: int = 10,
+                      grid_bg_color: Tuple[int, int, int, int] = (0, 0, 0, 0)) -> None:
     """Create a grid of images from a list of image paths"""
     if not images:
         return None
-    
-    Path(out_file).parent.mkdir(exist_ok=True, parents=True)
 
     mode = 'RGB'
-    if str(out_file).endswith('.png'):
-        mode = 'RGBA'
 
-    width = grid_size[0] * images[0].width + grid_spacing * (grid_size[0] - 1) + 2 * grid_border
-    height = grid_size[1] * images[0].height + grid_spacing * (grid_size[1] - 1) + 2 * grid_border
+    width = grid_size[0] * images[0].width + \
+        grid_spacing * (grid_size[0] - 1) + 2 * grid_border
+    height = grid_size[1] * images[0].height + \
+        grid_spacing * (grid_size[1] - 1) + 2 * grid_border
     grid = Image.new(mode, (width, height), grid_bg_color)
     for i, im in enumerate(images):
         x = (i % grid_size[0]) * (images[0].width + grid_spacing) + grid_border
-        y = (i // grid_size[0]) * (images[0].height + grid_spacing) + grid_border
+        y = (i // grid_size[0]) * \
+            (images[0].height + grid_spacing) + grid_border
         if flip:
             y = height - (y + images[0].height)
         grid.paste(im, (x, y))
-    grid.save(out_file)
-    
+    return grid
 
-def create_atlas_texture(images_path: List[str],
-                         out_file: str,
+
+def create_atlas_texture(images: List[Image.Image],
                          max_width: int = 4096,
                          max_tile_size: int = 128,
                          square: bool = True,
@@ -422,38 +438,30 @@ def create_atlas_texture(images_path: List[str],
                          flip: bool = True,
                          keep_only_ids: bool = True,
                          bg_color: Tuple[int, int, int, int] = (0, 0, 0, 0)) -> Optional[Dict]:
-    
-    if not images_path:
+
+    if not images:
         return None
 
-    fim = Image.open(images_path[0])
+    fim = images[0]
     tile_size = min(max_tile_size, fim.width)
     rows = max(1, max_width // tile_size)
-    cols = math.ceil(len(images_path) / rows)
+    cols = math.ceil(len(images) / rows)
     if square:
         cols = rows
 
     # drop if too many images and square
-    images = [Image.open(im) for i, im in enumerate(images_path) if i < rows * cols]
+    # images = [images for i, im in enumerate(images) if i < rows * cols]
+    images = images[:rows * cols]
 
-    if keep_only_ids:
-        images_path = [Path(im).stem for im in images_path]
-
-    atlas = {
-        'images': images_path[:rows * cols],
-        'image_count': len(images),
-        'tile_size': (tile_size, tile_size),
-        'atlas_size': (rows * tile_size, cols * tile_size),
-        'rows': rows,
-        'cols': cols,
-    }
+    # if keep_only_ids:
+    #     images_path = [Path(im).stem for im in images_path]
 
     ims = []
     for im in images:
         if im.width > tile_size or im.height > tile_size:
-            im = PIL.ImageOps.fit(im, size=(tile_size, tile_size))
+            im = ImageOps.fit(im, size=(tile_size, tile_size))
         if not no_border:
-            im = PIL.ImageOps.crop(im, 1) # remove borders
+            im = ImageOps.crop(im, 1)  # remove borders
         ims.append(im)
 
     grid_border = 1
@@ -462,51 +470,112 @@ def create_atlas_texture(images_path: List[str],
         grid_border = 0
         grid_spacing = 0
 
-    create_image_grid(ims, out_file,
-                      flip=flip,
-                      grid_size=(rows, cols), 
-                      grid_spacing=grid_spacing, grid_border=grid_border, grid_bg_color=bg_color)
-    
+    atlas_image = create_image_grid(ims,
+                                    flip=flip,
+                                    grid_size=(rows, cols),
+                                    grid_spacing=grid_spacing, grid_border=grid_border, grid_bg_color=bg_color)
+
+    atlas = {
+        'images': images[:rows * cols],
+        'image_count': len(images),
+        'tile_size': (tile_size, tile_size),
+        'atlas_size': (rows * tile_size, cols * tile_size),
+        'rows': rows,
+        'cols': cols,
+        'atlas_image': atlas_image,
+    }
+
     return atlas
 
 
-def create_square_atlases(images_path: List[str], 
-                   out_folder: str,
-                   name: str,
-                   max_tile_size: int = 128,
-                   width: int = 4096,
-                   no_border: bool = False,
-                   flip: bool = True,
-                   keep_only_ids: bool = True,
-                   atlas_prefix: str = 'atlas',
-                   format: str = 'jpg',
-                   bg_color: Tuple[int, int, int, int] = (0, 0, 0, 0)) -> Optional[Dict]:
-    if not images_path:
+def create_square_atlases(atlas_name: str,
+                          projection_id: int,
+                          images: List[Image.Image],
+                          max_tile_size: int = 128,
+                          width: int = 4096,
+                          no_border: bool = False,
+                          flip: bool = True,
+                          keep_only_ids: bool = True,
+                          format: str = 'jpg',
+                          bg_color: Tuple[int, int, int, int] = (0, 0, 0, 0),
+                          ) -> Optional[Dict]:
+    if not images:
         return None
 
-    outpath = Path(out_folder) / name
-    outpath.mkdir(exist_ok=True, parents=True)
-    
     max_tiles_per_atlas = (width // max_tile_size) ** 2
     atlases = {}
 
-    for k, i in enumerate(range(0, len(images_path), max_tiles_per_atlas)):
-        atlas_images = images_path[i:i + max_tiles_per_atlas]
-        atlas_filename = f'{atlas_prefix}{k:03d}.{format}'
-        atlas_file = outpath / atlas_filename
-        atlas = create_atlas_texture(atlas_images, atlas_file, width, max_tile_size, 
+    for k, i in enumerate(range(0, len(images), max_tiles_per_atlas)):
+        atlas_images = images[i:i + max_tiles_per_atlas]
+        atlas = create_atlas_texture(atlas_images, width, max_tile_size,
                                      square=True, no_border=no_border, flip=flip,
                                      keep_only_ids=keep_only_ids, bg_color=bg_color)
         atlas['texture_id'] = k
-        atlas['fullpath'] = str(atlas_file)
-        atlases[str(k)] = atlas
-    
-    payload = {
-        'atlas_count': len(atlases),
-        'atlases': atlases,
-        'name': name,
-    }
+        atlases[k] = atlas
 
-    rts.utils.obj_to_json(payload, outpath / 'atlases.json')
+        # save atlas image and create db entry
+        res_image = atlas['atlas_image']
+        bytes_io = BytesIO()
+        res_image.save(bytes_io, format='PNG')
+        binary_image = bytes_io.getvalue()
+
+        get_supabase_client().storage.from_(BUCKET_NAME).upload(
+            f"{BUCKET_NAME}/atlas/{atlas_name}_{str(k)}.{format}", binary_image)
+
+        atlas = AtlasCreate(
+            projection_id=projection_id,
+            atlas_order=k,
+            atlas_path=f"{BUCKET_NAME}/atlas/{atlas_name}_{str(k)}.{format}",
+            atlas_size=atlas['atlas_size'],
+            tile_size=atlas['tile_size'],
+            tile_count=atlas['rows'] * atlas['cols'],
+            rows=atlas['rows'],
+            cols=atlas['cols'],
+            tiles_per_atlas=atlas['image_count'],
+        )
+        r = create_atlas(atlas)
+
     return atlases
 
+
+def upload_media(media: Media, bucket_name: str = BUCKET_NAME):
+    try:
+        get_supabase_client().storage.from_(bucket_name).upload(
+            media.media_path, media.original_path)
+    except StorageException as e:
+        print(e.args[0]['error'])
+        if e.args[0]['error'] != 'Duplicate':
+            raise e
+    return create_media(media)
+
+
+def upload_media_files(media_files: List[Media], bucket_name: str = BUCKET_NAME):
+    uploaded_clips = []
+
+    for mf in media_files:
+        uploaded_clips.append(upload_media(
+            media=mf,
+            bucket_name=bucket_name,
+        ))
+    return uploaded_clips
+
+
+def upload_projection(projection_name: str, version: str, library_id: int, model_name: str,
+                      model_params: Dict = {}, data: Dict = {}, dimension: int = 2, atlas_folder_path: str = "",
+                      atlas_width: int = 1024, tile_size: int = 256, atlas_count: int = 1, total_tiles: int = 8, tiles_per_atlas: int = 8):
+    projection = Projection(
+        projection_name=projection_name,
+        version=version,
+        library_id=library_id,
+        model_name=model_name,
+        model_params=model_params,
+        data=data,
+        dimension=dimension,
+        atlas_folder_path=atlas_folder_path,
+        atlas_width=atlas_width,
+        tile_size=tile_size,
+        atlas_count=atlas_count,
+        total_tiles=total_tiles,
+        tiles_per_atlas=tiles_per_atlas,
+    )
+    return create_projection(projection)

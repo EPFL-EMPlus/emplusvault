@@ -1,0 +1,9 @@
+FROM postgres:15.2
+RUN apt-get update && apt-get install -y git make gcc postgresql-server-dev-15 
+RUN mkdir /home/postgres
+RUN chown postgres:postgres /home/postgres
+RUN chown postgres:postgres /usr/lib/postgresql/ -R
+RUN chown postgres:postgres /usr/share/postgresql/15/extension/
+
+# Copy in the load-extensions script
+COPY load-extensions.sh /docker-entrypoint-initdb.d
