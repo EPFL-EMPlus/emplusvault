@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  postgres_prod9:
+    restart: always
+    build:
+      context: .
+      dockerfile: pgvector-Dockerfile
+    environment:
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    ports:
+      - "5435:5432"
+    volumes:
+      - ${PGVECTOR_VOLUME_LOCATION}:/var/lib/postgresql/data
+  minio9:
+    image: minio/minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - ${MINIO_VOLUME_LOCATION}:/data
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+    command: server --console-address ":9001" /data

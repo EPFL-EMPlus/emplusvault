@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS vector;
+
 DROP TABLE IF EXISTS map_projection_feature;
 DROP TABLE IF EXISTS atlas;
 DROP TABLE IF EXISTS projection;
