@@ -24,7 +24,7 @@ from storage3.utils import StorageException
 import rts.utils
 from rts.db_settings import BUCKET_NAME
 from rts.db.queries import create_atlas, create_media, create_projection
-from rts.storage.storage import get_supabase_client
+from rts.storage.storage import get_storage_client
 from rts.api.models import AtlasCreate, Media, Projection
 
 LOG = rts.utils.get_logger()
@@ -188,7 +188,7 @@ def trim(input_path: Union[str, Path], output_path: Union[str, Path], start_ts: 
         input_stream.video
         .trim(start=start_ts, end=end_ts)
         .setpts('PTS-STARTPTS')
-        
+
     )
     aud = (
         input_stream.audio
@@ -200,8 +200,8 @@ def trim(input_path: Union[str, Path], output_path: Union[str, Path], start_ts: 
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     joined = ffmpeg.concat(vid, aud, v=1, a=1).node
-    output = ffmpeg.output(joined[0], joined[1], str(output_path), 
-                movflags='faststart').overwrite_output()
+    output = ffmpeg.output(joined[0], joined[1], str(output_path),
+                           movflags='faststart').overwrite_output()
     # args = output.get_args()
     # print(f'Args: {args}')
     try:
@@ -519,8 +519,8 @@ def create_square_atlases(atlas_name: str,
         res_image.save(bytes_io, format='PNG')
         binary_image = bytes_io.getvalue()
 
-        get_supabase_client().storage.from_(BUCKET_NAME).upload(
-            f"{BUCKET_NAME}/atlas/{atlas_name}_{str(k)}.{format}", binary_image)
+        get_storage_client().upload(
+            BUCKET_NAME, f"{BUCKET_NAME}/atlas/{atlas_name}_{str(k)}.{format}", binary_image)
 
         atlas = AtlasCreate(
             projection_id=projection_id,
@@ -540,8 +540,8 @@ def create_square_atlases(atlas_name: str,
 
 def upload_media(media: Media, bucket_name: str = BUCKET_NAME):
     try:
-        get_supabase_client().storage.from_(bucket_name).upload(
-            media.media_path, media.original_path)
+        get_storage_client().upload(bucket_name,
+                                    media.media_path, media.original_path)
     except StorageException as e:
         print(e.args[0]['error'])
         if e.args[0]['error'] != 'Duplicate':

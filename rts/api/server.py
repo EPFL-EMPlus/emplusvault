@@ -23,7 +23,6 @@ from rts.db_settings import DATABASE_URL, DB_HOST, DB_NAME, SUPABASE_HOST, SUPAB
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
 from supabase import create_client, Client
-from rts.storage.storage import get_supabase_client
 
 
 LOG = get_logger()

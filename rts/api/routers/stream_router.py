@@ -3,7 +3,7 @@ from fastapi.responses import HTMLResponse, StreamingResponse, FileResponse
 from io import BytesIO
 from rts.api.routers.auth_router import authenticate
 from supabase import Client
-from rts.storage.storage import get_supabase_client
+from rts.storage.storage import get_storage_client
 from rts.db_settings import BUCKET_NAME
 
 BYTES_PER_RESPONSE = 300000
@@ -34,8 +34,8 @@ async def stream_video(req: Request, image_id: str, supabase: Client = Depends(a
 
     video_name = "ZB001020-L000.mp4"
 
-    r = get_supabase_client().storage.from_(BUCKET_NAME).download(
-        f"{BUCKET_NAME}/videos/{video_name}")
+    r = get_storage_client().download(
+        BUCKET_NAME, f"{BUCKET_NAME}/videos/{video_name}")
     stream_video = BytesIO(r)
 
     total_size = stream_video.getbuffer().nbytes
