@@ -12,7 +12,7 @@ pandas = "^2.0.1"
 orjson = "^3.8.12"
 openai-whisper = {git = "https://github.com/openai/whisper.git", rev = "main", markers = "sys_platform != 'darwin'"}
 torch = "^2.0.1"
-torchvision = "^0.16.0"
+torchvision = "^0.15.2"
 torchaudio = "^2.0.2"
 tqdm = "^4.65.0"
 more-itertools = "^9.1.0"
@@ -40,6 +40,9 @@ asyncpg = "^0.27.0"
 anyio = {extras = ["trio"], version = "^3.6.2"}
 # whisper-jax = {git = "https://github.com/sanchit-gandhi/whisper-jax.git"}
 # jax = {extras = ["cuda12_pip"], version = "^0.4.9"}
+boto3 = "^1.26.163"
+passlib = {extras = ["bcrypt"], version = "^1.7.4"}
+python-jose = {extras = ["cryptography"], version = "^3.3.0"}
 
 [tool.poetry.dev-dependencies]
 poethepoet = "^0.19.0"
