@@ -56,6 +56,7 @@ def get_password_hash(password):
 
 
 def get_user(username: str):
+
     user_dict = DataAccessObject().fetch_one(
         "SELECT * FROM users WHERE username = %s", (username,))
     if user_dict:
@@ -129,17 +130,3 @@ async def login_for_access_token(request: Request):
         data={"sub": user.username}, expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}
-
-
-@auth_router.get("/users/me/", response_model=User)
-async def read_users_me(
-    current_user: Annotated[User, Depends(get_current_active_user)]
-):
-    return current_user
-
-
-@auth_router.get("/users/me/items/")
-async def read_own_items(
-    current_user: Annotated[User, Depends(get_current_active_user)]
-):
-    return [{"item_id": "Foo", "owner": current_user.username}]
