@@ -17,7 +17,7 @@ services:
     image: minio/minio
     ports:
       - "9000:9000"
-      - "9001:9001"
+      - "${MINIO_UI_PORT}:9001"
     volumes:
       - ${MINIO_VOLUME_LOCATION}:/data
     environment:
