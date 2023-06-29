@@ -1,5 +1,6 @@
 from rts.db_settings import S3_ACCESS_KEY, S3_SECRET_KEY, S3_ENDPOINT
 import boto3
+import os
 
 
 def get_storage_client():
@@ -16,8 +17,8 @@ class StorageClient:
         )
 
     def upload(self, bucket_name, object_name, file_path):
-        print("UPLOADING: ", bucket_name, object_name, file_path)
-        self.client.upload_file(file_path, bucket_name, object_name)
+        normalized_object_name = os.path.normpath(object_name).replace(os.sep, '/')
+        self.client.upload_file(file_path, bucket_name, normalized_object_name)
 
     def upload_binary(self, bucket_name, object_name, binary_data):
         self.client.put_object(
