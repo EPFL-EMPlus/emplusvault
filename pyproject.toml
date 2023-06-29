@@ -64,6 +64,8 @@ atlas = "python -m rts.cli atlas"
 serve = "python -m rts.api.server"
 serve-dev = "python -m rts.api.server dev -l rts"
 serve-prod = "python -m rts.api.server prod -l rts"
+init-db = "python -m rts.cli init-db"
+new-sample-project = "python -m rts.cli new-sample-project"
 pull-cables = { "shell" = "cables -e 7DZVup -D -d public --skip-backups --no-index" }
 
 [tool.pytest.ini_options]

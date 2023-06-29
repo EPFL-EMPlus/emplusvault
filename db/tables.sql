@@ -6,6 +6,17 @@ DROP TABLE IF EXISTS projection;
 DROP TABLE IF EXISTS feature;
 DROP TABLE IF EXISTS media;
 DROP TABLE IF EXISTS library;
+DROP TABLE IF EXISTS users;
+
+CREATE TABLE IF NOT EXISTS users (
+    user_id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE,
+    email VARCHAR(100) UNIQUE,
+    full_name VARCHAR(100) NOT NULL,
+    hashed_password VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    disabled BOOLEAN NOT NULL DEFAULT FALSE
+);
 
 CREATE TABLE IF NOT EXISTS library (
     library_id SERIAL PRIMARY KEY,

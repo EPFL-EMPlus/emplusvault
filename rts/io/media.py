@@ -519,7 +519,7 @@ def create_square_atlases(atlas_name: str,
         res_image.save(bytes_io, format='PNG')
         binary_image = bytes_io.getvalue()
 
-        get_storage_client().upload(
+        get_storage_client().upload_binary(
             BUCKET_NAME, f"{BUCKET_NAME}/atlas/{atlas_name}_{str(k)}.{format}", binary_image)
 
         atlas = AtlasCreate(

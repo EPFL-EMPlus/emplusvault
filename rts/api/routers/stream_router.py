@@ -1,7 +1,7 @@
 from fastapi import (APIRouter, Depends, Request, Response, HTTPException)
 from fastapi.responses import HTMLResponse, StreamingResponse, FileResponse
 from io import BytesIO
-from rts.api.routers.auth_router import authenticate
+from rts.api.routers.auth_router import get_current_active_user
 from supabase import Client
 from rts.storage.storage import get_storage_client
 from rts.db_settings import BUCKET_NAME
@@ -28,7 +28,7 @@ def get_clip_id_from_image(image_id: str) -> str:
 
 
 @stream_router.get('/stream/{image_id}')
-async def stream_video(req: Request, image_id: str, supabase: Client = Depends(authenticate)):
+async def stream_video(req: Request, image_id: str, supabase: Client = Depends(get_current_active_user)):
 
     # Get bucket ID from the database
 

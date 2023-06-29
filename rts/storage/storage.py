@@ -1,5 +1,5 @@
 from rts.db_settings import S3_ACCESS_KEY, S3_SECRET_KEY, S3_ENDPOINT
-from minio import Minio
+import boto3
 
 
 def get_storage_client():
@@ -8,18 +8,22 @@ def get_storage_client():
 
 class StorageClient:
     def __init__(self):
-        self.client = Minio(
-            S3_ENDPOINT,
-            access_key=S3_ACCESS_KEY,
-            secret_key=S3_SECRET_KEY,
-            secure=False
+        self.client = boto3.client(
+            's3',
+            endpoint_url=S3_ENDPOINT,
+            aws_access_key_id=S3_ACCESS_KEY,
+            aws_secret_access_key=S3_SECRET_KEY,
         )
 
     def upload(self, bucket_name, object_name, file_path):
-        self.client.fput_object(bucket_name, object_name, file_path)
+        print("UPLOADING: ", bucket_name, object_name, file_path)
+        self.client.upload_file(file_path, bucket_name, object_name)
+
+    def upload_binary(self, bucket_name, object_name, binary_data):
+        self.client.put_object(
+            Bucket=bucket_name, Key=object_name, Body=binary_data)
 
     def download(self, bucket_name, object_name):
-        return self.client.get_object(bucket_name, object_name)
-
-    def list_objects(self, bucket_name, prefix=None):
-        return self.client.list_objects(bucket_name, prefix=prefix)
+        response = self.client.get_object(
+            Bucket=bucket_name, Key=object_name)
+        return response['Body'].read()
