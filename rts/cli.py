@@ -10,8 +10,8 @@ import rts.pipeline
 from rts.db.dao import DataAccessObject
 from rts.db_settings import DATABASE_URL, DB_HOST, DB_NAME, DB_PORT
 from rts.db.utils import create_database
-from rts.db.queries import create_library
-from rts.api.models import LibraryCreate
+from rts.db.queries import create_library, create_user
+from rts.api.models import LibraryCreate, User
 
 
 LOCAL_RTS_DATA = "/media/data/rts/"
@@ -141,6 +141,25 @@ def new_sample_project():
         click.echo('New sample project has been successfully created.')
     else:
         click.echo('Project creation has been canceled.')
+
+
+@cli.command()
+@click.option('--user-name', type=str, default='rts', help='User name')
+@click.option('--full-name', type=str, default='rts', help='User full name')
+@click.option('--password', type=str, default='rts', help='User password')
+@click.option('--email', type=str, default='rts', help='User email')
+def create_user(user_name: str, full_name: str, password: str, email: str):
+    click.echo(f"Connecting to {DB_HOST}:{DB_PORT}/{DB_NAME}")
+    DataAccessObject().connect(DATABASE_URL)
+
+    from rts.db.queries import create_user
+
+    create_user(User(
+        user_name=user_name,
+        full_name=full_name,
+        password=password,
+        email=email
+    ))
 
 
 if __name__ == '__main__':
