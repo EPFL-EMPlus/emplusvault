@@ -538,12 +538,12 @@ def create_square_atlases(atlas_name: str,
     return atlases
 
 
-def upload_media(media: Media, bucket_name: str = BUCKET_NAME):
+def upload_media(media: Media, bucket_name: str = BUCKET_NAME) -> Dict:
     try:
         get_storage_client().upload(bucket_name,
                                     media.media_path, media.original_path)
     except StorageException as e:
-        print(e.args[0]['error'])
+        LOG.error(e.args[0]['error'])
         if e.args[0]['error'] != 'Duplicate':
             raise e
     return create_media(media)
