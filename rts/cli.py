@@ -8,7 +8,7 @@ import rts.features.audio
 import rts.features.text
 import rts.pipeline
 from rts.db.dao import DataAccessObject
-from rts.db_settings import DEV_DATABASE_URL, DEV_DB_HOST, DEV_DB_NAME, DEV_DB_PORT
+from rts.db_settings import DATABASE_URL, DB_HOST, DB_NAME, DB_PORT
 from rts.db.utils import create_database
 from rts.db.queries import create_library
 from rts.api.models import LibraryCreate
@@ -53,7 +53,8 @@ def pipeline(min_seconds: int, num_images: int,
     # df = get_aivectors_df()
 
     click.echo('Processing archive')
-    click.echo(f'Compute scenes: {compute_scenes}, compute transcript: {compute_transcript}')
+    click.echo(
+        f'Compute scenes: {compute_scenes}, compute transcript: {compute_transcript}')
     rts.pipeline.simple_process_archive(df, LOCAL_VIDEOS, min_seconds,
                                         num_images, compute_scenes, compute_transcript, force_media, force_scene, force_transcript)
 
@@ -82,8 +83,8 @@ def location() -> None:
 
 @cli.command()
 def init_db():
-    click.echo(f"Connecting to {DEV_DB_HOST}:{DEV_DB_PORT}/{DEV_DB_NAME}")
-    DataAccessObject().connect(DEV_DATABASE_URL)
+    click.echo(f"Connecting to {DB_HOST}:{DB_PORT}/{DB_NAME}")
+    DataAccessObject().connect(DATABASE_URL)
 
     confirm = click.prompt(
         'Are you sure you want to initialize the database? This will overwrite the current database [yes/no]')
@@ -100,8 +101,8 @@ def init_db():
 @click.option('--version', type=str, default='0.0.1', help='Library version')
 @click.option('--data', type=str, default='{}', help='Library data')
 def new_library(library_name: str, version: str, data: str):
-    click.echo(f"Connecting to {DEV_DB_HOST}:{DEV_DB_PORT}/{DEV_DB_NAME}")
-    DataAccessObject().connect(DEV_DATABASE_URL)
+    click.echo(f"Connecting to {DB_HOST}:{DB_PORT}/{DB_NAME}")
+    DataAccessObject().connect(DATABASE_URL)
 
     create_library(LibraryCreate(
         library_name=library_name,
@@ -116,14 +117,14 @@ def ingest_data():
 
     from rts.io.media import upload_clips, upload_images, upload_projection
 
-    click.echo(f"Connecting to {DEV_DB_HOST}:{DEV_DB_PORT}/{DEV_DB_NAME}")
-    DataAccessObject().connect(DEV_DATABASE_URL)
+    click.echo(f"Connecting to {DB_HOST}:{DB_PORT}/{DB_NAME}")
+    DataAccessObject().connect(DATABASE_URL)
 
 
 @cli.command()
 def new_sample_project():
-    click.echo(f"Connecting to {DEV_DB_HOST}:{DEV_DB_PORT}/{DEV_DB_NAME}")
-    DataAccessObject().connect(DEV_DATABASE_URL)
+    click.echo(f"Connecting to {DB_HOST}:{DB_PORT}/{DB_NAME}")
+    DataAccessObject().connect(DATABASE_URL)
 
     confirm = click.prompt(
         'Are you sure you want to create a new sample project on the database? This will add data to the database database [yes/no]')
