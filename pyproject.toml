@@ -33,7 +33,6 @@ llvmlite = "^0.39.1"
 numba = "^0.56.4"
 psycopg2-binary = "^2.9.6"
 python-dotenv = "^1.0.0"
-supabase = "^1.0.3"
 databases = {extras = ["postgresql"], version = "^0.7.0"}
 alembic = "^1.10.4"
 asyncpg = "^0.27.0"
