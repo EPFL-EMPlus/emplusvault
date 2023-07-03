@@ -19,10 +19,9 @@ from rts.api.routers.feature_router import feature_router
 from rts.api.routers.atlas_router import atlas_router
 from rts.api.routers.stream_router import stream_router
 from rts.api.routers.auth_router import auth_router
-from rts.db_settings import DATABASE_URL, DB_HOST, DB_NAME, SUPABASE_HOST, SUPABASE_KEY
+from rts.db_settings import DATABASE_URL
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
-from supabase import create_client, Client
 
 
 LOG = get_logger()

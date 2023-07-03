@@ -8,9 +8,9 @@ import rts.features.audio
 import rts.features.text
 import rts.pipeline
 from rts.db.dao import DataAccessObject
-from rts.db_settings import DATABASE_URL, DB_HOST, DB_NAME, DB_PORT
+from rts.db_settings import DATABASE_URL, DB_HOST, DB_NAME, DB_PORT, SUPERUSER_CLI_KEY
 from rts.db.utils import create_database
-from rts.db.queries import create_library, create_user
+from rts.db.queries import create_library, create_new_user
 from rts.api.models import LibraryCreate, User
 
 
@@ -87,8 +87,8 @@ def init_db():
     DataAccessObject().connect(DATABASE_URL)
 
     confirm = click.prompt(
-        'Are you sure you want to initialize the database? This will overwrite the current database [yes/no]')
-    if confirm.lower() == 'yes':
+        'Are you sure you want to initialize the database? This will overwrite the current database [SUPERUSER_CLI_KEY]')
+    if confirm.lower() == SUPERUSER_CLI_KEY:
         click.echo('Initializing database...')
         create_database("db/tables.sql")
         click.echo('Database has been successfully initialized.')
@@ -144,18 +144,18 @@ def new_sample_project():
 
 
 @cli.command()
-@click.option('--user-name', type=str, default='rts', help='User name')
+@click.option('--username', type=str, default='rts', help='User name')
 @click.option('--full-name', type=str, default='rts', help='User full name')
-@click.option('--password', type=str, default='rts', help='User password')
 @click.option('--email', type=str, default='rts', help='User email')
-def create_user(user_name: str, full_name: str, password: str, email: str):
+def create_user(username: str, full_name: str, email: str):
     click.echo(f"Connecting to {DB_HOST}:{DB_PORT}/{DB_NAME}")
     DataAccessObject().connect(DATABASE_URL)
 
-    from rts.db.queries import create_user
+    password = click.prompt('Password', hide_input=True,
+                            confirmation_prompt=True)
 
-    create_user(User(
-        user_name=user_name,
+    create_new_user(User(
+        username=username,
         full_name=full_name,
         password=password,
         email=email

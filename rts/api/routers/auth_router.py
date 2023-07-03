@@ -37,7 +37,7 @@ class User(BaseModel):
 
 
 class UserInDB(User):
-    hashed_password: str
+    password: str
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -47,8 +47,8 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="gettoken")
 # app = FastAPI()
 
 
-def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
+def verify_password(plain_password, password):
+    return pwd_context.verify(plain_password, password)
 
 
 def get_password_hash(password):
@@ -67,7 +67,7 @@ def authenticate_user(username: str, password: str):
     user = get_user(username)
     if not user:
         return False
-    if not verify_password(password, user.hashed_password):
+    if not verify_password(password, user.password):
         return False
     return user
 

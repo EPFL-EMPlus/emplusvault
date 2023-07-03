@@ -19,7 +19,6 @@ import scenedetect
 from PIL import Image, ImageOps
 from scenedetect import open_video, SceneManager, ContentDetector
 from scenedetect.frame_timecode import FrameTimecode
-from storage3.utils import StorageException
 
 import rts.utils
 from rts.db_settings import BUCKET_NAME
@@ -539,13 +538,9 @@ def create_square_atlases(atlas_name: str,
 
 
 def upload_media(media: Media, bucket_name: str = BUCKET_NAME) -> Dict:
-    try:
-        get_storage_client().upload(bucket_name,
-                                    media.media_path, media.original_path)
-    except StorageException as e:
-        LOG.error(e.args[0]['error'])
-        if e.args[0]['error'] != 'Duplicate':
-            raise e
+    get_storage_client().upload(bucket_name,
+                                media.media_path, media.original_path)
+
     return create_media(media)
 
 

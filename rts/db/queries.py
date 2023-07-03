@@ -1,9 +1,13 @@
 from sqlalchemy.sql import text
+from sqlalchemy.exc import IntegrityError
 from rts.db.dao import DataAccessObject
 from typing import Optional
 from rts.api.models import LibraryBase, Projection, Media, Feature, MapProjectionFeatureCreate, AtlasCreate, User
 from rts.api.routers.auth_router import get_password_hash
 import json
+import rts.utils
+
+LOG = rts.utils.get_logger()
 
 
 def get_library_id_from_name(library_name: str) -> Optional[int]:
@@ -332,16 +336,26 @@ def create_atlas(atlas: AtlasCreate):
     return {**atlas_dict, "atlas_id": result.fetchone()[0]}
 
 
-def create_user(user: User):
+def create_new_user(user: User) -> dict:
     query = text(
         """
         INSERT INTO 
-            users (username, full_name, email, hashed_password) 
-            VALUES (:username, :full_name, :email, :hashed_password)
+            users (username, full_name, email, password) 
+            VALUES (:username, :full_name, :email, :password)
+            RETURNING user_id
     """)
 
     user_dict = user.dict()
-    user_dict["hashed_password"] = get_password_hash(
-        user_dict["hashed_password"])
-    result = DataAccessObject().execute_query(query, user_dict)
+    user_dict["password"] = get_password_hash(
+        user_dict["password"])
+
+    try:
+        result = DataAccessObject().execute_query(query, user_dict)
+    except IntegrityError as e:
+        if 'unique constraint' in str(e.orig).lower():
+            LOG.error(
+                'Username or email already exists. Please choose a different username.')
+        else:
+            LOG.error('An error occurred while inserting data into the database.')
+        return None
     return {**user_dict, "user_id": result.fetchone()[0]}

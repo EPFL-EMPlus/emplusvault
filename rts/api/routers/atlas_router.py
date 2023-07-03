@@ -10,9 +10,7 @@ from rts.db.queries import get_atlas, create_atlas, get_atlases
 from rts.db_settings import BUCKET_NAME
 from rts.storage.storage import get_storage_client
 from rts.api.models import AtlasCreate
-from storage3.utils import StorageException
-from rts.api.routers.auth_router import get_current_active_user
-from supabase import Client
+from rts.api.routers.auth_router import get_current_active_user, User
 
 atlas_router = APIRouter()
 
@@ -29,7 +27,7 @@ def _get_atlas(atlas_name: str, settings: Settings) -> Optional[str]:
 
 
 @atlas_router.get("/images/{image_id}/{zoom}")
-def get_image(req: Request, image_id: str, zoom: int, supabase: Client = Depends(get_current_active_user)):
+def get_image(req: Request, image_id: str, zoom: int, current_user: User = Depends(get_current_active_user)):
 
     sizes = {
         0: '32px',
@@ -50,7 +48,7 @@ def get_image(req: Request, image_id: str, zoom: int, supabase: Client = Depends
 
 
 @atlas_router.get("/atlases/{atlas_id}")
-async def get_atlas_by_id(atlas_id: int, supabase: Client = Depends(get_current_active_user)):
+async def get_atlas_by_id(atlas_id: int, current_user: User = Depends(get_current_active_user)):
     result = get_atlas(atlas_id)
 
     if result is None:
@@ -59,7 +57,7 @@ async def get_atlas_by_id(atlas_id: int, supabase: Client = Depends(get_current_
 
 
 @atlas_router.get("/atlases/{atlas_id}/texture/{texture_id}")
-async def get_atlas_image(atlas_id: int, texture_id: int, supabase: Client = Depends(get_current_active_user)):
+async def get_atlas_image(atlas_id: int, texture_id: int, current_user: User = Depends(get_current_active_user)):
 
     atlas_entry = get_atlas(atlas_id)
     if atlas_entry is None:
@@ -73,10 +71,10 @@ async def get_atlas_image(atlas_id: int, texture_id: int, supabase: Client = Dep
 
 
 @atlas_router.post("/atlas/")
-async def create(atlas: AtlasCreate, supabase: Client = Depends(get_current_active_user)):
+async def create(atlas: AtlasCreate, current_user: User = Depends(get_current_active_user)):
     return create_atlas(atlas)
 
 
 @atlas_router.get("/atlases/")
-async def get_all_atlases(supabase: Client = Depends(get_current_active_user)):
+async def get_all_atlases(current_user: User = Depends(get_current_active_user)):
     return get_atlases()
