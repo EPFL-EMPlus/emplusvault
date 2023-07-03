@@ -24,7 +24,7 @@ import rts.utils
 from rts.db_settings import BUCKET_NAME
 from rts.db.queries import create_atlas, create_media, create_projection
 from rts.storage.storage import get_storage_client
-from rts.api.models import AtlasCreate, Media, Projection
+from rts.api.models import Atlas, Media, Projection
 
 LOG = rts.utils.get_logger()
 
@@ -521,7 +521,7 @@ def create_square_atlases(atlas_name: str,
         get_storage_client().upload_binary(
             BUCKET_NAME, f"{BUCKET_NAME}/atlas/{atlas_name}_{str(k)}.{format}", binary_image)
 
-        atlas = AtlasCreate(
+        atlas = Atlas(
             projection_id=projection_id,
             atlas_order=k,
             atlas_path=f"{BUCKET_NAME}/atlas/{atlas_name}_{str(k)}.{format}",

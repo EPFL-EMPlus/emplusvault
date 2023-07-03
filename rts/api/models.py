@@ -106,10 +106,6 @@ class AtlasBase(BaseModel):
     tiles_per_atlas: int
 
 
-class AtlasCreate(AtlasBase):
-    pass
-
-
 class Atlas(AtlasBase):
     atlas_id: int
 

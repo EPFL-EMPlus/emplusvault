@@ -2,7 +2,7 @@ from sqlalchemy.sql import text
 from sqlalchemy.exc import IntegrityError
 from rts.db.dao import DataAccessObject
 from typing import Optional
-from rts.api.models import LibraryBase, Projection, Media, Feature, MapProjectionFeatureCreate, AtlasCreate, User
+from rts.api.models import LibraryBase, Projection, Media, Feature, MapProjectionFeatureCreate, Atlas, User
 from rts.api.routers.auth_router import get_password_hash
 import json
 import rts.utils
@@ -324,7 +324,7 @@ def get_atlases():
     return DataAccessObject().fetch_all(query)
 
 
-def create_atlas(atlas: AtlasCreate):
+def create_atlas(atlas: Atlas):
 
     query = text("""
         INSERT INTO atlas (projection_id, atlas_order, atlas_path, atlas_size, tile_size, tile_count, rows, cols, tiles_per_atlas)

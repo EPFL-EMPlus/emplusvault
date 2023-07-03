@@ -9,7 +9,7 @@ from rts.utils import obj_from_json
 from rts.db.queries import get_atlas, create_atlas, get_atlases
 from rts.db_settings import BUCKET_NAME
 from rts.storage.storage import get_storage_client
-from rts.api.models import AtlasCreate
+from rts.api.models import Atlas
 from rts.api.routers.auth_router import get_current_active_user, User
 
 atlas_router = APIRouter()
@@ -39,11 +39,9 @@ def get_image(req: Request, image_id: str, zoom: int, current_user: User = Depen
     }
     size = sizes.get(zoom, 'original')
 
-    try:
-        image = get_storage_client().download(
-            BUCKET_NAME, f'rts/images/{size}/{image_id}.jpg')
-    except StorageException as e:
-        raise HTTPException(status_code=404, detail="Atlas not found")
+    image = get_storage_client().download(
+        BUCKET_NAME, f'rts/images/{size}/{image_id}.jpg')
+
     return Response(content=image, media_type="image/jpeg")
 
 
@@ -62,16 +60,15 @@ async def get_atlas_image(atlas_id: int, texture_id: int, current_user: User = D
     atlas_entry = get_atlas(atlas_id)
     if atlas_entry is None:
         raise HTTPException(status_code=404, detail="Atlas not found")
-    try:
-        atlas = get_storage_client().download(
-            BUCKET_NAME, atlas_entry['atlas_path'])
-    except StorageException as e:
-        raise HTTPException(status_code=404, detail="Atlas not found")
+
+    atlas = get_storage_client().download(
+        BUCKET_NAME, atlas_entry['atlas_path'])
+
     return Response(content=atlas, media_type="image/png")
 
 
 @atlas_router.post("/atlas/")
-async def create(atlas: AtlasCreate, current_user: User = Depends(get_current_active_user)):
+async def create(atlas: Atlas, current_user: User = Depends(get_current_active_user)):
     return create_atlas(atlas)
 
 
