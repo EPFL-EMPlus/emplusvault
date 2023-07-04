@@ -63,18 +63,17 @@ uvicorn server:app --host 0.0.0.0 --port 8763 --reload
 
 ## Run infrastructure locally
 
-Follow the instructions from supabase self-hosting with docker: https://supabase.com/docs/guides/self-hosting/docker
 The settings in the .env file should be changed before the first docker compose up command.
+There are two .env files. One for the docker containers and one for the cli and web server. 
 
 ```
-# Get the code
-git clone --depth 1 https://github.com/supabase/supabase
-
-# Go to the docker folder
-cd supabase/docker
+cd docker
 
 # Copy the fake env vars
 cp .env.example .env
+
+# Edit the environment file
+vi .env
 
 # Start
 docker compose up

@@ -18,7 +18,7 @@ def get_library_id_from_name(library_name: str) -> Optional[int]:
     return library_id['library_id'] if library_id else None
 
 
-def create_library(library: LibraryBase):
+def create_library(library: LibraryBase) -> dict:
     query = """
         INSERT INTO library (library_name, version, data)
         VALUES (%s, %s, %s)
@@ -30,7 +30,7 @@ def create_library(library: LibraryBase):
     return {**library.dict(), "library_id": library_id.fetchone()[0]}
 
 
-def create_projection(projection: Projection):
+def create_projection(projection: Projection) -> dict:
     projection_data = projection.dict()
     projection_data['model_params'] = json.dumps(
         projection_data['model_params'])
@@ -48,19 +48,19 @@ def create_projection(projection: Projection):
     return {**projection.dict(), "projection_id": projection_id.fetchone()[0]}
 
 
-def get_projection_by_id(projection_id: int):
+def get_projection_by_id(projection_id: int) -> Optional[dict]:
     query = text(
         "SELECT * FROM projection WHERE projection_id = :projection_id")
     return DataAccessObject().fetch_one(
         query, {"projection_id": projection_id})
 
 
-def get_all_projections():
+def get_all_projections() -> list:
     query = text("SELECT * FROM projection")
     return DataAccessObject().fetch_all(query)
 
 
-def update_projection(projection_id: int, projection: Projection):
+def update_projection(projection_id: int, projection: Projection) -> None:
     projection_data = projection.dict()
     projection_data['model_params'] = json.dumps(
         projection_data['model_params'])
@@ -74,7 +74,7 @@ def update_projection(projection_id: int, projection: Projection):
     DataAccessObject().execute_query(query, projection_data)
 
 
-def delete_projection(projection_id: int):
+def delete_projection(projection_id: int) -> None:
     query = text("DELETE FROM projection WHERE projection_id = :projection_id")
     DataAccessObject().execute_query(query, {"projection_id": projection_id})
 
@@ -84,8 +84,8 @@ def create_media(media: Media) -> dict:
     media_data['metadata'] = json.dumps(media_data['metadata'])
 
     query = text("""
-        INSERT INTO media (media_path, original_path, original_id, media_type, file_id, sub_type, size, metadata, library_id, hash, parent_id, start_ts, end_ts, start_frame, end_frame, frame_rate)
-        VALUES (:media_path, :original_path, :original_id, :media_type, :file_id, :sub_type, :size, :metadata, :library_id, :hash, :parent_id, :start_ts, :end_ts, :start_frame, :end_frame, :frame_rate)
+        INSERT INTO media (media_id, media_path, original_path, original_id, media_type, sub_type, size, metadata, library_id, hash, parent_id, start_ts, end_ts, start_frame, end_frame, frame_rate)
+        VALUES (:media_id, :media_path, :original_path, :original_id, :media_type, :sub_type, :size, :metadata, :library_id, :hash, :parent_id, :start_ts, :end_ts, :start_frame, :end_frame, :frame_rate)
         RETURNING media_id
     """)
     media_id = DataAccessObject().execute_query(query, media_data)
@@ -108,9 +108,9 @@ def read_media_by_library_id(library_id: int, media_type: str = None, sub_type: 
     return DataAccessObject().fetch_all(query, {"library_id": library_id, "media_type": media_type, "sub_type": sub_type})
 
 
-def read_media_by_source_file_id(file_id: str) -> dict:
-    query = text("SELECT * FROM media WHERE file_id = :file_id")
-    return DataAccessObject().fetch_one(query, {"file_id": file_id})
+def read_media_by_source_media_id(media_id: str) -> dict:
+    query = text("SELECT * FROM media WHERE media_id = :media_id")
+    return DataAccessObject().fetch_one(query, {"media_id": media_id})
 
 
 def read_media() -> dict:
@@ -135,7 +135,7 @@ def read_media_by_feature_data(key: str, value: str) -> dict:
     return DataAccessObject().fetch_all(query, {"key": key, "value": f"%{value}%"})
 
 
-def update_media(media_id: int, media: Media):
+def update_media(media_id: int, media: Media) -> dict:
     media_data = media.dict()
     media_data['metadata'] = json.dumps(media_data['metadata'])
 
@@ -149,13 +149,13 @@ def update_media(media_id: int, media: Media):
     return {**media_data, "media_id": media_id}
 
 
-def delete_media(media_id: int):
+def delete_media(media_id: int) -> dict:
     query = text("DELETE FROM media WHERE media_id = :media_id")
     DataAccessObject().execute_query(query, {"media_id": media_id})
     return {"status": "Media deleted"}
 
 
-def create_feature(feature: Feature):
+def create_feature(feature: Feature) -> dict:
     query = text("""
         INSERT INTO feature (feature_type, version, model_name, model_params, data, 
         embedding_size, embedding_1024, embedding_1536, embedding_2048, media_id)
@@ -170,19 +170,19 @@ def create_feature(feature: Feature):
     return {**feature_dict, "feature_id": result.fetchone()[0]}
 
 
-def read_feature_by_id(feature_id: int):
+def read_feature_by_id(feature_id: int) -> dict:
     query = text("SELECT * FROM feature WHERE feature_id = :feature_id")
     result = DataAccessObject().fetch_one(query, {"feature_id": feature_id})
     return result
 
 
-def get_features():
+def get_features() -> list:
     query = text("SELECT * FROM feature")
     result = DataAccessObject().fetch_all(query)
     return result
 
 
-def update_feature(feature_id: int, feature: Feature):
+def update_feature(feature_id: int, feature: Feature) -> dict:
     feature_dict = feature.dict()
     feature_dict["model_params"] = json.dumps(feature_dict["model_params"])
     feature_dict["data"] = json.dumps(feature_dict["data"])
@@ -210,7 +210,7 @@ def delete_feature(feature_id: int):
     return result
 
 
-def get_nearest_neighbors(media_id: int, feature_type: str, model_name: str, version: str, k: int = 10):
+def get_nearest_neighbors(media_id: int, feature_type: str, model_name: str, version: str, k: int = 10) -> dict:
     _query = """
         WITH target_embedding AS (
         SELECT

@@ -63,19 +63,18 @@ CREATE TABLE IF NOT EXISTS atlas (
 );
 
 CREATE TABLE IF NOT EXISTS media (
-    media_id SERIAL PRIMARY KEY,
+    media_id VARCHAR(50) PRIMARY KEY,
     media_path VARCHAR(500) UNIQUE,
     original_path VARCHAR(500) NOT NULL,
-    original_id VARCHAR(50) NOT NULL,
+    original_id VARCHAR(100) NOT NULL,
     created_at TIMESTAMP DEFAULT NOW(),
     media_type VARCHAR(50) NOT NULL,
-    file_id VARCHAR(50) NOT NULL,
     sub_type VARCHAR(50) NOT NULL,
     size INTEGER NOT NULL,
     metadata JSONB NOT NULL,
     library_id INTEGER NOT NULL,
     hash VARCHAR(50) UNIQUE,
-    parent_id INTEGER,
+    parent_id VARCHAR(50),
     start_ts FLOAT,
     end_ts FLOAT,
     start_frame INTEGER,
@@ -102,7 +101,7 @@ CREATE TABLE IF NOT EXISTS feature (
     embedding_1536 vector (1536),
     embedding_2048 vector (2048),
 
-    media_id INTEGER,
+    media_id VARCHAR(50),
 
     CONSTRAINT FK_feature_media_id FOREIGN KEY (media_id) 
         REFERENCES media (media_id)
@@ -113,7 +112,7 @@ CREATE TABLE IF NOT EXISTS map_projection_feature (
     map_projection_feature_id SERIAL PRIMARY KEY,
     projection_id INTEGER NOT NULL,
     feature_id INTEGER,
-    media_id INTEGER,
+    media_id VARCHAR(50),
     atlas_order INTEGER NOT NULL,
     coordinates GEOMETRY(PointZ) NOT NULL,
     index_in_atlas INTEGER NOT NULL,

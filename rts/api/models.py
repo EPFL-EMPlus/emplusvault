@@ -37,19 +37,19 @@ class Projection(BaseModel):
 
 
 class Media(BaseModel):
-    # media_id: Optional[int] = Field(None, alias="media_id")
+    media_id: str = Field(..., alias="media_id", max_length=50)
     media_path: str = Field(..., alias="media_path", max_length=500)
     original_path: str = Field(..., alias="original_path", max_length=500)
     original_id: str = Field(..., alias="original_id")
     created_at: Optional[datetime] = Field(None, alias="created_at")
     media_type: str = Field(..., alias="media_type", max_length=50)
-    file_id: str = Field(..., alias="file_id", max_length=50)
+    # file_id: str = Field(..., alias="file_id", max_length=50)
     sub_type: str = Field(..., alias="sub_type", max_length=50)
     size: int = Field(..., alias="size")
     metadata: Dict = Field(..., alias="metadata")
     library_id: int = Field(..., alias="library_id")
     hash: Optional[str] = Field(None, alias="hash", max_length=50)
-    parent_id: int = Field(None, alias="parent_id")
+    parent_id: str = Field(None, alias="parent_id")
     start_ts: Optional[float] = Field(None, alias="start_ts")
     end_ts: Optional[float] = Field(None, alias="end_ts")
     start_frame: Optional[int] = Field(None, alias="start_frame")
@@ -94,7 +94,7 @@ class MapProjectionFeature(MapProjectionFeatureBase):
         orm_mode = True
 
 
-class AtlasBase(BaseModel):
+class Atlas(BaseModel):
     projection_id: int
     atlas_order: int
     atlas_path: str
@@ -104,13 +104,6 @@ class AtlasBase(BaseModel):
     rows: int
     cols: int
     tiles_per_atlas: int
-
-
-class Atlas(AtlasBase):
-    atlas_id: int
-
-    class Config:
-        orm_mode = True
 
 
 class User(BaseModel):

@@ -519,12 +519,12 @@ def create_square_atlases(atlas_name: str,
         binary_image = bytes_io.getvalue()
 
         get_storage_client().upload_binary(
-            BUCKET_NAME, f"{BUCKET_NAME}/atlas/{atlas_name}_{str(k)}.{format}", binary_image)
+            BUCKET_NAME, f"atlas/{atlas_name}_{str(k)}.{format}", binary_image)
 
         atlas = Atlas(
             projection_id=projection_id,
             atlas_order=k,
-            atlas_path=f"{BUCKET_NAME}/atlas/{atlas_name}_{str(k)}.{format}",
+            atlas_path=f"atlas/{atlas_name}_{str(k)}.{format}",
             atlas_size=atlas['atlas_size'],
             tile_size=atlas['tile_size'],
             tile_count=atlas['rows'] * atlas['cols'],
@@ -544,7 +544,7 @@ def upload_media(media: Media, bucket_name: str = BUCKET_NAME) -> Dict:
     return create_media(media)
 
 
-def upload_media_files(media_files: List[Media], bucket_name: str = BUCKET_NAME):
+def upload_media_files(media_files: List[Media], bucket_name: str = BUCKET_NAME) -> List[Dict]:
     uploaded_clips = []
 
     for mf in media_files:
@@ -557,7 +557,7 @@ def upload_media_files(media_files: List[Media], bucket_name: str = BUCKET_NAME)
 
 def upload_projection(projection_name: str, version: str, library_id: int, model_name: str,
                       model_params: Dict = {}, data: Dict = {}, dimension: int = 2, atlas_folder_path: str = "",
-                      atlas_width: int = 1024, tile_size: int = 256, atlas_count: int = 1, total_tiles: int = 8, tiles_per_atlas: int = 8):
+                      atlas_width: int = 1024, tile_size: int = 256, atlas_count: int = 1, total_tiles: int = 8, tiles_per_atlas: int = 8) -> Dict:
     projection = Projection(
         projection_name=projection_name,
         version=version,
