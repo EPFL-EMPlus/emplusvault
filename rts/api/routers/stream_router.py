@@ -19,18 +19,10 @@ def chunk_generator_from_stream(stream, chunk_size: int, start: int, size: int):
         bytes_read += bytes_to_read
 
 
-def get_clip_id_from_image(image_id: str) -> str:
-    toks = image_id.split('-')
-    mediaId = toks[0]
-    clip_number = f'{toks[1]}'
-    clip_id = f'{mediaId}-{clip_number}'
-    return clip_id
-
-
-@stream_router.get('/stream/{image_id}')
+@stream_router.get('/stream/{media_id}')
 async def stream_video(req: Request, media_id: str, current_user: User = Depends(get_current_active_user)):
 
-    log_access(current_user.user_id, media_id)
+    log_access(current_user, media_id)
     media = read_media_by_id(media_id)
 
     r = get_storage_client().download(

@@ -365,7 +365,7 @@ def log_access(current_user: User, media_id: str) -> bool:
     query = text(
         """
         INSERT INTO 
-            access_log (user_id, media_id) 
+            access_logs (user_id, media_id) 
             VALUES (:user_id, :media_id)
     """)
     DataAccessObject().execute_query(
