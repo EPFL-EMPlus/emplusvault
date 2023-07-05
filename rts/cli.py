@@ -11,7 +11,8 @@ from rts.db.dao import DataAccessObject
 from rts.db_settings import DATABASE_URL, DB_HOST, DB_NAME, DB_PORT, SUPERUSER_CLI_KEY
 from rts.db.utils import create_database
 from rts.db.queries import create_library, create_new_user
-from rts.api.models import LibraryCreate, User
+from rts.api.models import LibraryCreate
+from rts.api.routers.auth_router import UserInDB as User
 
 
 LOCAL_RTS_DATA = "/media/data/rts/"

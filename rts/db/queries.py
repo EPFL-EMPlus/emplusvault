@@ -2,8 +2,8 @@ from sqlalchemy.sql import text
 from sqlalchemy.exc import IntegrityError
 from rts.db.dao import DataAccessObject
 from typing import Optional
-from rts.api.models import LibraryBase, Projection, Media, Feature, MapProjectionFeatureCreate, Atlas, User
-from rts.api.routers.auth_router import get_password_hash
+from rts.api.models import LibraryBase, Projection, Media, Feature, MapProjectionFeatureCreate, Atlas, AccessLog
+from rts.api.routers.auth_router import get_password_hash, UserInDB as User
 import json
 import rts.utils
 
@@ -359,3 +359,15 @@ def create_new_user(user: User) -> dict:
             LOG.error('An error occurred while inserting data into the database.')
         return None
     return {**user_dict, "user_id": result.fetchone()[0]}
+
+
+def log_access(current_user: User, media_id: str) -> bool:
+    query = text(
+        """
+        INSERT INTO 
+            access_log (user_id, media_id) 
+            VALUES (:user_id, :media_id)
+    """)
+    DataAccessObject().execute_query(
+        query, {"user_id": current_user.user_id, "media_id": media_id})
+    return True

@@ -3,7 +3,7 @@ from passlib.context import CryptContext
 from jose import JWTError, jwt
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi import Depends, FastAPI, HTTPException, status
-from typing import Annotated, Union
+from typing import Annotated, Union, Optional
 from datetime import datetime, timedelta
 from fastapi import FastAPI, HTTPException, Depends, Form, APIRouter
 
@@ -30,6 +30,7 @@ class TokenData(BaseModel):
 
 
 class User(BaseModel):
+    user_id: Optional[int]
     username: str
     email: Union[str, None] = None
     full_name: Union[str, None] = None

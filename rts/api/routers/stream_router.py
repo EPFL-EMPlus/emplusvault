@@ -2,6 +2,7 @@ from fastapi import (APIRouter, Depends, Request, Response, HTTPException)
 from fastapi.responses import HTMLResponse, StreamingResponse, FileResponse
 from io import BytesIO
 from rts.api.routers.auth_router import get_current_active_user, User
+from rts.db.queries import log_access, read_media_by_id
 from rts.storage.storage import get_storage_client
 from rts.db_settings import BUCKET_NAME
 
@@ -27,14 +28,13 @@ def get_clip_id_from_image(image_id: str) -> str:
 
 
 @stream_router.get('/stream/{image_id}')
-async def stream_video(req: Request, image_id: str, current_user: User = Depends(get_current_active_user)):
+async def stream_video(req: Request, media_id: str, current_user: User = Depends(get_current_active_user)):
 
-    # Get bucket ID from the database
-
-    video_name = "ZB001020-L000.mp4"
+    log_access(current_user.user_id, media_id)
+    media = read_media_by_id(media_id)
 
     r = get_storage_client().download(
-        BUCKET_NAME, f"{BUCKET_NAME}/videos/{video_name}")
+        BUCKET_NAME, media['media_path'])
     stream_video = BytesIO(r)
 
     total_size = stream_video.getbuffer().nbytes

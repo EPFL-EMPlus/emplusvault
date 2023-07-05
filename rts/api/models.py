@@ -71,7 +71,7 @@ class Feature(BaseModel):
     embedding_1536: Optional[List[float]]
     embedding_2048: Optional[List[float]]
 
-    media_id: int
+    media_id: str
 
 
 class MapProjectionFeatureBase(BaseModel):
@@ -84,7 +84,7 @@ class MapProjectionFeatureBase(BaseModel):
 
 class MapProjectionFeatureCreate(MapProjectionFeatureBase):
     feature_id: Optional[int] = None
-    media_id: Optional[int] = None
+    media_id: Optional[str] = None
 
 
 class MapProjectionFeature(MapProjectionFeatureBase):
@@ -106,8 +106,7 @@ class Atlas(BaseModel):
     tiles_per_atlas: int
 
 
-class User(BaseModel):
-    username: str
-    email: str
-    full_name: str
-    password: str
+class AccessLog(BaseModel):
+    user_id: int
+    media_id: str
+    access_time: Optional[datetime] = datetime.now()
