@@ -212,6 +212,35 @@ def trim(input_path: Union[str, Path], output_path: Union[str, Path], start_ts: 
     return False
 
 
+def trim_upload(input_path: Union[str, Path], timestamps: List[Tuple[float, float]]) -> List[BytesIO]:
+    """ Trim video and audio to timestamps and return list of BytesIO objects. """
+    buffers = []
+    try:
+        for start_ts, end_ts in timestamps:
+            out, _ = (
+                ffmpeg
+                .input(str(input_path))
+                .output(
+                    "pipe:1",
+                    format='mp4',
+                    vcodec='libx264',
+                    acodec='aac',
+                    ab='128k',
+                    ss=start_ts,
+                    t=end_ts - start_ts,
+                    strict='experimental',
+                    movflags='faststart+frag_keyframe+empty_moov'
+                )
+                .run(capture_stdout=True, capture_stderr=True)
+            )
+            buffers.append(BytesIO(out))
+
+    except ffmpeg.Error as e:
+        print(f'FFmpeg Error: {e.stderr.decode()}')
+
+    return buffers
+
+
 def save_image_pyramid(image: Image, out_folder: str, name: str, split_folders: bool = False, base_res: int = 16, depth: int = 6) -> Dict:
     """Save image pyramid"""
     images = {}
