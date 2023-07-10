@@ -147,12 +147,12 @@ def new_sample_project():
 @cli.command()
 @click.option('--username', type=str, default='rts', help='User name')
 @click.option('--full-name', type=str, default='rts', help='User full name')
-@click.option('--email', type=str, default='rts', help='User email')
+@click.option('--email', type=str, default='emplus@epfl.ch', help='User email')
 def create_user(username: str, full_name: str, email: str):
     click.echo(f"Connecting to {DB_HOST}:{DB_PORT}/{DB_NAME}")
     DataAccessObject().connect(DATABASE_URL)
 
-    password = click.prompt('Password', hide_input=True,
+    password = click.prompt('Set password', hide_input=True,
                             confirmation_prompt=True)
 
     create_new_user(User(

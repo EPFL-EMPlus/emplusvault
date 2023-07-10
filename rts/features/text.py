@@ -1,5 +1,4 @@
-import geonamescache
-import spacy
+
 import pandas as pd
 
 from typing import List, Optional, Any, Dict, Tuple
@@ -7,8 +6,6 @@ from pathlib import Path
 from collections import defaultdict
 from scenedetect.frame_timecode import FrameTimecode
 
-
-# spacy.prefer_gpu()
 
 import rts.utils
 
@@ -24,6 +21,8 @@ ALL_CITIES = None
 
 
 def load_model(model_name: str = 'fr_core_news_lg'):
+    import spacy
+    # spacy.prefer_gpu()
     global _model
     if not _model['name']:
         model_name = 'fr_core_news_lg'
@@ -51,6 +50,8 @@ def extract_locations(text: str, model_name: Optional[str] = None) -> List[str]:
 
 
 def get_swiss_cities() -> Dict:
+    import geonamescache
+
     global SWISS_CITIES, ALL_CITIES
     if not SWISS_CITIES:
         gc = geonamescache.GeonamesCache(min_city_population=500)
@@ -183,6 +184,7 @@ def find_locations_all_transcripts(transcripts: Dict[str, Dict], filtered_locati
 
 def build_location_df(transcripts: Dict[str, Dict]) -> pd.DataFrame:
     """Get media with fixed multilang locations"""
+    import geonamescache
     gc = geonamescache.GeonamesCache(min_city_population=500)
     all_cities = gc.get_cities()
     swiss_cities = get_swiss_cities()

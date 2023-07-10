@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
-import whisper
+
 
 import rts.utils
 import rts.io.media
@@ -14,6 +14,7 @@ _model = {
 }
 
 def transcribe_media(audio_path: str, model_name: Optional[str] = None) -> List[Dict]:
+    import whisper
     global _model
     if not audio_path:
         return None
