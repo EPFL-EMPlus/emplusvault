@@ -63,7 +63,7 @@ def read_jsonlines_file(filepath: str) -> List[Dict]:
 def obj_to_json(obj: Any, outpath: str) -> bool:
     try:
         with open(str(outpath), 'wb') as fp:
-            js = orjson.dumps(obj)
+            js = orjson.dumps(obj, option=orjson.OPT_SERIALIZE_NUMPY)
             fp.write(js)
             return True
     except (ValueError, orjson.JSONEncodeError) as e:

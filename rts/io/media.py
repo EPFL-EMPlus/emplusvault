@@ -38,10 +38,10 @@ def to_wav(in_path: str, out_path: str = None, sample_rate: int = 48000) -> str:
     """Arbitrary media files to wav"""
     if out_path is None:
         out_path = str(Path(out_path).with_suffix('.wav'))
-    with av.open(in_path) as in_container:
+    with av.open(str(in_path)) as in_container:
         in_stream = in_container.streams.audio[0]
         in_stream.thread_type = "AUTO"
-        with av.open(out_path, 'w', 'wav') as out_container:
+        with av.open(str(out_path), 'w', 'wav') as out_container:
             out_stream = out_container.add_stream(
                 'pcm_s16le',
                 rate=sample_rate,
@@ -58,10 +58,10 @@ def to_wav(in_path: str, out_path: str = None, sample_rate: int = 48000) -> str:
 def to_mp3(in_path: str, out_path: str = None, bitrate: str = '') -> str:
     if out_path is None:
         out_path = str(Path(out_path).with_suffix('.mp3'))
-    with av.open(in_path) as in_container:
+    with av.open(str(in_path)) as in_container:
         in_stream = in_container.streams.audio[0]
         in_stream.thread_type = "AUTO"
-        with av.open(out_path, 'w', 'mp3') as out_container:
+        with av.open(str(out_path), 'w', 'mp3') as out_container:
             opts = {}
             if bitrate:
                 opts = {

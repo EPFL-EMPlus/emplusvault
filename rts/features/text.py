@@ -206,7 +206,8 @@ def build_location_df(transcripts: Dict[str, Dict]) -> pd.DataFrame:
                         'location': c,
                         's': sent['s'],
                         'e': sent['e'],
-                        't': sent['t']
+                        't': sent['t'],
+                        'sid': sent['sid']
                     })
 
     ts = pd.DataFrame.from_records(res)
