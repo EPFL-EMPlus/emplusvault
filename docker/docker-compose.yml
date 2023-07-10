@@ -14,6 +14,7 @@ services:
     volumes:
       - ${PGVECTOR_VOLUME_LOCATION}:/var/lib/postgresql/data
   minio9:
+    restart: always
     image: minio/minio
     ports:
       - "9000:9000"
