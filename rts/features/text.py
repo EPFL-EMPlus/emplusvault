@@ -104,8 +104,8 @@ def find_locations(transcript: List[Dict],
 
 
 def timecodes_from_transcript(transcript: Dict, framerate: int = 25, 
-    min_seconds: float = 3, 
-    extend_duration: float = 6, 
+    min_seconds: float = 6, 
+    extend_duration: float = 0, 
     location_only: bool = True) -> Optional[Tuple[List[Tuple[FrameTimecode, FrameTimecode]], List[int]]]:
     if not transcript:
         return None

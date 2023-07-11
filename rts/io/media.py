@@ -236,7 +236,7 @@ def trim_upload(input_path: Union[str, Path], timestamps: List[Tuple[float, floa
             buffers.append(BytesIO(out))
 
     except ffmpeg.Error as e:
-        print(f'FFmpeg Error: {e.stderr.decode()}')
+        LOG.error(f'FFmpeg Error: {e.stderr.decode()}')
 
     return buffers
 

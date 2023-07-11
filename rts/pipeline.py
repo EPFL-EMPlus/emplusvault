@@ -16,7 +16,7 @@ import rts.features.text
 
 LOG = rts.utils.get_logger()
 
-TRANSCRIPT_CLIP_MIN_SECONDS = 3
+TRANSCRIPT_CLIP_MIN_SECONDS = 6
 SCENE_EXPORT_NAME = 'scenes.json'
 
 
@@ -85,9 +85,10 @@ def create_optimized_media(media_folder: str, output_folder: str, force: bool = 
 
     payload['video'] = str(video_path)
 
-    audio_path = export_folder.joinpath(f'{media_id}_audio.m4a')
+    audio_path = export_folder.joinpath(f'{media_id}_audio.mp3')
     if not audio_path.exists() or force:
-        audio = rts.io.media.extract_audio(a, audio_path)
+        # audio = rts.io.media.extract_audio(a, audio_path)
+        audio = rts.io.media.to_mp3(video_path, audio_path, '128k')
         if not audio:
             return payload
     
@@ -135,7 +136,7 @@ def extract_location_clips_from_transcript(
     media_folder: str,
     video_path: str, 
     min_seconds: float = 10,
-    extend_duration: float = 10,
+    extend_duration: float = 0,
     num_images: int = 3,
     force: bool = False) -> Optional[Dict]:
 
@@ -208,8 +209,7 @@ def get_media_info(media_path: str, media_folder: str,
 
     return media_info
 
-def transcribe_media(media_folder: str, audio_path: str, 
-    model_name: Optional[str] = None, force: bool = False) -> List[Dict]:
+def transcribe_media(media_folder: str, audio_path: str, force: bool = False) -> List[Dict]:
 
     # rts.utils.obj_to_json(r, os.path.join(OUTDIR, 'transcript.json'))
     if not media_folder:
@@ -221,7 +221,7 @@ def transcribe_media(media_folder: str, audio_path: str,
         return rts.utils.obj_from_json(p)
     
     LOG.debug(f'Transcribing media: {audio_path}')
-    d = rts.features.audio.transcribe_media(audio_path, model_name)
+    d = rts.features.audio.transcribe_media(audio_path, min_duration=TRANSCRIPT_CLIP_MIN_SECONDS)
     rts.utils.obj_to_json(d, p)
     # Enrich transcript with location
     transcript = rts.features.text.find_locations(d)

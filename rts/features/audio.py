@@ -63,7 +63,7 @@ _model = {
 def extract_continuous_sentences(data, min_duration=0, max_duration=float('inf')) -> List[Dict]:
     speaker_data = []
     for entry in data:
-        speaker = entry['speaker']
+        speaker = int(entry.get('speaker', 'SPEAKER_0').split('_')[1])
         start_time = entry['start']  # Use 'start' time of the sentence
         end_time = entry['end']  # Use 'end' time of the sentence
         duration = end_time - start_time
@@ -85,6 +85,7 @@ def extract_continuous_sentences(data, min_duration=0, max_duration=float('inf')
 
 def transcribe_media(audio_path: str, lang: str = 'fr', min_duration=10, max_duration=60) -> List[Dict]:
     # import whisper
+    import whisperx
     # global _model
     # if not audio_path:
     #     return None
@@ -126,12 +127,11 @@ def transcribe_media(audio_path: str, lang: str = 'fr', min_duration=10, max_dur
     if not audio_path:
         return None
     
-    if not _model['whisper_model']:
-        import whisperx
-        audio_file = str(audio_path)
-        batch_size = 16 # reduce if low on GPU mem
-        compute_type = "float16" # change to "int8" if low on GPU mem (may reduce accuracy)
+    audio_file = str(audio_path)
+    batch_size = 16 # reduce if low on GPU mem
+    compute_type = "float16" # change to "int8" if low on GPU mem (may reduce accuracy)
 
+    if not _model['whisper_model']:
         LOG.debug(f'Load whisper model: large-v2')
         _model['whisper_model'] = whisperx.load_model("large-v2", device, compute_type=compute_type, language=lang)
         

@@ -23,7 +23,8 @@ LOCAL_VIDEOS = LOCAL_RTS_DATA + 'archive'
 def get_sample_df() -> pd.DataFrame:
     click.echo('Loading metadata')
     df = rts.metadata.load_metadata_hdf5(METADATA, 'rts_metadata')
-    return rts.metadata.get_ten_percent_sample(df)
+    # return rts.metadata.get_ten_percent_sample(df).sort_values(by='mediaFolderPath')
+    return rts.metadata.get_one_percent_sample(df).sort_values(by='mediaFolderPath')
 
 
 def get_aivectors_df() -> pd.DataFrame:
