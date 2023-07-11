@@ -28,3 +28,7 @@ class StorageClient:
         response = self.client.get_object(
             Bucket=bucket_name, Key=object_name)
         return response['Body'].read()
+
+    def delete(self, bucket_name, object_name):
+        self.client.delete_object(Bucket=bucket_name, Key=object_name)
+        
