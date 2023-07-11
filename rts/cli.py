@@ -24,7 +24,7 @@ def get_sample_df() -> pd.DataFrame:
     click.echo('Loading metadata')
     df = rts.metadata.load_metadata_hdf5(METADATA, 'rts_metadata')
     # return rts.metadata.get_ten_percent_sample(df).sort_values(by='mediaFolderPath')
-    return rts.metadata.get_one_percent_sample(df).sort_values(by='mediaFolderPath')
+    return rts.metadata.filter_by_asset_type(df, nested_struct='0/0')
 
 
 def get_aivectors_df() -> pd.DataFrame:
@@ -40,25 +40,25 @@ def cli():
 
 
 @cli.command()
-@click.option('--min-seconds', type=float, default=6, help='Minimum duration of a scene')
-@click.option('--num-images', type=int, default=3, help='Number of images per scene')
-@click.option('--compute-scenes', is_flag=True, help='Compute py detect scenes')
+@click.option('--continuous', is_flag=True, help='Merge continuous sentences from the same speaker')
 @click.option('--compute-transcript', is_flag=True, help='Compute transcript')
-@click.option('--force-media', is_flag=True, help='Force processing')
-@click.option('--force-scene', is_flag=True, help='Force processing')
-@click.option('--force-transcript', is_flag=True, help='Force processing')
-def pipeline(min_seconds: int, num_images: int,
-             compute_scenes: bool, compute_transcript: bool, force_media: bool,
-             force_scene: bool, force_transcript: bool) -> None:
+@click.option('--compute-clips', is_flag=True, help='Create clips from transcript')
+@click.option('--force-media', is_flag=True, help='Force media remuxing')
+@click.option('--force-transcript', is_flag=True, help='Force transcription')
+@click.option('--force-clips', is_flag=True, help='Force clip extraction')
+def pipeline(continuous: bool,
+             compute_transcript: bool, compute_clips: bool, force_media: bool,
+             force_transcript: bool, force_clips: bool) -> None:
 
     df = get_sample_df()
     # df = get_aivectors_df()
 
     click.echo('Processing archive')
     click.echo(
-        f'Compute scenes: {compute_scenes}, compute transcript: {compute_transcript}')
-    rts.pipeline.simple_process_archive(df, LOCAL_VIDEOS, min_seconds,
-                                        num_images, compute_scenes, compute_transcript, force_media, force_scene, force_transcript)
+        f'Compute transcript: {compute_transcript}, Compute clips: {compute_clips}, ')
+    rts.pipeline.simple_process_archive(df, LOCAL_VIDEOS, continuous,
+                                        compute_transcript, compute_clips, 
+                                        force_media, force_transcript, force_clips)
 
 
 @cli.command()

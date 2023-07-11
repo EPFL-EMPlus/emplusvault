@@ -103,10 +103,31 @@ def find_locations(transcript: List[Dict],
     return transcript
 
 
-def timecodes_from_transcript(transcript: Dict, framerate: int = 25, 
-    min_seconds: float = 6, 
-    extend_duration: float = 0, 
-    location_only: bool = True) -> Optional[Tuple[List[Tuple[FrameTimecode, FrameTimecode]], List[int]]]:
+def merge_continous_sentences(transcript: List[Dict[str, str]]) -> List[Dict[str, str]]:
+    if len(transcript) == 0:
+        return transcript
+    merged_transcript = [transcript[0]]
+    for i in range(1, len(transcript)):
+        if transcript[i]['sid'] == merged_transcript[-1]['sid']:
+            merged_transcript[-1]['e'] = transcript[i]['e']
+            merged_transcript[-1]['t'] += ' ' + transcript[i]['t']
+            if 'locations' in transcript[i]:
+                if 'locations' in merged_transcript[-1]:
+                    # Get unique locations
+                    locations = set(merged_transcript[-1]['locations'].split(' | ') + transcript[i]['locations'].split(' | '))
+                    merged_transcript[-1]['locations'] = ' | '.join(locations)
+                else:
+                    merged_transcript[-1]['locations'] = transcript[i]['locations']
+        else:
+            merged_transcript.append(transcript[i])
+    return merged_transcript
+
+
+def timecodes_from_transcript(transcript: List[Dict[str, str]], framerate: int = 25, 
+    min_seconds: float = 10,
+    extend_duration: float = 0,
+    min_words: int = 15,
+    location_only: bool = False) -> Optional[Tuple[List[Tuple[FrameTimecode, FrameTimecode]], List[int]]]:
     if not transcript:
         return None
     
@@ -114,6 +135,10 @@ def timecodes_from_transcript(transcript: Dict, framerate: int = 25,
     saved_idx = []
     for i, sent in enumerate(transcript):
         if location_only and 'locations' not in sent:
+            continue
+
+        word_count = len(sent['t'].split(' '))
+        if word_count < min_words:
             continue
 
         start = FrameTimecode(float(sent['s']), framerate)
