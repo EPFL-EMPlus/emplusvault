@@ -7,18 +7,57 @@ import xml.etree.ElementTree as ET
 from typing import Dict, List, Optional, Tuple
 from pathlib import Path
 from tqdm import tqdm
+from datetime import datetime
 
 import rts.metadata
 import rts.utils
 import rts.io.media
 import rts.features.audio
 import rts.features.text
+from rts.db.queries import get_library_id_from_name
 
 LOG = rts.utils.get_logger()
 
 TRANSCRIPT_CLIP_MIN_SECONDS = 3
 SCENE_EXPORT_NAME = 'scenes.json'
 
+
+class Pipeline:
+
+    library_name: str = 'undefined'
+
+    def __init__(self):
+        pass
+
+    def ingest(self, path: str) -> bool:
+        raise NotImplementedError()
+    
+    def preprocess(self, path: str) -> bool:
+        raise NotImplementedError()
+
+
+class PipelineIOC(Pipeline):
+
+    library_name: str = 'ioc'
+
+    def ingest(self, df: pd.DataFrame) -> bool:
+        self.library_id = get_library_id_from_name(self.library_name)
+        df = self.preprocess(df)
+        for i, group in df.groupby('guid'):
+            self.ingest_single_video(group)
+
+        return True
+
+    def ingest_single_file(self, df: pd.DataFrame) -> bool:
+        pass
+    
+    def preprocess(self, df: pd.DataFrame) -> pd.DataFrame:
+        df.loc[:, 'start_ts'] = df.start.apply(lambda x: (datetime.strptime(x, '%H:%M:%S:%f') - datetime(1900, 1, 1)).total_seconds())
+        df.loc[:, 'end_ts'] = df.end.apply(lambda x: (datetime.strptime(x, '%H:%M:%S:%f') - datetime(1900, 1, 1)).total_seconds())
+        df.loc[:, 'end_ts'] = df.end_ts - df.start_ts.min()
+        df.loc[:, 'start_ts'] = df.start_ts - df.start_ts.min()
+        return df
+    
 
 def read_xml_file(file_path: str):
     with open(file_path, 'r') as file:
