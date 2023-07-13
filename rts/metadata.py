@@ -247,7 +247,7 @@ def get_one_percent_sample(df: pd.DataFrame,
     archive_prefix: str = '/mnt/rts/') -> pd.DataFrame:
 
     sample = df[df.mediaFolderPath.str.startswith(f"{archive_prefix}{nested_struct}")]
-    return sample
+    return sample.sort_values(by='mediaFolderPath')
 
 
 def get_ten_percent_sample(df: pd.DataFrame, 
@@ -255,8 +255,19 @@ def get_ten_percent_sample(df: pd.DataFrame,
     archive_prefix: str = '/mnt/rts/') -> pd.DataFrame:
 
     sample = df[df.mediaFolderPath.str.startswith(f"{archive_prefix}{nested_struct}")]
-    return sample
+    return sample.sort_values(by='mediaFolderPath')
 
+
+def filter_by_asset_type(df: pd.DataFrame,
+    asset_type = 'Sujet journal télévisé',
+    nested_struct: str = '', 
+    archive_prefix: str = '/mnt/rts/') -> pd.DataFrame:
+
+    sample = df[df.assetType == asset_type].sort_values(by='mediaFolderPath')
+    if nested_struct:
+        sample = sample[sample.mediaFolderPath.str.startswith(f"{archive_prefix}{nested_struct}")]
+
+    return sample
 
 
 def merge_location_df_with_metadata(metadata: pd.DataFrame, location: pd.DataFrame) -> pd.DataFrame:    
