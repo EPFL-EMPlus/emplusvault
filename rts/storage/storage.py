@@ -20,11 +20,11 @@ class StorageClient:
         normalized_object_name = os.path.normpath(object_name).replace(os.sep, '/')
         self.client.upload_file(file_path, bucket_name, normalized_object_name)
 
-    def upload_binary(self, bucket_name, object_name, binary_data):
+    def upload_binary(self, bucket_name, object_name, binary_data) -> None:
         self.client.put_object(
             Bucket=bucket_name, Key=object_name, Body=binary_data)
 
-    def download(self, bucket_name, object_name):
+    def download(self, bucket_name, object_name) -> bytes:
         response = self.client.get_object(
             Bucket=bucket_name, Key=object_name)
         return response['Body'].read()
