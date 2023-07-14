@@ -7,7 +7,9 @@ import xml.etree.ElementTree as ET
 from typing import Dict, List, Optional, Tuple, Any
 from pathlib import Path
 from tqdm import tqdm
+from tqdm.notebook import tqdm as tqdm_notebook
 from datetime import datetime
+import hashlib
 
 import rts.metadata
 import rts.utils
@@ -15,6 +17,11 @@ import rts.io.media
 import rts.features.audio
 import rts.features.text
 from rts.db.queries import get_library_id_from_name
+from rts.io.media import trim_binary, get_frame_rate
+from rts.api.models import Media
+from rts.storage.storage import get_storage_client
+from rts.db.queries import create_media
+from sqlalchemy.exc import IntegrityError
 
 LOG = rts.utils.get_logger()
 
@@ -29,6 +36,7 @@ SCENE_EXPORT_NAME = 'scenes.json'
 class Pipeline:
 
     library_name: str = 'undefined'
+    frame_rates: dict = {}
 
     def __init__(self):
         pass
@@ -44,18 +52,92 @@ class PipelineIOC(Pipeline):
 
     library_name: str = 'ioc'
 
-    def ingest(self, df: pd.DataFrame) -> bool:
+    def ingest(self, df: pd.DataFrame, max_clip_length: int = 120, notebook: bool = False) -> bool:
+        """
+        Ingest the IOC metadata and video files.
+
+        Parameters:
+            df (pd.DataFrame): IOC metadata dataframe which is expected to have the following columns:
+                - guid (str): unique identifier for the video
+                - seq_id (str): sequence identifier for the clips
+                - start (str): start time of the clip in the format HH:MM:SS:ff
+                - end (str): end time of the clip in the format HH:MM:SS:ff
+                - path (str): path to the video file
+
+            max_clip_length (int): maximum clip length in seconds, all clips longer than this will be skipped. Defaults to 120 seconds.
+
+            notebook (bool): whether to show a progress bar in the notebook. Defaults to False.
+        """
         self.library_id = get_library_id_from_name(self.library_name)
+        self.max_clip_length = max_clip_length
+        self.notebook = notebook
         df = self.preprocess(df)
-        for i, group in df.groupby('guid'):
+
+        self.tqdm = tqdm
+        if self.notebook:
+            self.tqdm = tqdm_notebook
+
+        for i, group in self.tqdm(df.groupby('guid')):
             self.ingest_single_video(group)
 
         return True
 
-    def ingest_single_file(self, df: pd.DataFrame) -> bool:
-        pass
+    def ingest_single_video(self, df: pd.DataFrame) -> bool:
+        """ Ingest all clips from a single IOC video file. """
+    
+        for i, row in self.tqdm(df.iterrows(), leave=False, total=len(df)):
+
+            if row.end_ts - row.start_ts > self.max_clip_length:
+                LOG.info(f'Skipping clip {row.seq_id} because it is longer than {self.max_clip_length} seconds')
+                continue
+
+            original_path = row.path
+            media_path = f"videos/{row.guid}/{row.seq_id}.mp4"
+            if self.frame_rates.get(original_path) is None:
+                self.frame_rates[original_path] = get_frame_rate(original_path)
+
+            metadata = {
+                'sport': row.sport,
+                'description': row.description,
+                'event': row.event,
+                'category': row.category,
+                'round': row['round']
+            }
+
+            clip = Media(**{
+                'media_id': row.seq_id,
+                'original_path': original_path,
+                'original_id': row.guid,
+                'media_path': media_path, 
+                'media_type': "video",
+                'sub_type': "clip", 
+                'size': -1, # write size later when we process the clips 
+                'metadata': metadata,
+                'library_id': self.library_id, 
+                'hash': hashlib.md5(media_path.encode()).hexdigest(), 
+                'parent_id': -1,
+                'start_ts': row.start_ts, 'end_ts': row.end_ts, 
+                'start_frame': row.start_ts * self.frame_rates[original_path], # TODO: change to better frame calculation
+                'end_frame': row.end_ts * self.frame_rates[original_path], 
+                'frame_rate': self.frame_rates[original_path], 
+            })
+
+            try:
+                buffer = trim_binary(clip.original_path, row.start_ts, row.end_ts)
+                clip.size = len(buffer.getvalue())
+                get_storage_client().upload_binary(self.library_name, clip.media_path, buffer)
+                create_media(clip)
+            except IntegrityError as e:
+                if "duplicate key value violates unique constraint" in str(e):
+                    LOG.info(f'UniqueViolation: Duplicate media_id {clip.media_id}')
+                else:
+                    raise e
+
     
     def preprocess(self, df: pd.DataFrame) -> pd.DataFrame:
+        # Calculate the actual starting point of the video. Annotations start a lot of time in the middle of the day, but we want to count from 0. 
+        # e.g. they start for example at 12:01:02 and the next sequence is at 12:01:10, which we want to translate to 8s into the video
+        df = df.copy()
         df.loc[:, 'start_ts'] = df.start.apply(lambda x: (datetime.strptime(x, '%H:%M:%S:%f') - datetime(1900, 1, 1)).total_seconds())
         df.loc[:, 'end_ts'] = df.end.apply(lambda x: (datetime.strptime(x, '%H:%M:%S:%f') - datetime(1900, 1, 1)).total_seconds())
         df.loc[:, 'end_ts'] = df.end_ts - df.start_ts.min()
