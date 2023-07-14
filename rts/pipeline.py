@@ -41,10 +41,10 @@ class Pipeline:
     def __init__(self):
         pass
 
-    def ingest(self, path: str) -> bool:
+    def ingest(self, df: pd.DataFrame, max_clip_length: int = 120, notebook: bool = False) -> bool:
         raise NotImplementedError()
     
-    def preprocess(self, path: str) -> bool:
+    def preprocess(self, df: pd.DataFrame) -> pd.DataFrame:
         raise NotImplementedError()
 
 
