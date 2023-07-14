@@ -63,6 +63,11 @@ class PipelineIOC(Pipeline):
                 - start (str): start time of the clip in the format HH:MM:SS:ff
                 - end (str): end time of the clip in the format HH:MM:SS:ff
                 - path (str): path to the video file
+                - sport (str): sport
+                - description (str): description of the video
+                - event (str): event
+                - category (str): category of the event
+                - round (str): round of the event
 
             max_clip_length (int): maximum clip length in seconds, all clips longer than this will be skipped. Defaults to 120 seconds.
 
@@ -71,8 +76,7 @@ class PipelineIOC(Pipeline):
         self.library_id = get_library_id_from_name(self.library_name)
         self.max_clip_length = max_clip_length
         self.notebook = notebook
-        df = self.preprocess(df)
-
+    
         self.tqdm = tqdm
         if self.notebook:
             self.tqdm = tqdm_notebook
@@ -84,6 +88,7 @@ class PipelineIOC(Pipeline):
 
     def ingest_single_video(self, df: pd.DataFrame) -> bool:
         """ Ingest all clips from a single IOC video file. """
+        df = self.preprocess(df)
     
         for i, row in self.tqdm(df.iterrows(), leave=False, total=len(df)):
 
