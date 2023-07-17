@@ -180,61 +180,48 @@ def get_media_info(media_path: str) -> Dict:
     return info
 
 
-def trim(input_path: Union[str, Path], output_path: Union[str, Path], start_ts: float, end_ts: float) -> bool:
-    input_stream = ffmpeg.input(
-        str(input_path), hide_banner=None, loglevel='error')
-    vid = (
-        input_stream.video
-        .trim(start=start_ts, end=end_ts)
-        .setpts('PTS-STARTPTS')
-
-    )
-    aud = (
-        input_stream.audio
-        .filter_('atrim', start=start_ts, end=end_ts)
-        .filter_('asetpts', 'PTS-STARTPTS')
-    )
-
-    output_path = Path(output_path)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-
-    joined = ffmpeg.concat(vid, aud, v=1, a=1).node
-    output = ffmpeg.output(joined[0], joined[1], str(output_path),
-                           movflags='faststart').overwrite_output()
-    # args = output.get_args()
-    # print(f'Args: {args}')
-    try:
-        output.run(capture_stdout=False)
-        return True
-    except ffmpeg.Error as e:
-        LOG.error(e)
-
-    return False
-
-
-def trim_binary(input_path: Union[str, Path], start_ts: int, end_ts: int) -> BytesIO:
-    """ Trim video and audio to timestamps and return list of BytesIO objects. """
-    try:
-        out, _ = (
-            ffmpeg
-            .input(str(input_path), ss=start_ts)
-            .output(
-                "pipe:1", 
-                format='mp4', 
-                vcodec='libx264', 
-                acodec='aac', 
-                ab='128k',
-                t=end_ts - start_ts,
-                strict='experimental', 
-                movflags='faststart+frag_keyframe+empty_moov'
-            )
-            .run(capture_stdout=True, capture_stderr=True)
-        )
-        return BytesIO(out)
-    except ffmpeg.Error as e:
-        print(f'FFmpeg Error: {e.stderr.decode()}')
+def get_frame_number(ts: float, framerate: str) -> int:
+    # Parse framerate
+    if "/" in framerate:
+        num, den = framerate.split("/")
+        framerate = float(num) / float(den)
+    else:
+        framerate = float(framerate)
     
-    return None
+    # Calculate frame number
+    frame_number = int(round(ts * framerate))
+    return frame_number
+
+
+def trim(input_path: Union[str, Path], output_path: Union[str, Path], start_ts: float, end_ts: float) -> Tuple[bool, BytesIO]:    
+    input_stream = ffmpeg.input(str(input_path), ss=start_ts, 
+                                hide_banner=None, loglevel='error')
+    
+    output_path = str(output_path)
+    if output_path in ['pipe:', '-', ':']:
+        output_path = "pipe:1"
+    else:
+        # Create directories if output_path is a file path
+        output_path_obj = Path(output_path)
+        output_path_obj.parent.mkdir(parents=True, exist_ok=True)
+    
+    output = input_stream.output(output_path,
+                        format='mp4', 
+                        vcodec='copy', 
+                        acodec='copy',
+                        t=end_ts - start_ts,
+                        strict='experimental', 
+                        movflags='faststart+frag_keyframe+empty_moov').overwrite_output()
+    try:
+        out, _ = output.run(capture_stdout=True, capture_stderr=True)
+        if output_path == 'pipe:1':
+            return True, BytesIO(out)
+        else:
+            return True, BytesIO()  # return an empty BytesIO object when output is not a pipe
+    except ffmpeg.Error as e:
+        LOG.error(e.stderr.decode())
+
+    return False, BytesIO()  # return False and an empty BytesIO object when there's an error
 
 
 def get_frame_rate(input_path: Union[str, Path]) -> float:
@@ -429,7 +416,7 @@ def cut_video_to_clips(clips_payload: Dict, force: bool = False) -> bool:
 
         video_path = Path(
             clips_payload['media_folder']) / f"{clips_payload['mediaId']}.mp4"
-        ok = trim(video_path, clip_path, start, end)
+        ok, _ = trim(video_path, clip_path, start, end)
         if not ok:
             has_errors = True
             LOG.error(

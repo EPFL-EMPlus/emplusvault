@@ -4,6 +4,7 @@ import time
 import logging
 import orjson
 import pickle
+import contextlib
 import pandas as pd
 from typing import Dict, List, Optional, Tuple, Callable, Any, Generator
 from functools import wraps
@@ -133,3 +134,29 @@ def dataframe_from_hdf5(input_dir: str, name: str, key: str = 'df', silent: bool
         if not silent:
             LOG.error(e)
         return None
+
+
+@contextlib.contextmanager
+def temporary_filename(suffix=None):
+  # https://stackoverflow.com/questions/3924117/how-to-use-tempfile-namedtemporaryfile-in-python
+  """Context that introduces a temporary file.
+
+  Creates a temporary file, yields its name, and upon context exit, deletes it.
+  (In contrast, tempfile.NamedTemporaryFile() provides a 'file' object and
+  deletes the file as soon as that file object is closed, so the temporary file
+  cannot be safely re-opened by another library or process.)
+
+  Args:
+    suffix: desired filename extension (e.g. '.mp4').
+
+  Yields:
+    The name of the temporary file.
+  """
+  import tempfile
+  try:
+    f = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
+    tmp_name = f.name
+    f.close()
+    yield tmp_name
+  finally:
+    os.unlink(tmp_name)

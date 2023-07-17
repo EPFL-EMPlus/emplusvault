@@ -83,7 +83,7 @@ def extract_continuous_sentences(data, min_duration=0, max_duration=float('inf')
     return speaker_data
 
 
-def transcribe_media(audio_path: str, lang: str = 'fr', min_duration=0, max_duration=float('inf')) -> List[Dict]:
+def transcribe_media(audio_path: str, lang: str = 'fr', min_duration: float = 0, max_duration: float = float('inf')) -> List[Dict]:
     # import whisper
     import whisperx
     # global _model
