@@ -160,3 +160,16 @@ def temporary_filename(suffix=None):
     yield tmp_name
   finally:
     os.unlink(tmp_name)
+
+
+def read_xml_file(file_path: str):
+    with open(file_path, 'r') as file:
+        xml_string = file.read()
+    return xml_string
+
+
+def read_mpd_file(media_folder: str):
+    p = Path(media_folder)
+    media_id = p.name
+    mpd_file = p / Path(media_id + '.mpd')
+    return read_xml_file(str(mpd_file))

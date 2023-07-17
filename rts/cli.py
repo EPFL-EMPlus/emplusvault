@@ -1,12 +1,12 @@
 import click
 import pandas as pd
 
-import rts.metadata
 import rts.utils
 import rts.io.media
 import rts.features.audio
 import rts.features.text
-import rts.pipeline
+import rts.pipelines.rts
+
 from rts.db.dao import DataAccessObject
 from rts.db_settings import DATABASE_URL, DB_HOST, DB_NAME, DB_PORT, SUPERUSER_CLI_KEY
 from rts.db.utils import create_database
@@ -22,9 +22,9 @@ LOCAL_VIDEOS = LOCAL_RTS_DATA + 'archive'
 
 def get_sample_df() -> pd.DataFrame:
     click.echo('Loading metadata')
-    df = rts.metadata.load_metadata_hdf5(METADATA, 'rts_metadata')
+    df = rts.pipelines.rts.load_metadata_hdf5(METADATA, 'rts_metadata')
     # return rts.metadata.get_ten_percent_sample(df).sort_values(by='mediaFolderPath')
-    return rts.metadata.filter_by_asset_type(df, nested_struct='0/0')
+    return rts.pipelines.rts.filter_by_asset_type(df, nested_struct='0/0')
 
 
 def get_aivectors_df() -> pd.DataFrame:
@@ -56,7 +56,7 @@ def pipeline(continuous: bool,
     click.echo('Processing archive')
     click.echo(
         f'Compute transcript: {compute_transcript}, Compute clips: {compute_clips}, ')
-    rts.pipeline.simple_process_archive(df, LOCAL_VIDEOS, continuous,
+    rts.pipelines.rts.simple_process_archive(df, LOCAL_VIDEOS, continuous,
                                         compute_transcript, compute_clips, 
                                         force_media, force_transcript, force_clips)
 
@@ -65,8 +65,8 @@ def pipeline(continuous: bool,
 @click.option('--tile-size', type=int, default=64, help='Tile size')
 @click.option('--name', type=str, default='0', help='Atlas name')
 def atlas(tile_size: int, name: str) -> None:
-    df = rts.metadata.build_clips_df(LOCAL_VIDEOS, METADATA, force=True)
-    rts.metadata.create_clip_texture_atlases(df, LOCAL_RTS_DATA,
+    df = rts.pipelines.rts.build_clips_df(LOCAL_VIDEOS, METADATA, force=True)
+    rts.pipelines.rts.create_clip_texture_atlases(df, LOCAL_RTS_DATA,
                                              name,  # folder name
                                              tile_size=tile_size,
                                              flip=True,
@@ -76,11 +76,11 @@ def atlas(tile_size: int, name: str) -> None:
 
 @cli.command()
 def location() -> None:
-    ts = rts.pipeline.load_all_transcripts(LOCAL_VIDEOS)
+    ts = rts.pipelines.rts.load_all_transcripts(LOCAL_VIDEOS)
     fts = rts.features.text.build_location_df(ts)
 
     sample_df = get_sample_df()
-    fts = rts.metadata.merge_location_df_with_metadata(sample_df, fts)
+    fts = rts.pipelines.rts.merge_location_df_with_metadata(sample_df, fts)
 
 
 @cli.command()
@@ -116,7 +116,6 @@ def new_library(library_name: str, version: str, data: str):
 
 @cli.command()
 def ingest_data():
-
     from rts.io.media import upload_clips, upload_images, upload_projection
 
     click.echo(f"Connecting to {DB_HOST}:{DB_PORT}/{DB_NAME}")
