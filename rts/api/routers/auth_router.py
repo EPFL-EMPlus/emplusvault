@@ -9,7 +9,7 @@ from fastapi import FastAPI, HTTPException, Depends, Form, APIRouter
 
 from rts.db.dao import DataAccessObject
 from fastapi import Request
-from rts.db_settings import DATABASE_URL, DB_HOST, DB_NAME
+from rts.settings import DATABASE_URL, DB_HOST, DB_NAME
 
 auth_router = APIRouter()
 

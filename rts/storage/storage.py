@@ -7,7 +7,7 @@ from io import BytesIO
 from pathlib import Path
 from typing import Any
 from botocore.exceptions import ClientError, BotoCoreError
-from rts.db_settings import S3_ACCESS_KEY, S3_SECRET_KEY, S3_ENDPOINT
+from rts.settings import S3_ACCESS_KEY, S3_SECRET_KEY, S3_ENDPOINT
 
 
 LOG = rts.utils.get_logger()

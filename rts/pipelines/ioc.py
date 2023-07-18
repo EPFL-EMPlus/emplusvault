@@ -13,6 +13,11 @@ from rts.db.queries import create_or_update_media
 LOG = rts.utils.get_logger()
 
 
+IOC_ROOT = "/media/data/ioc/"
+IOC_DATA = IOC_ROOT + 'data'
+IOC_VIDEOS = IOC_ROOT + 'videos'
+
+
 class PipelineIOC(Pipeline):
     library_name: str = 'ioc'
 

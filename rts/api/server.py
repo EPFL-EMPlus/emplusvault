@@ -5,11 +5,11 @@ from fastapi.staticfiles import StaticFiles
 from fastapi import FastAPI, HTTPException, Depends, Form
 from pathlib import Path
 # Local imports
-from rts.api.settings import Settings, get_settings, get_app, init_library, get_public_folder_path
+from rts.api.api_settings import Settings, get_settings, get_app, init_library, get_public_folder_path
 # from audioverse.utils import read_jsonlines_file
 from rts.api import router
 from rts.utils import get_logger
-from rts.metadata import build_clips_df, build_clip_index
+from rts.pipelines.rts import build_clips_df, build_clip_index
 from rts.db.dao import DataAccessObject
 from rts.db.queries import get_library_id_from_name
 from rts.api.routers.library_router import library_router
@@ -19,7 +19,7 @@ from rts.api.routers.feature_router import feature_router
 from rts.api.routers.atlas_router import atlas_router
 from rts.api.routers.stream_router import stream_router
 from rts.api.routers.auth_router import auth_router
-from rts.db_settings import DATABASE_URL
+from rts.settings import DATABASE_URL
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
 

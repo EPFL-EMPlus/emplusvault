@@ -21,7 +21,7 @@ from scenedetect import open_video, SceneManager, ContentDetector
 from scenedetect.frame_timecode import FrameTimecode
 
 import rts.utils
-from rts.db_settings import BUCKET_NAME
+from rts.settings import BUCKET_NAME
 from rts.db.queries import create_atlas, create_media, create_projection
 from rts.storage.storage import get_storage_client
 from rts.api.models import Atlas, Media, Projection

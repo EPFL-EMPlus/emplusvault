@@ -1,7 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 from rts.api.server import app, mount_routers
-from rts.api.settings import Settings, get_settings
+from rts.api.api_settings import Settings, get_settings
 from rts.api.routers.auth_router import authenticate
 from rts.api.models import Feature
 from .test_media import create_media, assert_media_response

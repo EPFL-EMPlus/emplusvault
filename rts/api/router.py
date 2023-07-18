@@ -9,7 +9,7 @@ from fastapi.responses import HTMLResponse
 from typing import Any, Dict, Tuple, Union
 
 # Local imports
-from rts.api.settings import Settings, get_settings, get_public_folder_path
+from rts.api.api_settings import Settings, get_settings, get_public_folder_path
 from rts.utils import obj_from_json
 
 # TODO: move the mount_routers function to a separate file

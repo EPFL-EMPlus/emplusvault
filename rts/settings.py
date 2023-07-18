@@ -19,3 +19,5 @@ DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NA
 
 BUCKET_NAME = os.getenv("BUCKET_NAME")
 SUPERUSER_CLI_KEY = os.getenv("SUPERUSER_CLI_KEY")
+
+RTS_LOCAL_DATA = os.getenv("RTS_LOCAL_DATA") or "/media/data/rts/"

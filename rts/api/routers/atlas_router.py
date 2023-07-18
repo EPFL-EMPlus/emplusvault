@@ -4,10 +4,10 @@ from fastapi.responses import FileResponse, Response
 from typing import Any, Dict, Optional
 
 # Local imports
-from rts.api.settings import Settings, get_settings
+from rts.api.api_settings import Settings, get_settings
 from rts.utils import obj_from_json
 from rts.db.queries import get_atlas, create_atlas, get_atlases
-from rts.db_settings import BUCKET_NAME
+from rts.settings import BUCKET_NAME
 from rts.storage.storage import get_storage_client
 from rts.api.models import Atlas
 from rts.api.routers.auth_router import get_current_active_user, User

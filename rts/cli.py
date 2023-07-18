@@ -8,30 +8,13 @@ import rts.features.text
 import rts.pipelines.rts
 
 from rts.db.dao import DataAccessObject
-from rts.db_settings import DATABASE_URL, DB_HOST, DB_NAME, DB_PORT, SUPERUSER_CLI_KEY
+from rts.settings import DATABASE_URL, DB_HOST, DB_NAME, DB_PORT, SUPERUSER_CLI_KEY
 from rts.db.utils import create_database
 from rts.db.queries import create_library, create_new_user
 from rts.api.models import LibraryCreate
 from rts.api.routers.auth_router import UserInDB as User
 
-
-LOCAL_RTS_DATA = "/media/data/rts/"
-METADATA = LOCAL_RTS_DATA + 'metadata'
-LOCAL_VIDEOS = LOCAL_RTS_DATA + 'archive'
-
-
-def get_sample_df() -> pd.DataFrame:
-    click.echo('Loading metadata')
-    df = rts.pipelines.rts.load_metadata_hdf5(METADATA, 'rts_metadata')
-    # return rts.metadata.get_ten_percent_sample(df).sort_values(by='mediaFolderPath')
-    return rts.pipelines.rts.filter_by_asset_type(df, nested_struct='0/0')
-
-
-def get_aivectors_df() -> pd.DataFrame:
-    click.echo('Loading AI vectors subset')
-    df = rts.utils.dataframe_from_hdf5(
-        LOCAL_RTS_DATA + '/metadata', 'rts_aivectors')
-    return df
+from rts.pipelines.rts import RTS_LOCAL_DATA, LOCAL_RTS_VIDEOS, RTS_METADATA
 
 
 @click.group()
@@ -39,7 +22,27 @@ def cli():
     pass
 
 
-@cli.command()
+@cli.group()
+def rts():
+    pass
+
+
+@cli.group()
+def ioc():
+    pass
+
+
+@cli.group()
+def mjf():
+    pass
+
+
+@cli.group()
+def db():
+    pass
+
+
+@rts.command()
 @click.option('--continuous', is_flag=True, help='Merge continuous sentences from the same speaker')
 @click.option('--compute-transcript', is_flag=True, help='Compute transcript')
 @click.option('--compute-clips', is_flag=True, help='Create clips from transcript')
@@ -50,23 +53,23 @@ def pipeline(continuous: bool,
              compute_transcript: bool, compute_clips: bool, force_media: bool,
              force_transcript: bool, force_clips: bool) -> None:
 
-    df = get_sample_df()
+    df = rts.pipelines.rts.get_sample_df()
     # df = get_aivectors_df()
 
     click.echo('Processing archive')
     click.echo(
         f'Compute transcript: {compute_transcript}, Compute clips: {compute_clips}, ')
-    rts.pipelines.rts.simple_process_archive(df, LOCAL_VIDEOS, continuous,
+    rts.pipelines.rts.simple_process_archive(df, LOCAL_RTS_VIDEOS, continuous,
                                         compute_transcript, compute_clips, 
                                         force_media, force_transcript, force_clips)
 
 
-@cli.command()
+@rts.command()
 @click.option('--tile-size', type=int, default=64, help='Tile size')
 @click.option('--name', type=str, default='0', help='Atlas name')
 def atlas(tile_size: int, name: str) -> None:
-    df = rts.pipelines.rts.build_clips_df(LOCAL_VIDEOS, METADATA, force=True)
-    rts.pipelines.rts.create_clip_texture_atlases(df, LOCAL_RTS_DATA,
+    df = rts.pipelines.rts.build_clips_df(LOCAL_RTS_VIDEOS, RTS_METADATA, force=True)
+    rts.pipelines.rts.create_clip_texture_atlases(df, RTS_LOCAL_DATA,
                                              name,  # folder name
                                              tile_size=tile_size,
                                              flip=True,
@@ -74,16 +77,16 @@ def atlas(tile_size: int, name: str) -> None:
                                              format='jpg')
 
 
-@cli.command()
+@rts.command()
 def location() -> None:
-    ts = rts.pipelines.rts.load_all_transcripts(LOCAL_VIDEOS)
+    ts = rts.pipelines.rts.load_all_transcripts(LOCAL_RTS_VIDEOS)
     fts = rts.features.text.build_location_df(ts)
 
-    sample_df = get_sample_df()
+    sample_df = rts.pipelines.rts.get_sample_df()
     fts = rts.pipelines.rts.merge_location_df_with_metadata(sample_df, fts)
 
 
-@cli.command()
+@db.command()
 def init_db():
     click.echo(f"Connecting to {DB_HOST}:{DB_PORT}/{DB_NAME}")
     DataAccessObject().connect(DATABASE_URL)
@@ -98,7 +101,7 @@ def init_db():
         click.echo('Database initialization has been canceled.')
 
 
-@cli.command()
+@db.command()
 @click.option('--library-name', type=str, default='rts', help='Library name')
 @click.option('--version', type=str, default='0.0.1', help='Library version')
 @click.option('--data', type=str, default='{}', help='Library data')
@@ -114,15 +117,7 @@ def new_library(library_name: str, version: str, data: str):
     click.echo('New library has been successfully created.')
 
 
-@cli.command()
-def ingest_data():
-    from rts.io.media import upload_clips, upload_images, upload_projection
-
-    click.echo(f"Connecting to {DB_HOST}:{DB_PORT}/{DB_NAME}")
-    DataAccessObject().connect(DATABASE_URL)
-
-
-@cli.command()
+@db.command()
 def new_sample_project():
     click.echo(f"Connecting to {DB_HOST}:{DB_PORT}/{DB_NAME}")
     DataAccessObject().connect(DATABASE_URL)
@@ -134,7 +129,7 @@ def new_sample_project():
 
         # Create library
         create_library(LibraryCreate(
-            library_name="rts",
+            library_name="sample",
             version="0.0.1",
             data='{}'
         ))
@@ -144,7 +139,7 @@ def new_sample_project():
         click.echo('Project creation has been canceled.')
 
 
-@cli.command()
+@db.command()
 @click.option('--username', type=str, default='rts', help='User name')
 @click.option('--full-name', type=str, default='rts', help='User full name')
 @click.option('--email', type=str, default='emplus@epfl.ch', help='User email')

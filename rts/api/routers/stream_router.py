@@ -4,7 +4,7 @@ from io import BytesIO
 from rts.api.routers.auth_router import get_current_active_user, User
 from rts.db.queries import log_access, read_media_by_id
 from rts.storage.storage import get_storage_client
-from rts.db_settings import BUCKET_NAME
+from rts.settings import BUCKET_NAME
 
 BYTES_PER_RESPONSE = 300000
 stream_router = APIRouter()

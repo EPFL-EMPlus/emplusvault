@@ -2,7 +2,7 @@ import os
 import psycopg2
 from typing import Optional, Dict
 from rts.db.dao import DataAccessObject
-from rts.db_settings import DB_NAME
+from rts.settings import DB_NAME
 from rts.utils import get_logger
 
 LOG = get_logger()

@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 import pytest
 from rts.api.server import app, mount_routers
-from rts.api.settings import Settings, get_settings
+from rts.api.api_settings import Settings, get_settings
 from rts.api.routers.auth_router import authenticate
 from rts.api.models import Media, LibraryCreate
 from rts.db.utils import reset_database

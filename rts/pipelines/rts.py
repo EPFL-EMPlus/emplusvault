@@ -1,7 +1,12 @@
 import os
+import io
 import sys
 import shutil
+import zipfile
+import orjson
+import glob
 import pandas as pd
+import shutil
 import xml.etree.ElementTree as ET
 
 import rts.utils
@@ -9,8 +14,11 @@ import rts.io.media
 import rts.features.audio
 import rts.features.text
 
+from datetime import datetime
 from typing import Dict, List, Optional, Tuple, Any
 from pathlib import Path
+
+from rts.settings import RTS_LOCAL_DATA
 
 
 LOG = rts.utils.get_logger()
@@ -21,6 +29,9 @@ TRANSCRIPT_CLIP_EXTEND_DURATION = 0
 TRANSCRIPT_CLIP_NUM_IMAGES = 3
 
 SCENE_EXPORT_NAME = 'scenes.json'
+
+RTS_METADATA = RTS_LOCAL_DATA + 'metadata'
+LOCAL_RTS_VIDEOS = RTS_LOCAL_DATA + 'archive'
 
 
 def extract_base_urls(xml_string):
@@ -338,22 +349,6 @@ def load_all_transcripts(root_folder: str) -> Dict[str, Dict]:
     return transcripts
 
 
-
-import os
-import io
-import zipfile
-import orjson
-import pandas as pd
-import glob
-from datetime import datetime
-from typing import Dict, List, Optional, Tuple
-from pathlib import Path
-import shutil
-
-import rts.utils
-
-
-LOG = rts.utils.get_logger()
 
 
 def build_video_folder_index(rts_drive_path: str) -> Dict:
@@ -710,3 +705,17 @@ def clear_all_clips_and_scenes(clip_df: pd.DataFrame) -> None:
         metadata = media_folder / 'metadata.json'
         if metadata.exists():
             metadata.unlink()
+
+
+def get_sample_df() -> pd.DataFrame:
+    LOG.info('Loading metadata')
+    df = load_metadata_hdf5(RTS_METADATA, 'rts_metadata')
+    # return rts.metadata.get_ten_percent_sample(df).sort_values(by='mediaFolderPath')
+    return filter_by_asset_type(df, nested_struct='0/0')
+
+
+def get_aivectors_df() -> pd.DataFrame:
+    LOG.info('Loading AI vectors subset')
+    df = rts.utils.dataframe_from_hdf5(
+        RTS_LOCAL_DATA + '/metadata', 'rts_aivectors')
+    return df
