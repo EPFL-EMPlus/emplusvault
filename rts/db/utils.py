@@ -21,7 +21,7 @@ def create_database(sql_file, output=False):
     # Execute each statement
     for statement in statements:
         if output:
-            print(statement)
+            LOG.info(statement)
         if statement.strip() != "":
             DataAccessObject().execute_query(statement)
             # print("-- query executed --")

@@ -14,7 +14,7 @@ from rts.db.queries import create_library, create_new_user
 from rts.api.models import LibraryCreate
 from rts.api.routers.auth_router import UserInDB as User
 
-from rts.pipelines.rts import RTS_LOCAL_DATA, LOCAL_RTS_VIDEOS, RTS_METADATA
+from rts.pipelines.rts import RTS_ROOT_FOLDER, RTS_LOCAL_VIDEOS
 
 
 @click.group()
@@ -59,31 +59,31 @@ def pipeline(continuous: bool,
     click.echo('Processing archive')
     click.echo(
         f'Compute transcript: {compute_transcript}, Compute clips: {compute_clips}, ')
-    rts.pipelines.rts.simple_process_archive(df, LOCAL_RTS_VIDEOS, continuous,
+    rts.pipelines.rts.simple_process_archive(df, RTS_LOCAL_VIDEOS, continuous,
                                         compute_transcript, compute_clips, 
                                         force_media, force_transcript, force_clips)
 
 
-@rts.command()
-@click.option('--tile-size', type=int, default=64, help='Tile size')
-@click.option('--name', type=str, default='0', help='Atlas name')
-def atlas(tile_size: int, name: str) -> None:
-    df = rts.pipelines.rts.build_clips_df(LOCAL_RTS_VIDEOS, RTS_METADATA, force=True)
-    rts.pipelines.rts.create_clip_texture_atlases(df, RTS_LOCAL_DATA,
-                                             name,  # folder name
-                                             tile_size=tile_size,
-                                             flip=True,
-                                             no_border=True,
-                                             format='jpg')
+# @rts.command()
+# @click.option('--tile-size', type=int, default=64, help='Tile size')
+# @click.option('--name', type=str, default='0', help='Atlas name')
+# def atlas(tile_size: int, name: str) -> None:
+#     df = rts.pipelines.rts.build_clips_df(RTS_ROOT_FOLDER, force=True)
+#     rts.pipelines.rts.create_clip_texture_atlases(df, RTS_ROOT_FOLDER,
+#                                              name,  # folder name
+#                                              tile_size=tile_size,
+#                                              flip=True,
+#                                              no_border=True,
+#                                              format='jpg')
 
 
-@rts.command()
-def location() -> None:
-    ts = rts.pipelines.rts.load_all_transcripts(LOCAL_RTS_VIDEOS)
-    fts = rts.features.text.build_location_df(ts)
+# @rts.command()
+# def location() -> None:
+#     ts = rts.pipelines.rts.load_all_transcripts(RTS_LOCAL_VIDEOS)
+#     fts = rts.features.text.build_location_df(ts)
 
-    sample_df = rts.pipelines.rts.get_sample_df()
-    fts = rts.pipelines.rts.merge_location_df_with_metadata(sample_df, fts)
+#     sample_df = rts.pipelines.rts.get_sample_df()
+#     fts = rts.pipelines.rts.merge_location_df_with_metadata(sample_df, fts)
 
 
 @db.command()

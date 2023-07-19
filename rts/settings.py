@@ -20,4 +20,8 @@ DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NA
 BUCKET_NAME = os.getenv("BUCKET_NAME")
 SUPERUSER_CLI_KEY = os.getenv("SUPERUSER_CLI_KEY")
 
-RTS_LOCAL_DATA = os.getenv("RTS_LOCAL_DATA") or "/media/data/rts/"
+HF_TOKEN = os.getenv("HF_TOKEN")
+
+RTS_ROOT_FOLDER = os.getenv("RTS_ROOT_FOLDER") or "/media/data/rts/"
+IOC_ROOT_FOLDER = os.getenv("IOC_ROOT_FOLDER") or "/media/data/ioc/"
+MJF_ROOT_FOLDER = os.getenv("MJF_ROOT_FOLDER") or "/media/data/mjf/"

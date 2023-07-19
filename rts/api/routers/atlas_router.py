@@ -39,7 +39,7 @@ def get_image(req: Request, image_id: str, zoom: int, current_user: User = Depen
     }
     size = sizes.get(zoom, 'original')
 
-    image = get_storage_client().download(
+    image = get_storage_client().get_bytes(
         BUCKET_NAME, f'rts/images/{size}/{image_id}.jpg')
 
     return Response(content=image, media_type="image/jpeg")
@@ -61,7 +61,7 @@ async def get_atlas_image(atlas_id: int, texture_id: int, current_user: User = D
     if atlas_entry is None:
         raise HTTPException(status_code=404, detail="Atlas not found")
 
-    atlas = get_storage_client().download(
+    atlas = get_storage_client().get_bytes(
         BUCKET_NAME, atlas_entry['atlas_path'])
 
     return Response(content=atlas, media_type="image/png")

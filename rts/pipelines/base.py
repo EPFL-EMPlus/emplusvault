@@ -28,16 +28,11 @@ class Pipeline(ABC):
             self.tqdm = tqdm_notebook
 
     @abstractmethod
-    def ingest(self, df: pd.DataFrame, min_duration: float = 0, max_duration: float = float('inf')) -> bool:
-        """
-        max_clip_length (int): maximum clip length in seconds, all clips longer than this will be skipped. Defaults to 120 seconds.
-
-        notebook (bool): whether to show a progress bar in the notebook. Defaults to False.
-        """
+    def ingest(self, df: pd.DataFrame, **kwargs) -> bool:
         pass
     
     @abstractmethod
-    def preprocess(self, df: pd.DataFrame) -> pd.DataFrame:
+    def preprocess(self, df: pd.DataFrame, **kwargs) -> pd.DataFrame:
         pass
 
 

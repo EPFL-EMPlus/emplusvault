@@ -1,11 +1,13 @@
+import json
+import rts.utils
+
+from typing import Optional, Any
 from sqlalchemy.sql import text
 from sqlalchemy.exc import IntegrityError
 from rts.db.dao import DataAccessObject
-from typing import Optional
 from rts.api.models import LibraryBase, Projection, Media, Feature, MapProjectionFeatureCreate, Atlas, AccessLog
 from rts.api.routers.auth_router import get_password_hash, UserInDB as User
-import json
-import rts.utils
+
 
 LOG = rts.utils.get_logger()
 
@@ -121,12 +123,12 @@ def create_or_update_media(media: Media) -> dict:
     return {**media_data, "media_id": media_id.fetchone()[0]}
 
 
-def read_media_by_id(media_id: int) -> dict:
+def get_media_by_id(media_id: str) -> dict:
     query = text("SELECT * FROM media WHERE media_id = :media_id")
-    return DataAccessObject().fetch_one(query, {"media_id": media_id})
+    return DataAccessObject().fetch_one(query, {"media_id": str(media_id)})
 
 
-def read_media_by_library_id(library_id: int, media_type: str = None, sub_type: str = None) -> dict:
+def get_all_media_by_library_id(library_id: int, media_type: str = None, sub_type: str = None) -> dict:
     query = "SELECT * FROM media WHERE library_id = :library_id"
     if media_type:
         query = query + " AND media_type = :media_type"
@@ -137,23 +139,17 @@ def read_media_by_library_id(library_id: int, media_type: str = None, sub_type: 
     return DataAccessObject().fetch_all(query, {"library_id": library_id, "media_type": media_type, "sub_type": sub_type})
 
 
-def read_media_by_source_media_id(media_id: str) -> dict:
-    query = text("SELECT * FROM media WHERE media_id = :media_id")
-    return DataAccessObject().fetch_one(query, {"media_id": media_id})
-
-
-def read_media() -> dict:
+def get_all_media() -> dict:
     query = text("SELECT * FROM media")
     return DataAccessObject().fetch_all(query)
 
 
-def read_media_by_metadata(key: str, value: str) -> dict:
+def get_all_media_by_metadata(key: str, value: str) -> dict:
     query = text("SELECT * FROM media WHERE metadata->>:key = :value")
     return DataAccessObject().fetch_all(query, {"key": key, "value": value})
 
 
-def read_media_by_feature_data(key: str, value: str) -> dict:
-
+def get_media_by_feature_value(key: str, value: Any) -> dict:
     # query feature table and join with media table
     query = text("""
         SELECT * FROM media
@@ -199,13 +195,13 @@ def create_feature(feature: Feature) -> dict:
     return {**feature_dict, "feature_id": result.fetchone()[0]}
 
 
-def read_feature_by_id(feature_id: int) -> dict:
+def get_feature_by_id(feature_id: int) -> dict:
     query = text("SELECT * FROM feature WHERE feature_id = :feature_id")
     result = DataAccessObject().fetch_one(query, {"feature_id": feature_id})
     return result
 
 
-def get_features() -> list:
+def get_all_features() -> list:
     query = text("SELECT * FROM feature")
     result = DataAccessObject().fetch_all(query)
     return result

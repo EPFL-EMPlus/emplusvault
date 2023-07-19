@@ -2,7 +2,7 @@ from fastapi import (APIRouter, Depends, Request, Response, HTTPException)
 from fastapi.responses import HTMLResponse, StreamingResponse, FileResponse
 from io import BytesIO
 from rts.api.routers.auth_router import get_current_active_user, User
-from rts.db.queries import log_access, read_media_by_id
+from rts.db.queries import log_access, get_media_by_id
 from rts.storage.storage import get_storage_client
 from rts.settings import BUCKET_NAME
 
@@ -10,6 +10,7 @@ BYTES_PER_RESPONSE = 300000
 stream_router = APIRouter()
 
 
+#TODO: FIX streaming using StorageClient.get_stream
 def chunk_generator_from_stream(stream, chunk_size: int, start: int, size: int):
     bytes_read = 0
     stream.seek(start)
@@ -23,13 +24,14 @@ def chunk_generator_from_stream(stream, chunk_size: int, start: int, size: int):
 async def stream_video(req: Request, media_id: str, current_user: User = Depends(get_current_active_user)):
 
     log_access(current_user, media_id)
-    media = read_media_by_id(media_id)
+    media = get_media_by_id(media_id)
 
-    r = get_storage_client().download(
+    #TODO: Fix this, the whole is downloaded we need to get in range
+    r = get_storage_client().get_bytes(
         BUCKET_NAME, media['media_path'])
     stream_video = BytesIO(r)
 
-    total_size = stream_video.getbuffer().nbytes
+    total_size = media['size']
     byte_ranges = [0, total_size]
     try:
         byte_ranges = req.headers.get("Range").split("=")[1].split('-')

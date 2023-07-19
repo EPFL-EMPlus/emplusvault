@@ -4,7 +4,7 @@ from sqlalchemy.sql import text
 from rts.api.models import Media
 from rts.api.routers.auth_router import get_current_active_user, User
 from rts.db.dao import DataAccessObject
-from rts.db.queries import create_media, read_media_by_id, read_media, update_media, delete_media
+from rts.db.queries import create_media, get_media_by_id, read_media, update_media, delete_media
 import json
 
 media_router = APIRouter()
@@ -23,7 +23,7 @@ async def get_medias(current_user: User = Depends(get_current_active_user)):
 
 @media_router.get("/media/{media_id}", response_model=Media)
 async def get_media(media_id: int, current_user: User = Depends(get_current_active_user)):
-    return read_media_by_id(media_id)
+    return get_media_by_id(media_id)
 
 
 # @media_router.put("/media/{media_id}")

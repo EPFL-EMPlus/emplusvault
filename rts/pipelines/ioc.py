@@ -9,13 +9,13 @@ from rts.io.media import get_frame_number
 from rts.api.models import Media
 from rts.db.queries import create_or_update_media
 
+from rts.settings import IOC_ROOT_FOLDER
 
 LOG = rts.utils.get_logger()
 
 
-IOC_ROOT = "/media/data/ioc/"
-IOC_DATA = IOC_ROOT + 'data'
-IOC_VIDEOS = IOC_ROOT + 'videos'
+IOC_DATA = IOC_ROOT_FOLDER + 'data'
+IOC_VIDEOS = IOC_ROOT_FOLDER + 'videos'
 
 
 class PipelineIOC(Pipeline):
