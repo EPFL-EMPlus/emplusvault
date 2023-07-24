@@ -43,6 +43,7 @@ class Media(BaseModel):
     original_id: str = Field(..., alias="original_id")
     created_at: Optional[datetime] = Field(None, alias="created_at")
     media_type: str = Field(..., alias="media_type", max_length=50)
+    media_info: Dict = Field(..., alias="media_info")
     # file_id: str = Field(..., alias="file_id", max_length=50)
     sub_type: str = Field(..., alias="sub_type", max_length=50)
     size: int = Field(..., alias="size")
