@@ -77,6 +77,7 @@ CREATE TABLE IF NOT EXISTS media (
     original_id VARCHAR(100) NOT NULL,
     created_at TIMESTAMP DEFAULT NOW(),
     media_type VARCHAR(50) NOT NULL,
+    media_info JSONB NOT NULL,
     sub_type VARCHAR(50) NOT NULL,
     size INTEGER NOT NULL,
     metadata JSONB NOT NULL,
