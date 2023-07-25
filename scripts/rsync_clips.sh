@@ -13,7 +13,7 @@ find "$SOURCE_DIR" -type d -name 'clips' -exec bash -c '
     sudo mkdir -p "$dest_path"
     
     # Copy the "clips" directory
-    sudo rsync -av --no-compress "${0}" "$dest_path/clips"
+    sudo rsync -av --no-compress "${0}" "$dest_path"
     
     # Copy the "clips.json" and "media.json" files if they exist
     for json_file in clips.json media.json; do
