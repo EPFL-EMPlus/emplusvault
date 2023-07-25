@@ -6,6 +6,7 @@ from typing import Dict, Optional, List, Tuple, Union
 class LibraryBase(BaseModel):
     library_name: str
     version: str
+    prefix_path: str
     data: Json
 
 

@@ -60,8 +60,8 @@ def pipeline(continuous: bool,
     click.echo(
         f'Compute transcript: {compute_transcript}, Compute clips: {compute_clips}, ')
     rts.pipelines.rts.simple_process_archive(df, RTS_LOCAL_VIDEOS, continuous,
-                                        compute_transcript, compute_clips, 
-                                        force_media, force_transcript, force_clips)
+                                             compute_transcript, compute_clips,
+                                             force_media, force_transcript, force_clips)
 
 
 # @rts.command()
@@ -131,6 +131,7 @@ def new_sample_project():
         create_library(LibraryCreate(
             library_name="sample",
             version="0.0.1",
+            prefix_path="/media/data/rts",
             data='{}'
         ))
 

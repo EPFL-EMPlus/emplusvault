@@ -22,8 +22,8 @@ def get_library_id_from_name(library_name: str) -> Optional[int]:
 
 def create_library(library: LibraryBase) -> dict:
     query = """
-        INSERT INTO library (library_name, version, data)
-        VALUES (%s, %s, %s)
+        INSERT INTO library (library_name, prefix_path, version, data)
+        VALUES (%s, %s, %s, %s)
         RETURNING library_id
     """
     vals = library.dict()
