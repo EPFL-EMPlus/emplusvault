@@ -159,44 +159,42 @@ def create_user(username: str, full_name: str, email: str):
     ))
 
 
-import os
-
 @db.command()
-@click.option('--path', type=str, default='export.sql', help='Path to exported file or path to export folder')
+@click.option('--path', type=str, default='/media/data/dumps/', help='Path to exported file or path to export folder')
 def export_db(path: str):
-    click.echo(f"Connecting to {DB_HOST}:{DB_PORT}/{DB_NAME}")
-    user = DB_USER
-    password = DB_PASSWORD
-    database = DB_NAME
-
-    # Create parent folder if needed
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-
-    # Ensure extension is .sql
-    if not path.endswith('.sql'):
-        path = os.path.splitext(path)[0] + '.sql'
-
+    click.echo(f"Exporting {DB_HOST}:{DB_PORT}/{DB_NAME}")
     # Check if path is a folder or not
     if path.endswith('/') or not os.path.splitext(path)[1]:
         # Get current timestamp
         timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
         # Set output file name
+         # Create parent folder if needed
+        os.makedirs(path, exist_ok=True)
         output_file = f"output_{timestamp}.sql"
+        # Combine directory and file name
+        path = os.path.join(path, output_file)
     else:
         # Use given path assuming it ends with .sql
-        output_file = os.path.basename(path)
+        if not path.endswith('.sql'):
+            path = os.path.splitext(path)[0] + '.sql'
+        # Create parent folder if needed
+        parent = os.path.dirname(path)
+        if parent:
+            os.makedirs(os.path.dirname(path), exist_ok=True)
 
-    # Set PGPASSWORD environment variable
-    os.environ['PGPASSWORD'] = password
+    user = DB_USER
+    database = DB_NAME
+    os.environ['PGPASSWORD'] = DB_PASSWORD
 
-    # Prepare command
-    command = f'pg_dump -U {user} -F p {database} > {path}/{output_file}'
+    command_get_container = 'docker ps --format "{{.CreatedAt}} {{.Names}}" | grep "docker-postgres" | sort -r | head -n 1 | awk \'{print $NF}\''
+    container_name = subprocess.check_output(command_get_container, shell=True).decode().strip()
+
+    # # Prepare command
+    command = f'docker exec -i {container_name} pg_dump -U {user} -F p {database} > {path}'
 
     # Execute command
     subprocess.run(command, shell=True, check=True)
-
-    click.echo(f"Database dump completed. Output written to {path}/{output_file}")
-
+    click.echo(f"Database dump completed. Output written to {path}")
 
 if __name__ == '__main__':
     cli()
