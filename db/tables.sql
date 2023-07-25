@@ -28,9 +28,18 @@ CREATE TABLE IF NOT EXISTS access_logs (
 
 CREATE TABLE IF NOT EXISTS library (
     library_id SERIAL PRIMARY KEY,
+
+    -- 'library_name' is a unique name for the library
     library_name VARCHAR(50) UNIQUE,
+
+    -- 'prefix_path' is the path prefix to locate the library
+    prefix_path VARCHAR(500),
+
+    -- 'version' denotes the version of the library 
     version VARCHAR(20) NOT NULL,
     created_at TIMESTAMP DEFAULT NOW(),
+
+    -- 'data' is a field for storing JSON data with additional information on the library
     data JSONB NOT NULL
 );
 

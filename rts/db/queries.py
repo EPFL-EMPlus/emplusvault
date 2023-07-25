@@ -22,13 +22,13 @@ def get_library_id_from_name(library_name: str) -> Optional[int]:
 
 def create_library(library: LibraryBase) -> dict:
     query = """
-        INSERT INTO library (library_name, version, data)
-        VALUES (%s, %s, %s)
+        INSERT INTO library (library_name, prefix_path, version, data)
+        VALUES (%s, %s, %s, %s)
         RETURNING library_id
     """
     vals = library.dict()
     library_id = DataAccessObject().execute_query(
-        query, (vals['library_name'], vals['version'], json.dumps(vals['data'])))
+        query, (vals['library_name'], vals['prefix_path'], vals['version'], json.dumps(vals['data'])))
     return {**library.dict(), "library_id": library_id.fetchone()[0]}
 
 

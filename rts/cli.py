@@ -60,8 +60,8 @@ def pipeline(continuous: bool,
     click.echo(
         f'Compute transcript: {compute_transcript}, Compute clips: {compute_clips}, ')
     rts.pipelines.rts.simple_process_archive(df, RTS_LOCAL_VIDEOS, continuous,
-                                        compute_transcript, compute_clips, 
-                                        force_media, force_transcript, force_clips)
+                                             compute_transcript, compute_clips,
+                                             force_media, force_transcript, force_clips)
 
 
 # @rts.command()
@@ -104,14 +104,16 @@ def init_db():
 @db.command()
 @click.option('--library-name', type=str, default='rts', help='Library name')
 @click.option('--version', type=str, default='0.0.1', help='Library version')
+@click.option('--prefix_path', type=str, default='/media/data/rts', help='Library prefix path')
 @click.option('--data', type=str, default='{}', help='Library data')
-def new_library(library_name: str, version: str, data: str):
+def new_library(library_name: str, version: str, prefix_path: str, data: str):
     click.echo(f"Connecting to {DB_HOST}:{DB_PORT}/{DB_NAME}")
     DataAccessObject().connect(DATABASE_URL)
 
     create_library(LibraryCreate(
         library_name=library_name,
         version=version,
+        prefix_path=prefix_path,
         data=data
     ))
     click.echo('New library has been successfully created.')
@@ -131,6 +133,7 @@ def new_sample_project():
         create_library(LibraryCreate(
             library_name="sample",
             version="0.0.1",
+            prefix_path="/media/data/rts",
             data='{}'
         ))
 
