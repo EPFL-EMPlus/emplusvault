@@ -28,7 +28,7 @@ def create_library(library: LibraryBase) -> dict:
     """
     vals = library.dict()
     library_id = DataAccessObject().execute_query(
-        query, (vals['library_name'], vals['version'], json.dumps(vals['data'])))
+        query, (vals['library_name'], vals['prefix_path'], vals['version'], json.dumps(vals['data'])))
     return {**library.dict(), "library_id": library_id.fetchone()[0]}
 
 
