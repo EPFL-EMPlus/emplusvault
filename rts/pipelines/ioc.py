@@ -7,7 +7,7 @@ from datetime import datetime
 from rts.pipelines.base import Pipeline, get_hash
 from rts.io.media import get_frame_number
 from rts.api.models import Media
-from rts.db.queries import create_or_update_media
+from rts.db.queries import create_or_update_media, check_media_exists
 
 from rts.settings import IOC_ROOT_FOLDER
 
@@ -21,7 +21,10 @@ IOC_VIDEOS = IOC_ROOT_FOLDER + 'videos'
 class PipelineIOC(Pipeline):
     library_name: str = 'ioc'
 
-    def ingest(self, df: pd.DataFrame, min_duration: float = 0, max_duration: float = float('inf')) -> bool:
+    def ingest(self, df: pd.DataFrame, 
+               force: bool = False,
+               min_duration: float = 0, 
+               max_duration: float = float('inf')) -> bool:
         """
         Ingest the IOC metadata and video files.
 
@@ -39,17 +42,25 @@ class PipelineIOC(Pipeline):
                 - round (str): round of the event
         """
         for i, group in self.tqdm(df.groupby('guid')):
-            self.ingest_single_video(group, min_duration, max_duration)
+            self.ingest_single_video(group, min_duration, max_duration, force)
 
         return True
 
     def ingest_single_video(self, df: pd.DataFrame,
+                            force: bool = False,
                             min_duration: float = 0,
-                            max_duration: float = float('inf')) -> bool:
+                            max_duration: float = float('inf')
+                            ) -> bool:
         """ Ingest all clips from a single IOC video file. """
         df = self.preprocess(df)
 
         for i, row in self.tqdm(df.iterrows(), leave=False, total=len(df)):
+
+            media_id = f"{self.library_name}-{row.seq_id}"
+            exists = check_media_exists(media_id)
+            if exists and not force:
+                continue
+
             seq_dur = row.end_ts - row.start_ts
             if seq_dur < min_duration:
                 LOG.info(
@@ -79,7 +90,7 @@ class PipelineIOC(Pipeline):
             }
 
             clip = Media(**{
-                'media_id': row.seq_id,
+                'media_id': media_id,
                 'original_path': original_path,
                 'original_id': row.guid,
                 'media_path': media_path,

@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from tqdm import tqdm
 from tqdm.notebook import tqdm as tqdm_notebook
 
-from rts.db.queries import get_library_id_from_name
+from rts.db.queries import get_library_from_name
 from rts.utils import temporary_filename
 from rts.io.media import trim, get_media_info
 from rts.storage.storage import get_storage_client
@@ -17,18 +17,19 @@ def get_hash(media_path: str) -> str:
 
 class Pipeline(ABC):
     library_name: str = 'undefined'
-    frame_rates: dict = {}
-    library_id: int = -1
+    library: dict = {}
+    store: object = None
+    tqdm: object = None
 
     def __init__(self, run_notebook: bool = False):
-        self.library_id = get_library_id_from_name(self.library_name)
+        self.library = get_library_from_name('mjf')
         self.store = get_storage_client()
         self.tqdm = tqdm
         if run_notebook:
             self.tqdm = tqdm_notebook
 
     @abstractmethod
-    def ingest(self, df: pd.DataFrame, **kwargs) -> bool:
+    def ingest(self, df: pd.DataFrame, force: bool = False, **kwargs) -> bool:
         pass
     
     @abstractmethod

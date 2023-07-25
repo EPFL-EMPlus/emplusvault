@@ -1,4 +1,6 @@
+import os
 import click
+import subprocess
 import pandas as pd
 
 import rts.utils
@@ -7,8 +9,9 @@ import rts.features.audio
 import rts.features.text
 import rts.pipelines.rts
 
-from rts.db.dao import DataAccessObject
-from rts.settings import DATABASE_URL, DB_HOST, DB_NAME, DB_PORT, SUPERUSER_CLI_KEY
+from datetime import datetime
+
+from rts.settings import DB_HOST, DB_NAME, DB_PORT, SUPERUSER_CLI_KEY, DB_USER, DB_PASSWORD
 from rts.db.utils import create_database
 from rts.db.queries import create_library, create_new_user
 from rts.api.models import LibraryCreate
@@ -89,8 +92,6 @@ def pipeline(continuous: bool,
 @db.command()
 def init_db():
     click.echo(f"Connecting to {DB_HOST}:{DB_PORT}/{DB_NAME}")
-    DataAccessObject().connect(DATABASE_URL)
-
     confirm = click.prompt(
         'Are you sure you want to initialize the database? This will overwrite the current database [SUPERUSER_CLI_KEY]')
     if confirm.lower() == SUPERUSER_CLI_KEY:
@@ -104,11 +105,12 @@ def init_db():
 @db.command()
 @click.option('--library-name', type=str, default='rts', help='Library name')
 @click.option('--version', type=str, default='0.0.1', help='Library version')
-@click.option('--prefix_path', type=str, default='/media/data/rts', help='Library prefix path')
+@click.option('--prefix_path', type=str, default='/media/data/rts/archive/', help='Library prefix path')
 @click.option('--data', type=str, default='{}', help='Library data')
 def new_library(library_name: str, version: str, prefix_path: str, data: str):
     click.echo(f"Connecting to {DB_HOST}:{DB_PORT}/{DB_NAME}")
-    DataAccessObject().connect(DATABASE_URL)
+    if prefix_path[-1] != '/':
+        prefix_path += '/'
 
     create_library(LibraryCreate(
         library_name=library_name,
@@ -122,8 +124,6 @@ def new_library(library_name: str, version: str, prefix_path: str, data: str):
 @db.command()
 def new_sample_project():
     click.echo(f"Connecting to {DB_HOST}:{DB_PORT}/{DB_NAME}")
-    DataAccessObject().connect(DATABASE_URL)
-
     confirm = click.prompt(
         'Are you sure you want to create a new sample project on the database? This will add data to the database database [yes/no]')
     if confirm.lower() == 'yes':
@@ -133,7 +133,7 @@ def new_sample_project():
         create_library(LibraryCreate(
             library_name="sample",
             version="0.0.1",
-            prefix_path="/media/data/rts",
+            prefix_path="/media/data/rts/archive/",
             data='{}'
         ))
 
@@ -148,8 +148,6 @@ def new_sample_project():
 @click.option('--email', type=str, default='emplus@epfl.ch', help='User email')
 def create_user(username: str, full_name: str, email: str):
     click.echo(f"Connecting to {DB_HOST}:{DB_PORT}/{DB_NAME}")
-    DataAccessObject().connect(DATABASE_URL)
-
     password = click.prompt('Set password', hide_input=True,
                             confirmation_prompt=True)
 
@@ -159,6 +157,45 @@ def create_user(username: str, full_name: str, email: str):
         password=password,
         email=email
     ))
+
+
+import os
+
+@db.command()
+@click.option('--path', type=str, default='export.sql', help='Path to exported file or path to export folder')
+def export_db(path: str):
+    click.echo(f"Connecting to {DB_HOST}:{DB_PORT}/{DB_NAME}")
+    user = DB_USER
+    password = DB_PASSWORD
+    database = DB_NAME
+
+    # Create parent folder if needed
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+
+    # Ensure extension is .sql
+    if not path.endswith('.sql'):
+        path = os.path.splitext(path)[0] + '.sql'
+
+    # Check if path is a folder or not
+    if path.endswith('/') or not os.path.splitext(path)[1]:
+        # Get current timestamp
+        timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+        # Set output file name
+        output_file = f"output_{timestamp}.sql"
+    else:
+        # Use given path assuming it ends with .sql
+        output_file = os.path.basename(path)
+
+    # Set PGPASSWORD environment variable
+    os.environ['PGPASSWORD'] = password
+
+    # Prepare command
+    command = f'pg_dump -U {user} -F p {database} > {path}/{output_file}'
+
+    # Execute command
+    subprocess.run(command, shell=True, check=True)
+
+    click.echo(f"Database dump completed. Output written to {path}/{output_file}")
 
 
 if __name__ == '__main__':

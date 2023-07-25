@@ -11,31 +11,13 @@ from rts.settings import DATABASE_URL
 LOG = get_logger()
 
 
+# Create the engine
+engine = sqlalchemy.create_engine(DATABASE_URL)
+
+
 class DataAccessObject:
-    _engine = None  # SQLAlchemy engine object, used for connecting to the database
-    _testing = False  # A flag indicating whether the DAO is in testing mode
-    _test_setup_complete = False  # A flag indicating whether test setup is complete
-
-    def __init__(self, db_url: Union[str, URL] = DATABASE_URL) -> None:
-        self.connect(db_url)  # Automatically connect to the database
-
-    def connect(self, db_url: Union[str, URL]) -> None:
-        # Connect to the database using the given URL
-        if not isinstance(db_url, (str, URL)):
-            LOG.error("db_url must be a string or an instance of sqlalchemy.engine.url.URL")
-            raise TypeError("db_url must be a string or an instance of sqlalchemy.engine.url.URL")
-
-        try:
-            self._engine = sqlalchemy.create_engine(db_url)
-        except SQLAlchemyError as e:
-            LOG.error(
-                f"An error occurred when trying to connect to the database: {e}")
-            raise e
-
-    def disconnect(self) -> None:
-        # Disconnect from the database by disposing the engine
-        if self._engine:
-            self._engine.dispose()
+    def __init__(self, engine: Engine = engine) -> None:
+        self._engine = engine
 
     def database_exists(self, db_name: str) -> bool:
         # Check if a database with the given name exists
