@@ -20,6 +20,20 @@ def get_library_id_from_name(library_name: str) -> Optional[int]:
     return library_id['library_id'] if library_id else None
 
 
+def get_libraries() -> list:
+    query = """
+        SELECT * FROM library
+    """
+    return DataAccessObject().fetch_all(query)
+
+
+def remove_library(library_id: int) -> None:
+    query = """
+        DELETE FROM library WHERE library_id=%s
+    """
+    DataAccessObject().execute_query(query, (library_id,))
+
+
 def create_library(library: LibraryBase) -> dict:
     query = """
         INSERT INTO library (library_name, prefix_path, version, data)
