@@ -1,7 +1,7 @@
 import json
 import rts.utils
 
-from typing import Optional, Any
+from typing import Optional, Any, Dict
 from sqlalchemy.sql import text
 from sqlalchemy.exc import IntegrityError
 from rts.db.dao import DataAccessObject
@@ -33,6 +33,13 @@ def remove_library(library_id: int) -> None:
     """
     DataAccessObject().execute_query(query, (library_id,))
 
+def get_library_from_name(library_name: str) -> Optional[Dict]:
+    query = """
+        SELECT * FROM library WHERE library_name=%s
+    """
+    library = DataAccessObject().fetch_one(query, (library_name,))
+    return library if library else None
+
 
 def create_library(library: LibraryBase) -> dict:
     query = """
@@ -44,6 +51,13 @@ def create_library(library: LibraryBase) -> dict:
     library_id = DataAccessObject().execute_query(
         query, (vals['library_name'], vals['prefix_path'], vals['version'], json.dumps(vals['data'])))
     return {**library.dict(), "library_id": library_id.fetchone()[0]}
+
+
+def update_library_prefix_path(library_id: int, prefix_path: str) -> None:
+    query = """
+        UPDATE library SET prefix_path=%s WHERE library_id=%s
+    """
+    DataAccessObject().execute_query(query, (prefix_path, library_id))
 
 
 def create_projection(projection: Projection) -> dict:
@@ -97,7 +111,8 @@ def delete_projection(projection_id: int) -> None:
 
 def create_media(media: Media) -> dict:
     media_data = media.dict()
-    media_data['metadata'] = json.dumps(media_data['metadata'])
+    media_data['metadata'] = json.dumps(media_data['metadata'], check_circular=False) if media_data['metadata'] else None
+    media_data['media_info'] = json.dumps(media_data['media_info'], check_circular=False)
 
     query = text("""
         INSERT INTO media (media_id, media_path, original_path, original_id, media_type, media_info, sub_type, size, metadata, library_id, hash, parent_id, start_ts, end_ts, start_frame, end_frame, frame_rate)
@@ -110,7 +125,8 @@ def create_media(media: Media) -> dict:
 
 def create_or_update_media(media: Media) -> dict:
     media_data = media.dict()
-    media_data['metadata'] = json.dumps(media_data['metadata'])
+    media_data['metadata'] = json.dumps(media_data['metadata'], check_circular=False) if media_data['metadata'] else None
+    media_data['media_info'] = json.dumps(media_data['media_info'], check_circular=False)
 
     query = text("""
         INSERT INTO media (media_id, media_path, original_path, original_id, media_type, media_info, sub_type, size, metadata, library_id, hash, parent_id, start_ts, end_ts, start_frame, end_frame, frame_rate)
@@ -141,6 +157,12 @@ def create_or_update_media(media: Media) -> dict:
 def get_media_by_id(media_id: str) -> dict:
     query = text("SELECT * FROM media WHERE media_id = :media_id")
     return DataAccessObject().fetch_one(query, {"media_id": str(media_id)})
+
+
+def check_media_exists(media_id: str) -> bool:
+    query = text("SELECT EXISTS(SELECT 1 FROM media WHERE media_id = :media_id)")
+    result = DataAccessObject().fetch_one(query, {"media_id": media_id})
+    return result['exists']
 
 
 def get_all_media_by_library_id(library_id: int, media_type: str = None, sub_type: str = None) -> dict:

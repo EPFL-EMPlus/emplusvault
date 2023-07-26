@@ -175,8 +175,9 @@ def get_media_info(media_path: str) -> Dict:
             if not info['audio']:
                 del info['audio']
 
-    except av.AVError as e:
+    except (FileNotFoundError, av.AVError) as e:
         LOG.error(e)
+        return None
     return info
 
 

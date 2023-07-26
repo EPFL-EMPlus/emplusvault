@@ -173,3 +173,7 @@ def read_mpd_file(media_folder: str):
     media_id = p.name
     mpd_file = p / Path(media_id + '.mpd')
     return read_xml_file(str(mpd_file))
+
+
+def remove_path_prefix(text: str, prefix: str) -> str:
+    return text[text.startswith(prefix) and len(prefix):]
