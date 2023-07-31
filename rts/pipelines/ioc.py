@@ -42,7 +42,7 @@ class PipelineIOC(Pipeline):
                 - round (str): round of the event
         """
         for i, group in self.tqdm(df.groupby('guid')):
-            self.ingest_single_video(group, min_duration, max_duration, force)
+            self.ingest_single_video(group, force, min_duration, max_duration)
 
         return True
 
@@ -52,7 +52,7 @@ class PipelineIOC(Pipeline):
                             max_duration: float = float('inf')
                             ) -> bool:
         """ Ingest all clips from a single IOC video file. """
-        df = self.preprocess(df)
+        df = self.preprocess(df[df.guid != df.seq_id])
 
         for i, row in self.tqdm(df.iterrows(), leave=False, total=len(df)):
 
@@ -64,12 +64,12 @@ class PipelineIOC(Pipeline):
             seq_dur = row.end_ts - row.start_ts
             if seq_dur < min_duration:
                 LOG.info(
-                    f'Skipping clip {row.seq_id} because it is shorter than {min_duration} seconds')
+                    f'Skipping clip {row.seq_id} of length {seq_dur} because it is shorter than {min_duration} seconds')
                 continue
 
             if seq_dur > max_duration:
                 LOG.info(
-                    f'Skipping clip {row.seq_id} because it is longer than {max_duration} seconds')
+                    f'Skipping clip {row.seq_id} of length {seq_dur} because it is longer than {max_duration} seconds')
                 continue
 
             original_path = row.path
@@ -129,4 +129,5 @@ class PipelineIOC(Pipeline):
             x, '%H:%M:%S.%f') - datetime(1900, 1, 1)).total_seconds())
         df.loc[:, 'end_ts'] = df.end_ts - df.start_ts.min()
         df.loc[:, 'start_ts'] = df.start_ts - df.start_ts.min()
+        df = df.sort_values(by='start_ts')
         return df
