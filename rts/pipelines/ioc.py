@@ -52,9 +52,13 @@ class PipelineIOC(Pipeline):
                             max_duration: float = float('inf')
                             ) -> bool:
         """ Ingest all clips from a single IOC video file. """
-        df = self.preprocess(df[df.guid != df.seq_id])
 
+        # The first sequence in the dataframe needs to be the full video for correct time stamp calculation
+        assert len(df[df.seq_id == df.guid]) >= 1
+        df = self.preprocess(df)
+        LOG.info(f'Ingesting {len(df)} clips from {df.guid.iloc[0]}')
         for i, row in self.tqdm(df.iterrows(), leave=False, total=len(df)):
+
             media_id = f"{self.library_name}-{row.seq_id}"
             exists = check_media_exists(media_id)
             if exists and not force:
