@@ -22,7 +22,7 @@ class Pipeline(ABC):
     tqdm: object = None
 
     def __init__(self, run_notebook: bool = False):
-        self.library = get_library_from_name('mjf')
+        self.library = get_library_from_name(self.library_name)
         self.store = get_storage_client()
         self.tqdm = tqdm
         if run_notebook:
