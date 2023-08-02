@@ -55,7 +55,6 @@ class PipelineIOC(Pipeline):
         df = self.preprocess(df[df.guid != df.seq_id])
 
         for i, row in self.tqdm(df.iterrows(), leave=False, total=len(df)):
-
             media_id = f"{self.library_name}-{row.seq_id}"
             exists = check_media_exists(media_id)
             if exists and not force:
@@ -80,7 +79,7 @@ class PipelineIOC(Pipeline):
             if not media_info:
                 LOG.error(f'Failed to trim and upload clip {row.seq_id}')
                 return False
-
+ 
             metadata = {
                 'sport': row.sport,
                 'description': row.description,

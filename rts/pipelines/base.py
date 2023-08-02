@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from tqdm import tqdm
 from tqdm.notebook import tqdm as tqdm_notebook
 
-from rts.db.queries import get_library_from_name
+from rts.db.queries import get_library_from_name, get_library_id_from_name
 from rts.utils import temporary_filename
 from rts.io.media import trim, get_media_info
 from rts.storage.storage import get_storage_client
@@ -23,6 +23,7 @@ class Pipeline(ABC):
 
     def __init__(self, run_notebook: bool = False):
         self.library = get_library_from_name(self.library_name)
+        self.library_id = get_library_id_from_name(self.library_name)
         self.store = get_storage_client()
         self.tqdm = tqdm
         if run_notebook:
