@@ -41,7 +41,8 @@ class PipelineIOC(Pipeline):
                 - category (str): category of the event
                 - round (str): round of the event
         """
-        for i, group in self.tqdm(df.groupby('guid')):
+        self.inner_progress_bar = None
+        for i, group in self.tqdm(df.groupby('guid'), position=0, leave=True, desc='IOC videos'):
             self.ingest_single_video(group, force, min_duration, max_duration)
 
         return True
@@ -57,8 +58,18 @@ class PipelineIOC(Pipeline):
         assert len(df[df.seq_id == df.guid]) >= 1
         df = self.preprocess(df)
         LOG.info(f'Ingesting {len(df)} clips from {df.guid.iloc[0]}')
-        for i, row in self.tqdm(df.iterrows(), leave=False, total=len(df)):
-
+        
+        # Setting up nested progress bar in an alternative way as the default leads to a bug with a lot of blank lines in jupyter notebooks
+        if not self.inner_progress_bar:
+            self.inner_progress_bar = self.tqdm(total=1, desc='Clips', position=1, leave=False)
+        self.inner_progress_bar.reset()
+        self.inner_progress_bar.total = len(df)
+        self.inner_progress_bar.refresh()
+        
+        # for i, row in self.tqdm(df.iterrows(), leave=False, total=len(df), position=1, desc='Clips'):
+        for i, row in df.iterrows():
+            self.inner_progress_bar.update()
+        
             media_id = f"{self.library_name}-{row.seq_id}"
             exists = check_media_exists(media_id)
             if exists and not force:
