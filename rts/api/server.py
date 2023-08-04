@@ -61,11 +61,11 @@ async def startup_event():
 
     # connect to the database
     dao = DataAccessObject()
-    dao.connect(DATABASE_URL)
+    # dao.connect(DATABASE_URL)
 
     try:
         # TODO: Replace the function with database calls
-        df = build_clips_df(archive_folder, metadata_folder, force=False)
+        df = build_clips_df(archive_folder, metadata_folder)
         app.state.clips = build_clip_index(df)
     except KeyError as e:
         pass
@@ -77,7 +77,7 @@ async def startup_event():
 @app.on_event("shutdown")
 async def on_shutdown():
     dao = DataAccessObject()
-    dao.disconnect()
+    # dao.disconnect()
 
 
 @cli.command('dev', help='Start the server in development mode')

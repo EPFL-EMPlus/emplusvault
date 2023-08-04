@@ -55,7 +55,11 @@ class PipelineIOC(Pipeline):
         """ Ingest all clips from a single IOC video file. """
 
         # The first sequence in the dataframe needs to be the full video for correct time stamp calculation
-        assert len(df[df.seq_id == df.guid]) >= 1
+        try:
+            assert len(df[df.seq_id == df.guid]) >= 1
+        except AssertionError:
+            LOG.error(f'No guid section found for the video with ID {df.guid.iloc[0]}. Skipping ingestion.')
+            return False
         df = self.preprocess(df)
         LOG.info(f'Ingesting {len(df)} clips from {df.guid.iloc[0]}')
         

@@ -52,6 +52,7 @@ poe init-db
 
 ### Run the server
 ```
+cd rts/api/
 uvicorn server:app --host 0.0.0.0 --port 8763 --reload
 ```
 
