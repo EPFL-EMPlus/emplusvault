@@ -20,8 +20,6 @@ from rts.api.routers.atlas_router import atlas_router
 from rts.api.routers.stream_router import stream_router
 from rts.api.routers.auth_router import auth_router
 from rts.settings import DATABASE_URL
-from fastapi.security import OAuth2PasswordBearer
-from pydantic import BaseModel
 
 
 LOG = get_logger()

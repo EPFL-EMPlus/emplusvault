@@ -16,9 +16,10 @@ async def create(media: Media, current_user: User = Depends(get_current_active_u
     return media_data
 
 
-@media_router.get("/media/", response_model=List[Media])
-async def get_medias(current_user: User = Depends(get_current_active_user)):
-    return get_all_media()
+# Removed for now. With the amount of media files available, this call becomes too slow.
+# @media_router.get("/media/", response_model=List[Media])
+# async def get_medias(current_user: User = Depends(get_current_active_user)):
+#     return get_all_media()
 
 
 @media_router.get("/media/{media_id}", response_model=Media)
