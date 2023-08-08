@@ -21,52 +21,79 @@ def chunk_generator_from_stream(stream, chunk_size: int, start: int, size: int):
 
 
 @stream_router.get('/stream/{media_id}')
-async def stream_video(req: Request, media_id: str, current_user: User = Depends(get_current_active_user)):
+async def stream_video(req: Request, media_id: str): # , current_user: User = Depends(get_current_active_user)):
 
-    log_access(current_user, media_id)
+    # log_access(current_user, media_id)
     media = get_media_for_streaming(media_id)
 
     #TODO: Fix this, the whole is downloaded we need to get in range
-    r = get_storage_client().get_bytes(
-        media['library_name'], media['media_path'])
-    stream_video = BytesIO(r)
-
-    total_size = media['size']
-    byte_ranges = [0, total_size]
-    try:
-        byte_ranges = req.headers.get("Range").split("=")[1].split('-')
-    except AttributeError:
-        pass
-
-    start_byte_requested = int(byte_ranges[0])
-    end_byte_requested = None
-    if len(byte_ranges) > 1:  # safari
-        if byte_ranges[1]:
-            end_byte_requested = int(byte_ranges[1])
-
-    # End byte is included, need to remove 1
-    end_byte_planned = min(start_byte_requested +
-                           BYTES_PER_RESPONSE, total_size) - 1
-    if end_byte_requested:
-        end_byte_planned = min(end_byte_requested, end_byte_planned)
-
-    size_chunk = min(BYTES_PER_RESPONSE, end_byte_planned +
-                     1 - start_byte_requested)
-
-    chunk_generator = chunk_generator_from_stream(
-        stream_video,
-        chunk_size=BYTES_PER_RESPONSE,
-        start=start_byte_requested,
-        size=size_chunk
-    )
+    range_header = req.headers.get('Range', None)
+    if range_header:
+        byte_pos = range_header.strip().lower().replace('bytes=', '').split('-')
+        start_byte = int(byte_pos[0])
+        # if the end byte isn't there or if it's greater than object size decreased by one
+        end_byte = start_byte + 1024000  # 1MB buffer
+    else:
+        # No range request, deliver the whole video
+        start_byte = 0
+        end_byte = ''
+    
+    stream = get_storage_client().get_stream(
+        media['library_name'], media['media_path'],
+        start_byte=start_byte, end_byte=end_byte)
 
     return StreamingResponse(
-        chunk_generator,
+        content=stream, 
+        media_type="video/mp4",
         headers={
+            "Content-Range": f"bytes {start_byte}-{end_byte}/*",
             "Accept-Ranges": "bytes",
-            "Content-Range": f"bytes {start_byte_requested}-{end_byte_planned}/{total_size}",
             "Content-Type": 'video/mp4',
-            "Content-Length": f"{end_byte_planned + 1 - start_byte_requested}"
-        },
-        status_code=206
+            "Content-Length": str(end_byte-start_byte)
+        }
     )
+
+
+    # r = get_storage_client().get_bytes(
+    #     media['library_name'], media['media_path'])
+    # stream_video = BytesIO(r)
+
+    # total_size = media['size']
+    # byte_ranges = [0, total_size]
+    # try:
+    #     byte_ranges = req.headers.get("Range").split("=")[1].split('-')
+    # except AttributeError:
+    #     pass
+
+    # start_byte_requested = int(byte_ranges[0])
+    # end_byte_requested = None
+    # if len(byte_ranges) > 1:  # safari
+    #     if byte_ranges[1]:
+    #         end_byte_requested = int(byte_ranges[1])
+
+    # # End byte is included, need to remove 1
+    # end_byte_planned = min(start_byte_requested +
+    #                        BYTES_PER_RESPONSE, total_size) - 1
+    # if end_byte_requested:
+    #     end_byte_planned = min(end_byte_requested, end_byte_planned)
+
+    # size_chunk = min(BYTES_PER_RESPONSE, end_byte_planned +
+    #                  1 - start_byte_requested)
+
+    # chunk_generator = chunk_generator_from_stream(
+    #     stream_video,
+    #     chunk_size=BYTES_PER_RESPONSE,
+    #     start=start_byte_requested,
+    #     size=size_chunk
+    # )
+
+    # return StreamingResponse(
+    #     chunk_generator,
+    #     headers={
+    #         "Accept-Ranges": "bytes",
+    #         "Content-Range": f"bytes {start_byte_requested}-{end_byte_planned}/{total_size}",
+    #         "Content-Type": 'video/mp4',
+    #         "Content-Length": f"{end_byte_planned + 1 - start_byte_requested}"
+    #     },
+    #     status_code=206
+    # )
