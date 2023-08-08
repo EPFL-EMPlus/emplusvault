@@ -11,7 +11,7 @@ stream_router = APIRouter()
 
 
 @stream_router.get('/stream/{media_id}')
-async def stream_video(req: Request, media_id: str): # , current_user: User = Depends(get_current_active_user)):
+async def stream_video(req: Request, media_id: str, current_user: User = Depends(get_current_active_user)):
 
     # log_access(current_user, media_id)
     media = get_media_for_streaming(media_id)
