@@ -2,7 +2,7 @@ from fastapi import (APIRouter, Depends, Request, Response, HTTPException)
 from fastapi.responses import HTMLResponse, StreamingResponse, FileResponse
 from io import BytesIO
 from rts.api.routers.auth_router import get_current_active_user, User
-from rts.db.queries import log_access, get_media_by_id
+from rts.db.queries import log_access, get_media_for_streaming
 from rts.storage.storage import get_storage_client
 from rts.settings import BUCKET_NAME
 
@@ -24,11 +24,11 @@ def chunk_generator_from_stream(stream, chunk_size: int, start: int, size: int):
 async def stream_video(req: Request, media_id: str, current_user: User = Depends(get_current_active_user)):
 
     log_access(current_user, media_id)
-    media = get_media_by_id(media_id)
+    media = get_media_for_streaming(media_id)
 
     #TODO: Fix this, the whole is downloaded we need to get in range
     r = get_storage_client().get_bytes(
-        BUCKET_NAME, media['media_path'])
+        media['library_name'], media['media_path'])
     stream_video = BytesIO(r)
 
     total_size = media['size']

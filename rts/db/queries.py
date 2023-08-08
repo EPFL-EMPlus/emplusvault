@@ -159,6 +159,11 @@ def get_media_by_id(media_id: str) -> dict:
     return DataAccessObject().fetch_one(query, {"media_id": str(media_id)})
 
 
+def get_media_for_streaming(media_id: str) -> dict:
+    query = text("SELECT media.media_path, media.size, library.library_name FROM media LEFT JOIN library ON media.library_id = library.library_id WHERE media_id = :media_id")
+    return DataAccessObject().fetch_one(query, {"media_id": str(media_id)})
+
+
 def check_media_exists(media_id: str) -> bool:
     query = text("SELECT EXISTS(SELECT 1 FROM media WHERE media_id = :media_id)")
     result = DataAccessObject().fetch_one(query, {"media_id": media_id})
