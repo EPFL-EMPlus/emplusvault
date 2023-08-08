@@ -1,0 +1,13 @@
+[Unit]
+Description=Uvicorn instance to serve the emplusvault API
+After=network.target
+
+[Service]
+User=sinergia
+Group=sinergia
+WorkingDirectory=/home/sinergia/emplusvault/rts/api
+Environment="PATH=/home/sinergia/.cache/pypoetry/virtualenvs/rts-dhsPlZBl-py3.10"
+ExecStart=/home/sinergia/.cache/pypoetry/virtualenvs/rts-dhsPlZBl-py3.10/bin/uvicorn server:app --host 0.0.0.0 --port 8763
+
+[Install]
+WantedBy=multi-user.target
