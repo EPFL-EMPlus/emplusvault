@@ -170,15 +170,29 @@ def check_media_exists(media_id: str) -> bool:
     return result['exists']
 
 
-def get_all_media_by_library_id(library_id: int, media_type: str = None, sub_type: str = None) -> dict:
+def get_all_media_by_library_id(library_id: int, last_seen_date: str = None, last_seen_media_id: str = None, page_size: int = 20, media_type: str = None, sub_type: str = None) -> dict:
     query = "SELECT * FROM media WHERE library_id = :library_id"
+    
     if media_type:
         query = query + " AND media_type = :media_type"
     if sub_type:
         query = query + " AND sub_type = :sub_type"
+    
+    # Add conditions for the last_seen values
+    if last_seen_date and last_seen_media_id:
+        query += " AND (created_at, media_id) > (:last_seen_date, :last_seen_media_id)"
+    
+    # Order by both created_at and media_id
+    query += " ORDER BY created_at, media_id LIMIT :page_size"
 
-    query = text(query)
-    return DataAccessObject().fetch_all(query, {"library_id": library_id, "media_type": media_type, "sub_type": sub_type})
+    return DataAccessObject().fetch_all(query, {
+        "library_id": library_id,
+        "last_seen_date": last_seen_date,
+        "last_seen_media_id": last_seen_media_id,
+        "page_size": page_size,
+        "media_type": media_type,
+        "sub_type": sub_type
+    })
 
 
 def get_all_media() -> dict:
