@@ -51,6 +51,7 @@ async def stream_video(req: Request, media_id: str, current_user: User = Depends
     )
 
 
+@stream_router.get('/download/{media_id}')ß
 def download_video(media_id: str, current_user: User = Depends(get_current_active_user)):
     log_access(current_user, media_id)
     media = get_media_for_streaming(media_id)
