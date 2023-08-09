@@ -49,3 +49,17 @@ async def stream_video(req: Request, media_id: str, current_user: User = Depends
         },
         status_code=206
     )
+
+
+def download_video(media_id: str, current_user: User = Depends(get_current_active_user)):
+    log_access(current_user, media_id)
+    media = get_media_for_streaming(media_id)
+    stream = get_storage_client().get_stream(
+        media['library_name'], media['media_path'])
+    return StreamingResponse(
+        stream,
+        headers={
+            "Content-Type": 'video/mp4',
+            "Content-Disposition": f'attachment; filename="{media_id}.mp4"'
+        }
+    )
