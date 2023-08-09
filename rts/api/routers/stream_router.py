@@ -51,14 +51,14 @@ async def stream_video(req: Request, media_id: str, current_user: User = Depends
     )
 
 
-@stream_router.get('/download/{media_id}')ß
+@stream_router.get('/download/{media_id}')
 def download_video(media_id: str, current_user: User = Depends(get_current_active_user)):
     log_access(current_user, media_id)
     media = get_media_for_streaming(media_id)
-    stream = get_storage_client().get_stream(
+    stream = get_storage_client().get_bytes(
         media['library_name'], media['media_path'])
     return StreamingResponse(
-        stream,
+        BytesIO(stream),
         headers={
             "Content-Type": 'video/mp4',
             "Content-Disposition": f'attachment; filename="{media_id}.mp4"'
