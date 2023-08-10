@@ -185,7 +185,7 @@ def get_all_media_by_library_id(library_id: int, last_seen_date: str = None, las
     # Order by both created_at and media_id
     query += " ORDER BY created_at, media_id LIMIT :page_size"
 
-    return DataAccessObject().fetch_all(query, {
+    return DataAccessObject().fetch_all(text(query), {
         "library_id": library_id,
         "last_seen_date": last_seen_date,
         "last_seen_media_id": last_seen_media_id,
