@@ -15,6 +15,7 @@ import ffmpeg
 import cv2
 import PIL
 import scenedetect
+import io
 
 from PIL import Image, ImageOps
 from scenedetect import open_video, SceneManager, ContentDetector
@@ -236,6 +237,29 @@ def get_frame_rate(input_path: Union[str, Path]) -> float:
     return num / den
 
 
+def generate_image_pyramid(image: Image, name: str, base_res: int = 16, depth: int = 6) -> List[Dict[str, io.BytesIO]]:
+    """Generate image pyramid in memory"""
+    files_to_upload = {}
+
+    # Original image
+    img_byte_array = io.BytesIO()
+    image.save(img_byte_array, format='JPEG')
+    key = 'original/' + f'{name}.jpg'
+    files_to_upload[key] = img_byte_array
+
+    for i in range(1, depth):
+        size = base_res * (2**i)
+        res = ImageOps.fit(image, size=(size, size))
+        
+        img_byte_array = io.BytesIO()
+        res.save(img_byte_array, format='JPEG')
+
+        key = f'{size}px/' + f'{name}.jpg'
+        files_to_upload[key] = img_byte_array
+        
+    return files_to_upload
+
+
 def save_image_pyramid(image: Image, out_folder: str, name: str, split_folders: bool = False, base_res: int = 16, depth: int = 6) -> Dict:
     """Save image pyramid"""
     images = {}
@@ -295,7 +319,10 @@ def save_clips_images(timecodes: Any,
         # Adapted from https://github.com/Breakthrough/PySceneDetect/blob/master/scenedetect/scene_manager.py
         image_name_template: str = '$VIDEO_NAME-$PREFIX$SCENE_NUMBER-$IMAGE_NUMBER'
         filename_template = Template(image_name_template)
-        framerate = timecodes[0][0].framerate
+        try:
+            framerate = timecodes[0][0].framerate
+        except AttributeError:
+            framerate = timecodes[0][0][0].framerate
         frame_margin = 1
         scene_num_format = '%0'
         scene_num_format += str(max(3,
@@ -330,6 +357,7 @@ def save_clips_images(timecodes: Any,
         ]
         image_names = []
         resolutions = []
+        images = {}
         media_id = video.name
         for i, scene_timecodes in enumerate(timecode_list):
             scene_num = scene_num_format % i
@@ -352,29 +380,26 @@ def save_clips_images(timecodes: Any,
 
                 color_converted = cv2.cvtColor(frame_im, cv2.COLOR_BGR2RGB)
                 im = Image.fromarray(color_converted)
-                images = save_image_pyramid(
-                    im, images_folder, filename, split_folders=True)
-
+                img_id = f"{media_id}-{clip_prefix_id}{scene_num}"
+                if img_id in images:
+                    images[img_id].update(generate_image_pyramid(im, filename))
+                else:
+                    images[img_id] = generate_image_pyramid(im, filename)
                 if not resolutions:  # fill available resolutions
                     resolutions = list(images.keys())
 
             image_names.append(scene_framenames)
 
-        return media_id, image_names, resolutions
+        return media_id, image_names, resolutions, images
 
     clip_folder = Path(media_folder) / out_folder_name
-    images_folder = clip_folder / 'images'
-    if images_folder.exists():
-        # remove old directory
-        shutil.rmtree(str(images_folder))
-    os.makedirs(str(images_folder), exist_ok=True)
 
     try:
         video = open_video(video_path, backend='opencv')
     except OSError as e:
         LOG.error(e)
         return None
-    media_id, images_names, resolutions = inner()
+    media_id, images_names, resolutions, images = inner()
 
     # Format timecodes
     payload = {
@@ -384,6 +409,7 @@ def save_clips_images(timecodes: Any,
         'image_resolutions': resolutions,
         'framerate': timecodes[0][0].framerate,
         'clip_count': len(timecodes),
+        'image_binaries': images,
         'clips': {}
     }
 

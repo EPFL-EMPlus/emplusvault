@@ -23,6 +23,10 @@ class Pipeline(ABC):
 
     def __init__(self, run_notebook: bool = False):
         self.library = get_library_from_name(self.library_name)
+
+        if not self.library:
+            raise ValueError(f'Library {self.library_name} not found. Please initalize it first.')
+
         self.library_id = get_library_id_from_name(self.library_name)
         self.store = get_storage_client()
         self.tqdm = tqdm
@@ -36,7 +40,6 @@ class Pipeline(ABC):
     @abstractmethod
     def preprocess(self, df: pd.DataFrame, **kwargs) -> pd.DataFrame:
         pass
-
 
     def trim_upload_media(self, source_media_path: str, outpath: str, start: float, end: float) -> dict:
         with temporary_filename('.mp4') as temp_video_path:

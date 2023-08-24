@@ -2,10 +2,10 @@ from pydantic import BaseModel
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, status, Request
 from typing import Annotated, Union, Optional
 from datetime import datetime, timedelta
-from fastapi import FastAPI, HTTPException, Depends, Form, APIRouter
+from fastapi import FastAPI, HTTPException, Depends, Form, APIRouter, Header
 
 from rts.db.dao import DataAccessObject
 from fastapi import Request
@@ -27,6 +27,7 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     username: Union[str, None] = None
+    ip: Union[str, None] = None
 
 
 class User(BaseModel):
@@ -45,7 +46,18 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="gettoken")
 
-# app = FastAPI()
+
+async def get_token_from_header_or_query(request: Request):
+    token = request.headers.get("Authorization")
+    if token:    
+        if "Bearer" in token:
+            token = token.split("Bearer")[1].strip()
+        return token
+    
+    token_query = request.query_params.get("token")
+    if token_query:
+        return token_query
+    raise HTTPException(status_code=400, detail="Token not provided")
 
 
 def verify_password(plain_password, password):
@@ -73,8 +85,10 @@ def authenticate_user(username: str, password: str):
     return user
 
 
-def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None):
+def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None, user_ip: str = None):
     to_encode = data.copy()
+    if user_ip:
+        to_encode["ip"] = user_ip
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
@@ -84,7 +98,7 @@ def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None
     return encoded_jwt
 
 
-async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+async def get_current_user(token: Annotated[str, Depends(get_token_from_header_or_query)], request: Request):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -101,8 +115,10 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     user = get_user(username=token_data.username)
     if user is None:
         raise credentials_exception
+    # Check if the IP matches
+    if payload.get("ip") != request.client.host:
+        raise HTTPException(status_code=400, detail="IP Address mismatch")
     return user
-
 
 async def get_current_active_user(
     current_user: Annotated[User, Depends(get_current_user)]
@@ -117,8 +133,6 @@ async def login_for_access_token(request: Request):
     form_data = await request.form()
     username = form_data.get("username")
     password = form_data.get("password")
-
-    # Rest of your original code
     user = authenticate_user(username, password)
     if not user:
         raise HTTPException(
@@ -128,6 +142,7 @@ async def login_for_access_token(request: Request):
         )
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
+        data={"sub": user.username, "ip": request.client.host},  # Store the IP here
+        expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}

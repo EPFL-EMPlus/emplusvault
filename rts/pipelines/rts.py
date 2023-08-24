@@ -1,10 +1,5 @@
 import os
-import io
 import sys
-import shutil
-import zipfile
-import orjson
-import glob
 import pandas as pd
 import shutil
 import xml.etree.ElementTree as ET
@@ -13,6 +8,9 @@ import rts.utils
 import rts.io.media
 import rts.features.audio
 import rts.features.text
+from rts.io.media import extract_audio, get_media_info, get_frame_number, save_clips_images
+from rts.db.queries import create_or_update_media, get_feature_by_media_id_and_type, create_feature, update_feature
+from rts.features.text import run_nlp, timecodes_from_transcript
 
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple, Any
@@ -21,8 +19,10 @@ from pathlib import Path
 from rts.settings import RTS_ROOT_FOLDER
 from rts.pipelines.base import Pipeline, get_hash
 from rts.db import queries
+from rts.api.models import Media, Feature
 
 LOG = rts.utils.get_logger()
+LOG.setLevel('INFO')
 
 TRANSCRIPT_CLIP_MIN_SECONDS = 10
 TRANSCRIPT_CLIP_MIN_WORDS = 15
@@ -31,8 +31,8 @@ TRANSCRIPT_CLIP_NUM_IMAGES = 3
 
 SCENE_EXPORT_NAME = 'scenes.json'
 
-RTS_METADATA = RTS_ROOT_FOLDER + 'metadata'
-RTS_LOCAL_VIDEOS = RTS_ROOT_FOLDER + 'archive'
+RTS_METADATA = os.path.join(RTS_ROOT_FOLDER, 'metadata')
+RTS_LOCAL_VIDEOS = os.path.join(RTS_ROOT_FOLDER + 'archive')
 
 
 class PipelineRTS(Pipeline):
@@ -45,10 +45,30 @@ class PipelineRTS(Pipeline):
             force_media: bool = False,
             force_trans: bool = False,
             force_clips: bool = False) -> bool:
-        LOG.setLevel('INFO')
+        """
+        Ingest the RTS metadata and video files.
+
+        Parameters:
+            df (pd.DataFrame): RTS metadata dataframe which is expected to have the following columns:
+                - mediaId (str): unique identifier for the video
+                # TODO: add the rest of the columns
+            
+            merge_continous_sentences (bool): merge continous sentences in the transcript
+            compute_transcript (bool): compute the transcript
+            compute_clips (bool): compute the clips
+            force_media (bool): force the media to be reprocessed
+            force_trans (bool): force the transcript to be reprocessed
+            force_clips (bool): force the clips to be reprocessed
+        """
+
         total_duration = df.mediaDuration.sum()
         with self.tqdm(total=total_duration, file=sys.stdout) as pbar:
             for _, row in df.iterrows():
+
+                input_file_path = os.path.join(self.library['prefix_path'], row['mediaFolderPath'])
+
+                self.ingest_single_video(input_file_path, merge_continous_sentences, compute_transcript, compute_clips, force_media, force_trans, force_clips)
+
                 # status = process_media(row.mediaFolderPath, global_output_folder, row.to_dict(),
                 #                     merge_continous_sentences, compute_transcript, compute_clips, 
                 #                     force_media, force_trans, force_clips)
@@ -59,34 +79,161 @@ class PipelineRTS(Pipeline):
                 pbar.update(row.mediaDuration)
 
     def ingest_single_video(self, 
-            input_media_folder: str,
-            metadata: Optional[Dict] = None,
+            input_file_path: str,
             merge_continous_sentences: bool = True,
             compute_transcript: bool = False,
             compute_clips: bool = False,
             force_media: bool = False,
             force_trans: bool = False,
             force_clips: bool = False) -> dict:
+        """ Ingest all clips from a single video. """
+
+        print(input_file_path)
+        archive_media_id = rts.utils.get_media_id(input_file_path)
+        media_id = f"{self.library_name}-{archive_media_id}"
+        original_path = os.path.join(input_file_path, f'{archive_media_id}.mp4')
+        export_path = os.path.join(input_file_path, 'export')
         
-        res = {
-            'mediaId': rts.utils.get_media_id(input_media_folder),
-            'status': 'fail',
-            'error': ''
-        }
+        print(archive_media_id, media_id, original_path, export_path)
 
-        media = queries.get_media_by_id(res['mediaId'])
-
+        media = queries.get_media_by_id(archive_media_id)
         if media is None or force_media:
-            # remuxed = create_optimized_media(
-            #     input_media_folder, 
-            #     global_output_folder, 
-            #     force=force_media
-            # )
-            pass
-        #TODO: kirell: continue here
+            LOG.info("Processing media: %s", archive_media_id)
+            media_info = get_media_info(original_path, input_file_path)
+            metadata = {}
+            # print(media_info)
+            # Create or update media entry in the database
+            video = Media(**{
+                'media_id': media_id,
+                'original_path': original_path,
+                'original_id': archive_media_id,
+                'media_path': original_path,
+                'media_type': "video",
+                'media_info': media_info,
+                'sub_type': "clip",
+                'size': media_info['filesize'],
+                'metadata': metadata,
+                'library_id': self.library_id,
+                'hash': get_hash(original_path),
+                'parent_id': -1,
+                'start_ts': 0,
+                'end_ts': media_info['duration'],
+                'start_frame': get_frame_number(0, media_info['video']['framerate']),
+                'end_frame': get_frame_number(media_info['duration'], media_info['video']['framerate']),
+                'frame_rate': media_info['video']['framerate'],
+            })
+            create_or_update_media(video)
 
-        return res
+        if compute_transcript:
+            # Check if an audio file already exists
+            audio_path = os.path.join(input_file_path, f'{archive_media_id}_audio.m4a')
+            if not os.path.exists(audio_path):
+                # Extract audio from video
+                extract_audio(original_path, export_path)
+            self.transcript = rts.features.audio.transcribe_media(audio_path)
 
+            for i, transcript in enumerate(self.transcript):
+                entities = run_nlp(transcript['t'])
+                entities = [(e.text, e.label_) for e in entities.ents]
+                if entities:
+                    self.transcript[i]['entities'] = entities
+            
+            feature_type = 'transcript+ner'
+            # Get feature from the db to see if it already exists
+            feature = queries.get_feature_by_media_id_and_type(media_id, feature_type)
+
+            new_feature = Feature(
+                feature_type=feature_type,
+                version=1,
+                model_name='whisperx+spacy',
+                model_params={
+                    'spacy-ner': 'fr_core_news_lg',
+                },
+                data={'transcript': self.transcript},
+                media_id=media_id,
+            )
+            if feature:
+                queries.update_feature(feature['feature_id'], new_feature)
+            else:
+                queries.create_feature(new_feature)
+            
+
+        if compute_clips:
+            sentences = self.transcript
+            if merge_continous_sentences:
+                sentences = rts.features.text.merge_continous_sentences(self.transcript)
+
+            timecodes = timecodes_from_transcript(sentences)
+
+            num_images = 3
+            self.clip_infos = save_clips_images(timecodes[0], original_path, input_file_path, 'import', num_images, 'M')
+
+            for key in self.clip_infos['clips']:
+                self.upload_clips(original_path, archive_media_id, media_id, self.clip_infos['clips'][key])
+
+            # Save images
+            for key in self.clip_infos['image_binaries']:
+                self.upload_clip_images(archive_media_id, media_id, key, self.clip_infos['image_binaries'][key])
+
+
+    def upload_clips(self, original_path, archive_media_id, media_id, clip_info):
+        media_path = f"videos/{archive_media_id}/{clip_info['clip_id']}.mp4"
+        media_info = self.trim_upload_media(
+                original_path, media_path, clip_info['start'], clip_info['end'])
+        
+        metadata = {}
+
+        clip = Media(**{
+            'media_id': "rts-" + clip_info['clip_id'],
+            'original_path': original_path,
+            'original_id': archive_media_id,
+            'media_path': media_path,
+            'media_type': "video",
+            'media_info': media_info,
+            'sub_type': "clip",
+            'size': media_info['filesize'],
+            'metadata': metadata,
+            'library_id': self.library_id,
+            'hash': get_hash(media_path),
+            'parent_id': media_id,
+            'start_ts': clip_info['start'],
+            'end_ts': clip_info['end'],
+            'start_frame': clip_info['start_frame'],
+            'end_frame': clip_info['end_frame'],
+            'frame_rate': media_info['video']['framerate'],
+        })
+        create_or_update_media(clip)
+        return media_info
+
+    def upload_clip_images(self, archive_media_id, media_id, key, img_binary):
+        
+        for bin_key in img_binary:
+            img_path = f"images/{archive_media_id}/{bin_key}"
+            self.store.upload(self.library_name, img_path, img_binary[bin_key].getvalue())
+            
+            current_clip = self.clip_infos['clips'][key]
+            image_id = img_path.split('/')[-1].split('.')[0]
+
+            screenshot = Media(**{
+                'media_id': "rts-" + image_id,
+                'original_path': img_path,
+                'original_id': archive_media_id,
+                'media_path': img_path,
+                'media_type': "image",
+                'media_info': {},
+                'sub_type': "screenshot",
+                'size': -1,
+                'metadata': {},
+                'library_id': self.library_id,
+                'hash': get_hash(img_path),
+                'parent_id': media_id,
+                'start_ts': current_clip['start'],
+                'end_ts': current_clip['end'],
+                'start_frame': current_clip['start_frame'],
+                'end_frame': current_clip['end_frame'],
+                'frame_rate': -1,
+            })
+            create_or_update_media(screenshot)
 
     def preprocess(self, df: pd.DataFrame, **kwargs) -> pd.DataFrame:
         pass
@@ -120,6 +267,22 @@ def get_raw_video_audio_parts(media_folder: str) -> Tuple[str, str]:
 
 
 def create_optimized_media(media_folder: str, output_folder: str, force: bool = False) -> Dict:
+    """
+    Process and optimize media from a given media folder and export the results to an output folder.
+
+    Parameters:
+    - media_folder (str): The path to the source media folder containing raw video and audio files.
+    - output_folder (str): The path to the folder where the optimized media will be saved.
+    - force (bool, optional): If set to True, it will overwrite existing optimized files. Default is False.
+
+    Returns:
+    - Dict: A dictionary containing paths to the optimized video and audio files. The keys are 'mediaId', 'mediaFolder', 'video', and 'audio' (if available).
+
+    Notes:
+    - The function logs the process using LOG.debug and LOG.error for debugging and error messages respectively.
+    - The media ID is retrieved from the media folder and is used to name the optimized files.
+    - The function maintains the last four parts of the source media folder's hierarchy in the output folder.
+    """
     def get_folder_hierarchy(p):
         return '/'.join(p.split('/')[-4:])
 

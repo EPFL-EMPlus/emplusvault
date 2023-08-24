@@ -256,6 +256,15 @@ def get_feature_by_id(feature_id: int) -> dict:
     result = DataAccessObject().fetch_one(query, {"feature_id": feature_id})
     return result
 
+def get_feature_by_media_id(media_id: str, feature_type: str) -> dict:
+    query = text("SELECT feature_id FROM feature WHERE media_id = :media_id AND feature_type = :feature_type")
+    result = DataAccessObject().fetch_one(query, {"media_id": media_id, "feature_type": feature_type})
+    return result
+
+def get_feature_by_media_id_and_type(media_id: str, feature_type: str) -> dict:
+    query = text("SELECT * FROM feature WHERE media_id = :media_id AND feature_type = :feature_type")
+    result = DataAccessObject().fetch_one(query, {"media_id": media_id, "feature_type": feature_type})
+    return result
 
 def get_all_features() -> list:
     query = text("SELECT * FROM feature")
