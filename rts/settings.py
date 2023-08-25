@@ -3,8 +3,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-SUPABASE_HOST = os.getenv("SUPABASE_HOST")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+# SECRET_KEY FOR AUTH
+# openssl rand -hex 32
+SECRET_KEY = os.getenv("SECRET_KEY")
 
 S3_ACCESS_KEY = os.getenv("S3_ACCESS_KEY")
 S3_SECRET_KEY = os.getenv("S3_SECRET_KEY")
