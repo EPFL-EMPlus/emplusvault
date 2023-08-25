@@ -9,7 +9,6 @@ from rts.api.api_settings import Settings, get_settings, get_app, init_library, 
 # from audioverse.utils import read_jsonlines_file
 from rts.api import router
 from rts.utils import get_logger
-from rts.pipelines.rts import build_clips_df, build_clip_index
 from rts.db.dao import DataAccessObject
 from rts.db.queries import get_library_id_from_name
 from rts.api.routers.library_router import library_router
@@ -56,26 +55,13 @@ async def startup_event():
     settings = get_settings()
     metadata_folder = settings.get_metadata_folder()
     archive_folder = settings.get_archive_folder()
-
-    # connect to the database
     dao = DataAccessObject()
-    # dao.connect(DATABASE_URL)
-
-    try:
-        # TODO: Replace the function with database calls
-        df = build_clips_df(archive_folder, metadata_folder)
-        app.state.clips = build_clip_index(df)
-    except KeyError as e:
-        pass
-        # LOG.error(f'KeyError: {e}')
-        # LOG.error(f'Please check that all clip files are available')
     mount_routers(app, settings)
 
 
 @app.on_event("shutdown")
 async def on_shutdown():
     dao = DataAccessObject()
-    # dao.disconnect()
 
 
 @cli.command('dev', help='Start the server in development mode')

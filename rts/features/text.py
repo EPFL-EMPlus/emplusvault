@@ -154,7 +154,11 @@ def timecodes_from_transcript(transcript: List[Dict[str, str]], framerate: int =
                 start = FrameTimecode(0, framerate)
 
         saved_idx.append(i)
-        timecodes.append((start, end))
+        try:
+            entities = sent['entities']
+        except KeyError:
+            entities = []
+        timecodes.append((start, end, sent['t'], entities))
     return timecodes, saved_idx
 
 

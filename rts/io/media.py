@@ -352,7 +352,7 @@ def save_clips_images(timecodes: Any,
                 for r in (
                     range(start.get_frames(), end.get_frames())
                     # for each scene in scene list
-                    for start, end in timecodes)
+                    for start, end, sentence, entities in timecodes)
             ])
         ]
         image_names = []
@@ -426,6 +426,8 @@ def save_clips_images(timecodes: Any,
             'duration': float(dur.get_seconds()),
             'duration_frames': int(dur.get_frames()),
             'images': images_names[i],
+            'sentences': s[2],
+            'entities': s[3],
         }
 
     return payload

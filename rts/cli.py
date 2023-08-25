@@ -68,19 +68,6 @@ def pipeline(continuous: bool,
 
 
 # @rts.command()
-# @click.option('--tile-size', type=int, default=64, help='Tile size')
-# @click.option('--name', type=str, default='0', help='Atlas name')
-# def atlas(tile_size: int, name: str) -> None:
-#     df = rts.pipelines.rts.build_clips_df(RTS_ROOT_FOLDER, force=True)
-#     rts.pipelines.rts.create_clip_texture_atlases(df, RTS_ROOT_FOLDER,
-#                                              name,  # folder name
-#                                              tile_size=tile_size,
-#                                              flip=True,
-#                                              no_border=True,
-#                                              format='jpg')
-
-
-# @rts.command()
 # def location() -> None:
 #     ts = rts.pipelines.rts.load_all_transcripts(RTS_LOCAL_VIDEOS)
 #     fts = rts.features.text.build_location_df(ts)

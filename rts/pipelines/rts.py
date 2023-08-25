@@ -101,7 +101,7 @@ class PipelineRTS(Pipeline):
             LOG.info("Processing media: %s", archive_media_id)
             media_info = get_media_info(original_path, input_file_path)
             metadata = {}
-            # print(media_info)
+
             # Create or update media entry in the database
             video = Media(**{
                 'media_id': media_id,
@@ -162,29 +162,27 @@ class PipelineRTS(Pipeline):
             sentences = self.transcript
             if merge_continous_sentences:
                 sentences = rts.features.text.merge_continous_sentences(self.transcript)
-
             timecodes = timecodes_from_transcript(sentences)
-
             num_images = 3
             self.clip_infos = save_clips_images(timecodes[0], original_path, input_file_path, 'import', num_images, 'M')
 
             for key in self.clip_infos['clips']:
-                self.upload_clips(original_path, archive_media_id, media_id, self.clip_infos['clips'][key])
+                self.upload_clips(original_path, archive_media_id, media_id, self.clip_infos['clips'][key], compute_transcript)
 
             # Save images
             for key in self.clip_infos['image_binaries']:
                 self.upload_clip_images(archive_media_id, media_id, key, self.clip_infos['image_binaries'][key])
 
 
-    def upload_clips(self, original_path, archive_media_id, media_id, clip_info):
+    def upload_clips(self, original_path, archive_media_id, media_id, clip_info, compute_transcript):
         media_path = f"videos/{archive_media_id}/{clip_info['clip_id']}.mp4"
         media_info = self.trim_upload_media(
                 original_path, media_path, clip_info['start'], clip_info['end'])
         
         metadata = {}
-
+        clip_media_id = "rts-" + clip_info['clip_id']
         clip = Media(**{
-            'media_id': "rts-" + clip_info['clip_id'],
+            'media_id': clip_media_id,
             'original_path': original_path,
             'original_id': archive_media_id,
             'media_path': media_path,
@@ -203,6 +201,27 @@ class PipelineRTS(Pipeline):
             'frame_rate': media_info['video']['framerate'],
         })
         create_or_update_media(clip)
+
+        if compute_transcript:
+            feature_type = 'transcript+ner'
+            # Get feature from the db to see if it already exists
+            feature = queries.get_feature_by_media_id_and_type(clip_media_id, feature_type)
+
+            new_feature = Feature(
+                feature_type=feature_type,
+                version=1,
+                model_name='whisperx+spacy',
+                model_params={
+                    'spacy-ner': 'fr_core_news_lg',
+                },
+                data={'transcript': clip_info['sentences'], 'entities': clip_info['entities']},
+                media_id=clip_media_id,
+            )
+            if feature:
+                queries.update_feature(feature['feature_id'], new_feature)
+            else:
+                queries.create_feature(new_feature)
+
         return media_info
 
     def upload_clip_images(self, archive_media_id, media_id, key, img_binary):
@@ -226,7 +245,7 @@ class PipelineRTS(Pipeline):
                 'metadata': {},
                 'library_id': self.library_id,
                 'hash': get_hash(img_path),
-                'parent_id': media_id,
+                'parent_id': "rts-" + key,
                 'start_ts': current_clip['start'],
                 'end_ts': current_clip['end'],
                 'start_frame': current_clip['start_frame'],
@@ -563,48 +582,6 @@ def load_all_media_info(root_folder: str) -> Dict[str, Dict]:
         media_id = rts.utils.get_media_id(Path(p).parent)
         media[media_id] = rts.utils.obj_from_json(p)
     return media
-
-
-def build_clips_df(root_folder: str, force: bool = False) -> pd.DataFrame:
-    metadata_folder = os.path.join(root_folder, 'metadata')
-    if not force:
-        df = rts.utils.dataframe_from_hdf5(metadata_folder, 'rts_clips', silent=True)
-        if df is not None:
-            return df
-
-    archive_folder = os.path.join(root_folder, 'archive')
-    clips = load_all_clips(archive_folder)
-
-    payload = []
-    for media_id, v in clips.items():
-        clip_folder = v['clip_folder']
-        for _, clip in v['clips'].items():
-            p = clip.copy()
-            p['mediaId'] = media_id
-            p['clip_folder'] = clip_folder
-            payload.append(p)
-
-    df = pd.DataFrame.from_records(payload)
-    df.set_index('mediaId', inplace=True)
-    rts.utils.dataframe_to_hdf5(metadata_folder, 'rts_clips', df)
-    return df
-
-
-def build_clip_index(df: pd.DataFrame) -> Dict[str, Dict]:
-    index = {}
-    for media_id, v in df.iterrows():
-        media_folder = Path(v['clip_folder']).parent
-        video_path = media_folder / f'{media_id}.mp4'
-        p = {
-            'mediaId': media_id,
-            'clip_folder': v['clip_folder'],
-            'media_folder': str(media_folder),
-            'media_path': str(video_path),
-            'start_frame': v['start_frame'],
-            'end_frame': v['end_frame'],
-        }
-        index[v['clip_id']] = p
-    return index
 
 
 # def create_clip_texture_atlases(df: pd.DataFrame, root_dir: str, name: str, tile_size: int = 64, 
