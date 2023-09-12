@@ -2,7 +2,7 @@ from fastapi import (APIRouter, Depends, Request, Response, HTTPException)
 from fastapi.responses import HTMLResponse, StreamingResponse, FileResponse
 from io import BytesIO
 from rts.api.routers.auth_router import get_current_active_user, User
-from rts.db.queries import log_access, get_media_for_streaming
+from rts.db.queries import check_access, get_media_for_streaming
 from rts.storage.storage import get_storage_client
 from rts.settings import BUCKET_NAME
 
@@ -13,7 +13,7 @@ stream_router = APIRouter()
 @stream_router.get('/stream/{media_id}')
 async def stream_video(req: Request, media_id: str, current_user: User = Depends(get_current_active_user)):
 
-    log_access(current_user, media_id)
+    check_access(current_user, media_id)
     media = get_media_for_streaming(media_id)
 
     total_size = media['size']
@@ -53,7 +53,7 @@ async def stream_video(req: Request, media_id: str, current_user: User = Depends
 
 @stream_router.get('/download/{media_id}')
 def download_video(media_id: str, current_user: User = Depends(get_current_active_user)):
-    log_access(current_user, media_id)
+    check_access(current_user, media_id)
     media = get_media_for_streaming(media_id)
     stream = get_storage_client().get_bytes(
         media['library_name'], media['media_path'])

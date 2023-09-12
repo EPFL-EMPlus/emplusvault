@@ -6,6 +6,7 @@ from fastapi import Depends, FastAPI, HTTPException, status, Request
 from typing import Annotated, Union, Optional
 from datetime import datetime, timedelta
 from fastapi import FastAPI, HTTPException, Depends, Form, APIRouter, Header
+from sqlalchemy.sql import text
 
 from rts.db.dao import DataAccessObject
 from fastapi import Request
@@ -46,11 +47,11 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="gettoken")
 
 async def get_token_from_header_or_query(request: Request):
     token = request.headers.get("Authorization")
-    if token:    
+    if token:
         if "Bearer" in token:
             token = token.split("Bearer")[1].strip()
         return token
-    
+
     token_query = request.query_params.get("token")
     if token_query:
         return token_query
@@ -117,11 +118,14 @@ async def get_current_user(token: Annotated[str, Depends(get_token_from_header_o
         raise HTTPException(status_code=400, detail="IP Address mismatch")
     return user
 
+
 async def get_current_active_user(
     current_user: Annotated[User, Depends(get_current_user)]
 ):
     if current_user.disabled:
         raise HTTPException(status_code=400, detail="Inactive user")
+
+    DataAccessObject().set_user_id(current_user.user_id)
     return current_user
 
 
@@ -139,7 +143,8 @@ async def login_for_access_token(request: Request):
         )
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user.username, "ip": request.client.host},  # Store the IP here
+        # Store the IP here
+        data={"sub": user.username, "ip": request.client.host},
         expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}

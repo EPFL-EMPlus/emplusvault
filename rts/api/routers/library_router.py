@@ -49,6 +49,6 @@ async def read_library_projections(library_id: int, current_user: User = Depends
     return projections
 
 
-@library_router.post("/libraries/")
-async def create(library: LibraryBase, current_user: User = Depends(get_current_active_user)):
-    return create_library(library)
+# @library_router.post("/libraries/")
+# async def create(library: LibraryBase, current_user: User = Depends(get_current_active_user)):
+#     return create_library(library)

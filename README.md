@@ -51,11 +51,15 @@ poe init-db
 ```
 
 ### Run the server
+
 ```
 cd rts/api/
 uvicorn server:app --host 0.0.0.0 --port 8763 --reload
 ```
 
+#### Create a new database user
+
+Create a new database user to use row level security (RLS). This can't be the default superuser as it has privileges to bypass RLS.
 
 
 # PyAv

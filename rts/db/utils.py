@@ -17,7 +17,6 @@ def create_database(sql_file, output=False):
     with open(sql_file, "r") as f:
         statements = f.read().split(";")
 
-    # LOG.info(f"Applying {len(statements)} statements from {sql_file}")
     # Execute each statement
     for statement in statements:
         if output:
@@ -25,8 +24,3 @@ def create_database(sql_file, output=False):
         if statement.strip() != "":
             DataAccessObject().execute_query(statement)
             # print("-- query executed --")
-
-
-def reset_database():
-    # TODO: We need to apply the migrations after this command has been run
-    create_database("db/tables.sql")

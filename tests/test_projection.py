@@ -1,7 +1,8 @@
 import pytest
 from fastapi.testclient import TestClient
 from rts.api.server import app
-from rts.db.utils import reset_database
+from .conftest import reset_database, mock_authenticate
+from rts.api.routers.auth_router import get_current_active_user
 from rts.db.queries import create_library
 from rts.api.models import LibraryCreate
 import json
@@ -14,11 +15,7 @@ def db_setup():
 
 @pytest.fixture
 def create_projection(db_setup):
-    create_library(LibraryCreate(
-        library_name="test",
-        version="0.0.1",
-        data=json.dumps({"test": "test"})
-    ))
+    app.dependency_overrides[get_current_active_user] = mock_authenticate
     with TestClient(app) as client:
         response = client.post("/projections/", json={
             "version": "1.0",

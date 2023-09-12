@@ -3,11 +3,11 @@ import rts.utils
 
 from typing import Optional, Any, Dict
 from sqlalchemy.sql import text
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, ProgrammingError
 from rts.db.dao import DataAccessObject
 from rts.api.models import LibraryBase, Projection, Media, Feature, MapProjectionFeatureCreate, Atlas, AccessLog
 from rts.api.routers.auth_router import get_password_hash, UserInDB as User
-
+from fastapi import HTTPException
 
 LOG = rts.utils.get_logger()
 
@@ -32,6 +32,7 @@ def remove_library(library_id: int) -> None:
         DELETE FROM library WHERE library_id=%s
     """
     DataAccessObject().execute_query(query, (library_id,))
+
 
 def get_library_from_name(library_name: str) -> Optional[Dict]:
     query = """
@@ -111,8 +112,10 @@ def delete_projection(projection_id: int) -> None:
 
 def create_media(media: Media) -> dict:
     media_data = media.dict()
-    media_data['metadata'] = json.dumps(media_data['metadata'], check_circular=False) if media_data['metadata'] else None
-    media_data['media_info'] = json.dumps(media_data['media_info'], check_circular=False)
+    media_data['metadata'] = json.dumps(
+        media_data['metadata'], check_circular=False) if media_data['metadata'] else None
+    media_data['media_info'] = json.dumps(
+        media_data['media_info'], check_circular=False)
 
     query = text("""
         INSERT INTO media (media_id, media_path, original_path, original_id, media_type, media_info, sub_type, size, metadata, library_id, hash, parent_id, start_ts, end_ts, start_frame, end_frame, frame_rate)
@@ -125,8 +128,10 @@ def create_media(media: Media) -> dict:
 
 def create_or_update_media(media: Media) -> dict:
     media_data = media.dict()
-    media_data['metadata'] = json.dumps(media_data['metadata'], check_circular=False) if media_data['metadata'] else None
-    media_data['media_info'] = json.dumps(media_data['media_info'], check_circular=False)
+    media_data['metadata'] = json.dumps(
+        media_data['metadata'], check_circular=False) if media_data['metadata'] else None
+    media_data['media_info'] = json.dumps(
+        media_data['media_info'], check_circular=False)
 
     query = text("""
         INSERT INTO media (media_id, media_path, original_path, original_id, media_type, media_info, sub_type, size, metadata, library_id, hash, parent_id, start_ts, end_ts, start_frame, end_frame, frame_rate)
@@ -165,34 +170,43 @@ def get_media_for_streaming(media_id: str) -> dict:
 
 
 def check_media_exists(media_id: str) -> bool:
-    query = text("SELECT EXISTS(SELECT 1 FROM media WHERE media_id = :media_id)")
+    query = text(
+        "SELECT EXISTS(SELECT 1 FROM media WHERE media_id = :media_id)")
     result = DataAccessObject().fetch_one(query, {"media_id": media_id})
     return result['exists']
 
 
 def get_all_media_by_library_id(library_id: int, last_seen_date: str = None, last_seen_media_id: str = None, page_size: int = 20, media_type: str = None, sub_type: str = None) -> dict:
     query = "SELECT * FROM media WHERE library_id = :library_id"
-    
+
     if media_type:
         query = query + " AND media_type = :media_type"
     if sub_type:
         query = query + " AND sub_type = :sub_type"
-    
+
     # Add conditions for the last_seen values
     if last_seen_date and last_seen_media_id:
         query += " AND (created_at, media_id) > (:last_seen_date, :last_seen_media_id)"
-    
+
     # Order by both created_at and media_id
     query += " ORDER BY created_at, media_id LIMIT :page_size"
 
-    return DataAccessObject().fetch_all(text(query), {
-        "library_id": library_id,
-        "last_seen_date": last_seen_date,
-        "last_seen_media_id": last_seen_media_id,
-        "page_size": page_size,
-        "media_type": media_type,
-        "sub_type": sub_type
-    })
+    params = {
+        "library_id": int(library_id),
+        "page_size": page_size
+    }
+
+    if media_type:
+        params["media_type"] = media_type
+    if sub_type:
+        params["sub_type"] = sub_type
+    if last_seen_date:
+        params["last_seen_date"] = last_seen_date
+    if last_seen_media_id:
+        params["last_seen_media_id"] = int(
+            last_seen_media_id)  # Ensure it's an integer
+
+    return DataAccessObject().fetch_all(text(query), params)
 
 
 def get_all_media() -> dict:
@@ -256,15 +270,22 @@ def get_feature_by_id(feature_id: int) -> dict:
     result = DataAccessObject().fetch_one(query, {"feature_id": feature_id})
     return result
 
+
 def get_feature_by_media_id(media_id: str, feature_type: str) -> dict:
-    query = text("SELECT feature_id FROM feature WHERE media_id = :media_id AND feature_type = :feature_type")
-    result = DataAccessObject().fetch_one(query, {"media_id": media_id, "feature_type": feature_type})
+    query = text(
+        "SELECT feature_id FROM feature WHERE media_id = :media_id AND feature_type = :feature_type")
+    result = DataAccessObject().fetch_one(
+        query, {"media_id": media_id, "feature_type": feature_type})
     return result
 
+
 def get_feature_by_media_id_and_type(media_id: str, feature_type: str) -> dict:
-    query = text("SELECT * FROM feature WHERE media_id = :media_id AND feature_type = :feature_type")
-    result = DataAccessObject().fetch_one(query, {"media_id": media_id, "feature_type": feature_type})
+    query = text(
+        "SELECT * FROM feature WHERE media_id = :media_id AND feature_type = :feature_type")
+    result = DataAccessObject().fetch_one(
+        query, {"media_id": media_id, "feature_type": feature_type})
     return result
+
 
 def get_all_features() -> list:
     query = text("SELECT * FROM feature")
@@ -451,7 +472,34 @@ def create_new_user(user: User) -> dict:
     return {**user_dict, "user_id": result.fetchone()[0]}
 
 
-def log_access(current_user: User, media_id: str) -> bool:
+def allow_user_to_access_library(user_id: int, library_id: int) -> bool:
+    query = text(
+        """
+        INSERT INTO 
+            user_library_access (user_id, library_id) 
+            VALUES (:user_id, :library_id)
+    """)
+    DataAccessObject().execute_query(
+        query, {"user_id": user_id, "library_id": library_id})
+    return True
+
+
+def check_access(current_user: User, media_id: str) -> bool:
+    """ Checks if the current user has access to the media_id and logs the access. Throws an exception if the user does not have access.
+    """
+    query = text("""
+        SELECT EXISTS(
+            SELECT 1 FROM user_library_access 
+            JOIN media ON media.library_id = user_library_access.library_id
+            WHERE user_id = :user_id AND media_id = :media_id
+        )        
+    """)
+    result = DataAccessObject().fetch_one(
+        query, {"user_id": current_user.user_id, "media_id": media_id})
+
+    if not result['exists']:
+        raise HTTPException(status_code=401, detail="Not allowed")
+
     query = text(
         """
         INSERT INTO 

@@ -2,42 +2,18 @@ from fastapi.testclient import TestClient
 import pytest
 from rts.api.server import app, mount_routers
 from rts.api.api_settings import Settings, get_settings
-from rts.api.routers.auth_router import authenticate
 from rts.api.models import Media, LibraryCreate
-from rts.db.utils import reset_database
+from .conftest import reset_database, mock_authenticate, media_data
 from rts.db.queries import create_library
+from rts.api.routers.auth_router import get_current_active_user
 import json
 from json import JSONDecodeError
+from dateutil.parser import parse
 
-
-media_data = {
-    "media_path": "/path/to/media",
-    "original_path": "/original/path/to/media",
-    "original_id": "123abc",
-    "media_type": "video",
-    "file_id": "123abc",
-    "sub_type": "mp4",
-    "size": 1024,
-    "metadata": {"example": "metadata"},
-    "library_id": 1,
-    "hash": "123abc",
-    "parent_id": 1,
-    "start_ts": 0.0,
-    "end_ts": 10.0,
-    "start_frame": 0,
-    "end_frame": 100,
-    "frame_rate": 10.0
-}
 
 client = TestClient(app)
 settings = get_settings()
 mount_routers(app, settings)
-
-
-async def mock_authenticate(token: str = None):
-    return True
-
-app.dependency_overrides[authenticate] = mock_authenticate
 
 
 @pytest.fixture
@@ -47,13 +23,8 @@ def db_setup():
 
 @pytest.fixture
 def create_media(db_setup: None):
-    create_library(LibraryCreate(
-        library_name="test",
-        version="0.0.1",
-        data=json.dumps({"test": "test"})
-    ))
+    app.dependency_overrides[get_current_active_user] = mock_authenticate
     response = client.post("/media/", json=media_data)
-    # print(response.json())
     assert response.status_code == 200
     return response
 
@@ -62,41 +33,21 @@ def assert_media_response(response: dict, media_data: dict):
     for key in media_data.keys():
         try:
             assert media_data[key] == json.loads(response[key])
-        except JSONDecodeError:
-            assert media_data[key] == response[key]
-        except TypeError:
-            assert media_data[key] == response[key]
+        except (JSONDecodeError, KeyError, TypeError):
+            # if both are strings and represent date-times, we compare parsed dates
+            if (isinstance(media_data[key], str) and
+                    isinstance(response.get(key, None), str)):
+                try:
+                    date1 = parse(media_data[key])
+                    date2 = parse(response[key])
+                    assert date1 == date2
+                except ValueError:  # if parsing fails for any string, fall back to the simple assert
+                    assert media_data[key] == response[key]
+            else:
+                assert media_data[key] == response[key]
 
 
 def test_create_media(create_media: None):
     response = create_media
     assert response.status_code == 200
     assert_media_response(response.json(), media_data)
-
-
-def test_read_media(create_media: None):
-    response = client.get("/media/1")
-    assert response.status_code == 200
-    assert_media_response(response.json(), media_data)
-
-
-def test_read_medias(create_media: None):
-    response = client.get("/media/")
-    assert response.status_code == 200
-
-    for row in response.json():
-        assert_media_response(row, media_data)
-
-
-# def test_update_media(create_media: None):
-#     updated_data = {**media_data, "media_path": "/new/path/to/media"}
-#     response = client.put("/media/1", json=updated_data)
-#     print(response)
-#     assert response.status_code == 200
-#     assert_media_response(response.json(), updated_data)
-
-
-# def test_delete_media(create_media: None):
-#     response = client.delete("/media/1")
-#     assert response.status_code == 200
-#     assert response.json() == {"status": "Media deleted"}

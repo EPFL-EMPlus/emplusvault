@@ -13,7 +13,7 @@ from datetime import datetime
 
 from rts.settings import DB_HOST, DB_NAME, DB_PORT, SUPERUSER_CLI_KEY, DB_USER, DB_PASSWORD
 from rts.db.utils import create_database
-from rts.db.queries import create_library, create_new_user
+from rts.db.queries import create_library, create_new_user, allow_user_to_access_library
 from rts.api.models import LibraryCreate
 from rts.api.routers.auth_router import UserInDB as User
 
@@ -144,6 +144,15 @@ def create_user(username: str, full_name: str, email: str):
         password=password,
         email=email
     ))
+    click.echo('New user has been successfully created.')
+
+
+@db.command()
+@click.option('--user-id', type=int, default=1, help='User id')
+@click.option('--library-id', type=int, default=1, help='Library id')
+def allow_library_access(user_id: int, library_id: int):
+    allow_user_to_access_library(user_id, library_id)
+    click.echo('User has been granted access to the library.')
 
 
 @db.command()
@@ -155,7 +164,7 @@ def export_db(path: str):
         # Get current timestamp
         timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
         # Set output file name
-         # Create parent folder if needed
+        # Create parent folder if needed
         os.makedirs(path, exist_ok=True)
         output_file = f"output_{timestamp}.sql"
         # Combine directory and file name
@@ -174,7 +183,8 @@ def export_db(path: str):
     os.environ['PGPASSWORD'] = DB_PASSWORD
 
     command_get_container = 'docker ps --format "{{.CreatedAt}} {{.Names}}" | grep "docker-postgres" | sort -r | head -n 1 | awk \'{print $NF}\''
-    container_name = subprocess.check_output(command_get_container, shell=True).decode().strip()
+    container_name = subprocess.check_output(
+        command_get_container, shell=True).decode().strip()
 
     # # Prepare command
     command = f'docker exec -i {container_name} pg_dump -U {user} -F p {database} > {path}'
@@ -182,6 +192,7 @@ def export_db(path: str):
     # Execute command
     subprocess.run(command, shell=True, check=True)
     click.echo(f"Database dump completed. Output written to {path}")
+
 
 if __name__ == '__main__':
     cli()
