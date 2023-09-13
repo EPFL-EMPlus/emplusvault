@@ -66,16 +66,7 @@ class PipelineRTS(Pipeline):
             for _, row in df.iterrows():
 
                 input_file_path = os.path.join(self.library['prefix_path'], row['mediaFolderPath'])
-
                 self.ingest_single_video(input_file_path, merge_continous_sentences, compute_transcript, compute_clips, force_media, force_trans, force_clips)
-
-                # status = process_media(row.mediaFolderPath, global_output_folder, row.to_dict(),
-                #                     merge_continous_sentences, compute_transcript, compute_clips, 
-                #                     force_media, force_trans, force_clips)
-                # if status['status'] == 'fail':
-                #     LOG.error(f"{status['mediaId']} - {status['error']}")
-                # else:
-                #     LOG.info(f"{status['mediaId']} - {status['status']}")
                 pbar.update(row.mediaDuration)
 
     def ingest_single_video(self, 
@@ -88,14 +79,11 @@ class PipelineRTS(Pipeline):
             force_clips: bool = False) -> dict:
         """ Ingest all clips from a single video. """
 
-        print(input_file_path)
         archive_media_id = rts.utils.get_media_id(input_file_path)
         media_id = f"{self.library_name}-{archive_media_id}"
         original_path = os.path.join(input_file_path, f'{archive_media_id}.mp4')
         export_path = os.path.join(input_file_path, 'export')
-        
-        print(archive_media_id, media_id, original_path, export_path)
-
+    
         media = queries.get_media_by_id(archive_media_id)
         if media is None or force_media:
             LOG.info("Processing media: %s", archive_media_id)
