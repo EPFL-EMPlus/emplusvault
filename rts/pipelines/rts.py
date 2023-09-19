@@ -150,7 +150,11 @@ class PipelineRTS(Pipeline):
             sentences = self.transcript
             if merge_continous_sentences:
                 sentences = rts.features.text.merge_continous_sentences(self.transcript)
-            timecodes = timecodes_from_transcript(sentences)
+
+            timecodes = timecodes_from_transcript(sentences, min_seconds=8)
+            if not timecodes or not timecodes[0]:
+                # skipping because no long enough clip was found
+                return
             num_images = 3
             self.clip_infos = save_clips_images(timecodes[0], original_path, input_file_path, 'import', num_images, 'M')
 

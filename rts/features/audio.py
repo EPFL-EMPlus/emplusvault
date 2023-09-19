@@ -148,7 +148,11 @@ def transcribe_media(audio_path: str, lang: str = 'fr', min_duration: float = 0,
 
     # 2. Align whisper output
     result = whisperx.align(result["segments"], _model['align_model'], _model['align_meta'], audio, device, return_char_alignments=False)
-    diarize_segments = _model['diarize_model'](audio_file)
+    try:
+        diarize_segments = _model['diarize_model'](audio_file)
+    except KeyError:
+        # Problem with speaker diarization
+        diarize_segments = []
     # diarize_model(audio_file, min_speakers=min_speakers, max_speakers=max_speakers)
 
     result = whisperx.assign_word_speakers(diarize_segments, result)
