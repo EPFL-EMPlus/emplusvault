@@ -27,8 +27,6 @@ from rts.utils import FileVideoStream, timeit
 
 LOG = rts.utils.get_logger()
 
-openpifpaf.network.process.logger.setLevel(logging.ERROR)
-
 
 class ExtendedEnum(str, Enum):
     @classmethod
@@ -367,7 +365,7 @@ def get_tmp_lock_path(annot_path: Path, video_path: Path) -> Path:
     # invalid results
     tmp_file = video_path.stem + '.tmp'
     tmp_file = annot_path.parent.joinpath(tmp_file)
-    return tmp_file
+    return tmp_file.resolve()
 
 
 def get_annotations_path(model_name: str, video_path: Path, data_folder: Path) -> Path:
@@ -395,7 +393,7 @@ def check_if_valid_annotations(annot_path: Path, video_path: Path) -> bool:
 
 
 @timeit
-def process_video(model_name: str, annot_path: Path, video_path: Path, options=None):
+def process_video(model_name: str, annot_path: Path, video_path: Path, skip_frame: int = 0, options=None):
     """Process and run pose detection algorithm
        Returns path to results as st, None if error.
     """
@@ -426,6 +424,7 @@ def process_video(model_name: str, annot_path: Path, video_path: Path, options=N
 
     tmp_file = get_tmp_lock_path(annot_path, video_path)
     if not tmp_file.exists():
+        tmp_file.parent.mkdir(parents=True, exist_ok=True)
         tmp_file.touch()
 
     # loop over frames from the video file stream
@@ -440,6 +439,8 @@ def process_video(model_name: str, annot_path: Path, video_path: Path, options=N
                 break
 
             frame_i += 1
+            if skip_frame > 0 and frame_i % skip_frame != 0:
+                continue
 
             results = processor.process_pil_image(image_pil)
             js = orjson.dumps({

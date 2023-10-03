@@ -11,9 +11,9 @@ numpy = "^1.23.5" #"^1.23.5"
 pandas = "^2.0.1"
 orjson = "^3.8.12"
 # openai-whisper = {git = "https://github.com/openai/whisper.git", rev = "main", markers = "sys_platform != 'darwin'"}
-torch = "^2.0.1"
-torchvision = "^0.15.2"
-torchaudio = "^2.0.2"
+torch = ">=2.0.1"
+torchvision = ">=0.15.2"
+torchaudio = ">=2.0.2"
 tqdm = "^4.65.0"
 more-itertools = "^9.1.0"
 ffmpeg-python = "^0.2.0"
@@ -23,7 +23,7 @@ lxml = "^4.9.2"
 matplotlib = "^3.7.1"
 av = "^10.0.0"
 scenedetect = {extras = ["opencv-headless"], version = "^0.6.1"}
-cupy-cuda12x = {version = "^12.0.0", markers = "sys_platform != 'darwin'"}
+# cupy-cuda12x = {version = "^12.0.0", markers = "sys_platform != 'darwin'"}
 spacy = {extras = ["cuda-12"], version = "^3.5.2"}
 geonamescache = "^1.6.0"
 click = "^8.1.3"
@@ -34,7 +34,7 @@ llvmlite = "^0.39.1"
 numba = "^0.56.4"
 psycopg2-binary = "^2.9.6"
 python-dotenv = "^1.0.0"
-databases = {extras = ["postgresql"], version = "^0.7.0"}
+# databases = {extras = ["postgresql"], version = "^0.7.0"}
 alembic = "^1.10.4"
 asyncpg = "^0.27.0"
 anyio = {extras = ["trio"], version = "^3.6.2"}
@@ -42,7 +42,7 @@ boto3 = "^1.26.163"
 passlib = {extras = ["bcrypt"], version = "^1.7.4"}
 python-jose = {extras = ["cryptography"], version = "^3.3.0"}
 whisperx = {git = "https://github.com/m-bain/whisperx.git"}
-faster-whisper = "^0.6.0"
+faster-whisper = "^0.8.0"
 nltk = "^3.8.1"
 pyannote-audio = {git = "https://github.com/pyannote/pyannote-audio", rev = "11b56a137a578db9335efc00298f6ec1932e6317"}
 # sox = "^1.4.1"
@@ -65,7 +65,8 @@ prod = "rts.api.server:start_prod"
 spacy-models = 'python -m spacy download fr_core_news_lg'
 # post-install = 'pip install --upgrade "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html'
 force-torch = 'pip3 install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu121'
-# jax = 'pip install --upgrade "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html'
+pifpaf = "pip install --no-build-isolation openpifpaf-vita"
+
 run-pipeline = "python -m rts.cli rts pipeline --compute-transcript"
 atlas = "python -m rts.cli rts atlas"
 serve = "python -m rts.api.server"

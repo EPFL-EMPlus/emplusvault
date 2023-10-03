@@ -182,6 +182,7 @@ def read_mpd_file(media_folder: str):
 def remove_path_prefix(text: str, prefix: str) -> str:
     return text[text.startswith(prefix) and len(prefix):]
 
+
 class FileVideoStream:
 	def __init__(self, path, transform=None, queue_size=128):
 		# initialize the file video stream along with the boolean
