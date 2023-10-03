@@ -154,6 +154,15 @@ def allow_library_access(user_id: int, library_id: int):
     allow_user_to_access_library(user_id, library_id)
     click.echo('User has been granted access to the library.')
 
+@db.command()
+@click.option('--data', type=str, default='{}', help='csv dataframe')
+def ingest_ioc(data: str):
+    from rts.pipelines.ioc import PipelineIOC
+    df = pd.read_csv(data)
+    click.echo(f"Processing {len(df)} rows")
+    pipeline = PipelineIOC()
+    pipeline.ingest(df)
+
 
 @db.command()
 @click.option('--path', type=str, default='/media/data/dumps/', help='Path to exported file or path to export folder')
