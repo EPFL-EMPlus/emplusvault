@@ -1,27 +1,25 @@
 import os
 import argparse
 import logging
-import orjson
-
 import base64
 import io
 import re
-
-from pathlib import Path
-
 import numpy as np
-
 import cv2
 import PIL
 import torch
+import orjson
 
 import openpifpaf
 import openpifpaf.predict
 
-from openpifpaf import transforms
-from enum import Enum
-
 import rts.utils
+
+from enum import Enum
+from pathlib import Path
+from openpifpaf import transforms
+from typing import List, Dict, Tuple, Union, Optional
+
 from rts.utils import FileVideoStream, timeit
 
 
@@ -471,3 +469,153 @@ def get_current_device_name():
     gpu_id = torch.cuda.current_device()
     return get_gpu_props(gpu_id).name
 
+
+def reshape_keypoints(keypoints: List[float]) -> List[Tuple[float, float, float]]:
+    """
+    Reshape a list of keypoints into a list of tuples (x, y, confidence).
+
+    Parameters:
+    - keypoints (List[float]): The list of keypoints as floats.
+
+    Returns:
+    - List[Tuple[float, float, float]]: The reshaped keypoints.
+    """
+    return [(keypoints[i], keypoints[i+1], keypoints[i+2]) for i in range(0, len(keypoints), 3)]
+
+
+def compute_angle(p1: Tuple[float, float, float], 
+                    p2: Tuple[float, float, float], 
+                    p3: Tuple[float, float, float],
+                    min_confidence: float = 0.5) -> float:
+    """
+    Compute the angle at p2 given points p1, p2, and p3 in 2D space, using a confidence threshold for filtering.
+
+    Parameters:
+    - p1, p2, p3 (Tuple[float, float, float]): Points with x, y coordinates and confidence level.
+    - min_confidence (float): The minimum confidence level for a keypoint to be considered.
+
+    Returns:
+    - float: The computed angle in degrees.
+    """
+    vec1 = np.array([p1[0] - p2[0], p1[1] - p2[1]])
+    vec2 = np.array([p3[0] - p2[0], p3[1] - p2[1]])
+
+    mag1 = np.linalg.norm(vec1)
+    mag2 = np.linalg.norm(vec2)
+
+    # Check for zero magnitudes or low confidence
+    if mag1 == 0 or mag2 == 0:
+        return 0.0  # Angle is undefined, return 0
+    
+    if p1[2] < min_confidence or p2[2] < min_confidence or p3[2] < min_confidence:
+        return 0.0  # Low confidence, return 0
+    
+    dot_product = np.dot(vec1, vec2)
+    cos_theta = dot_product / (mag1 * mag2)
+
+    # Clip value to be in the range [-1, 1] to avoid invalid values due to numerical errors
+    cos_theta = np.clip(cos_theta, -1.0, 1.0)
+    
+    angle_rad = np.arccos(cos_theta)
+    angle_deg = np.degrees(angle_rad)
+
+    if angle_deg < 1:
+        angle_deg = 0.0
+
+    return angle_deg
+
+
+def compute_human_angles(keypoints: List[Tuple[float, float, float]], min_confidence: float = 0.5) -> List[Optional[float]]:
+    """
+    Compute meaningful angles for human pose based on keypoints.
+    
+    Parameters:
+    - keypoints (List[Tuple[float, float, float]]): List of keypoints (x, y, confidence).
+    - min_confidence (float): Minimum confidence level to consider a keypoint valid.
+
+    Returns:
+    - List[Optional[float]]: List of computed angles in degrees. Missing or undefined angles are set to None.
+    """
+    # Define the associations to compute angles
+    associations = [
+        (5, 7, 9),   # Left elbow
+        (6, 8, 10),  # Right elbow
+        (11, 13, 15), # Left knee
+        (12, 14, 16), # Right knee
+        (5, 11, 13),  # Left hip
+        (6, 12, 14),  # Right hip
+        (3, 5, 7),    # Left shoulder
+        (4, 6, 8),    # Right shoulder
+        (5, 0, 6),    # Neck
+        (13, 15, 16), # Left ankle
+        (14, 16, 15)  # Right ankle
+    ]
+    
+    angles = []
+    for p1_i, p2_i, p3_i in associations:
+        # Check that all required keypoints exist
+        if p1_i >= len(keypoints) or p2_i >= len(keypoints) or p3_i >= len(keypoints):
+            angles.append(None)
+            continue
+
+        p1, p2, p3 = keypoints[p1_i], keypoints[p2_i], keypoints[p3_i]
+        
+        # Check for incomplete keypoints
+        if p1 is None or p2 is None or p3 is None:
+            angles.append(None)
+            continue
+
+        # Check for confidence threshold
+        if p1[2] < min_confidence or p2[2] < min_confidence or p3[2] < min_confidence:
+            angles.append(None)
+            continue
+        
+        # Compute and store the angle
+        angle = compute_angle(p1, p2, p3)
+        angles.append(angle)
+        
+    return angles
+
+
+def extract_frame_data(jsonl_file_path: Union[str, Path], min_confidence: float = 0.5) -> Dict[int, Dict[str, Union[List[Dict[str, float]], List[List[float]], Dict[str, int]]]]:
+    """
+    Extract and compute angles, keypoints, bounding boxes, and frame dimensions for each frame from a JSONLines file.
+
+    Parameters:
+    - jsonl_file_path (str): The path to the JSONLines file.
+
+    Returns:
+    - Dict[int, Dict[str, Union[List[Dict[str, float]], List[List[float]], Dict[str, int]]]]: The extracted and computed data.
+    """
+    frame_data = {}
+
+    with open(str(jsonl_file_path), 'rb') as f:
+        for line in f:
+            obj = orjson.loads(line)
+            frame_number = obj['frame']
+            annotations = obj['data']['annotations']
+
+            if not annotations:
+                continue
+            frame_width, frame_height = obj['data']['width_height']
+            
+            frame_data[frame_number] = {
+                'angles': [],
+                'keypoints': [],
+                'bbox': [],
+                'frame_width': frame_width,
+                'frame_height': frame_height,
+                'num_subjects': len(annotations)             
+            }
+            
+            for person in annotations:
+                keypoints = person['keypoints']
+                bbox = person['bbox']
+                reshaped_keypoints = reshape_keypoints(keypoints)
+                angles_adjusted = compute_human_angles(reshaped_keypoints, min_confidence)
+                
+                frame_data[frame_number]['angles'].append(angles_adjusted)
+                frame_data[frame_number]['keypoints'].append(reshaped_keypoints)
+                frame_data[frame_number]['bbox'].append(bbox)
+                
+    return frame_data
