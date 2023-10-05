@@ -525,6 +525,25 @@ def compute_angle(p1: Tuple[float, float, float],
     return angle_deg
 
 
+def normalize_angles(angles: List[Optional[float]]) -> np.ndarray:
+    """
+    Normalize angles to the range [0, 1].
+
+    Parameters:
+    - angles (List[Optional[float]]): List of angles in degrees.
+
+    Returns:
+    - np.ndarray: NumPy array of normalized angles.
+    """
+    # Replace None values with 0 and convert to NumPy array
+    angles_clean = np.array([angle if angle is not None else 0 for angle in angles])
+    
+    # Normalize angles to [0, 1]
+    normalized_angles = angles_clean / 180.0
+    
+    return normalized_angles
+
+
 def compute_human_angles(keypoints: List[Tuple[float, float, float]], min_confidence: float = 0.5) -> List[Optional[float]]:
     """
     Compute meaningful angles for human pose based on keypoints.
@@ -577,12 +596,14 @@ def compute_human_angles(keypoints: List[Tuple[float, float, float]], min_confid
     return angles
 
 
-def extract_frame_data(jsonl_file_path: Union[str, Path], min_confidence: float = 0.5) -> Dict[int, Dict[str, Union[List[Dict[str, float]], List[List[float]], Dict[str, int]]]]:
+def extract_frame_data(jsonl_file_path: Union[str, Path], min_confidence: float = 0.5, min_valid_keypoints: int = 10, min_valid_angles: int = 5) -> Dict[int, Dict[str, Union[List[Dict[str, float]], List[List[float]], Dict[str, int]]]]:
     """
     Extract and compute angles, keypoints, bounding boxes, and frame dimensions for each frame from a JSONLines file.
 
     Parameters:
     - jsonl_file_path (str): The path to the JSONLines file.
+    - min_valid_keypoints (int): Minimum number of valid keypoints required to include a person.
+    - min_valid_angles (int): Minimum number of valid angles required to include a person.
 
     Returns:
     - Dict[int, Dict[str, Union[List[Dict[str, float]], List[List[float]], Dict[str, int]]]]: The extracted and computed data.
@@ -599,23 +620,44 @@ def extract_frame_data(jsonl_file_path: Union[str, Path], min_confidence: float 
                 continue
             frame_width, frame_height = obj['data']['width_height']
             
-            frame_data[frame_number] = {
+            d = {
                 'angles': [],
+                'angle_vec': [],  # To store normalized angle vectors
                 'keypoints': [],
                 'bbox': [],
                 'frame_width': frame_width,
                 'frame_height': frame_height,
-                'num_subjects': len(annotations)             
+                'num_subjects': 0  # Initialize to 0; will increment for each valid person
             }
             
             for person in annotations:
                 keypoints = person['keypoints']
                 bbox = person['bbox']
                 reshaped_keypoints = reshape_keypoints(keypoints)
+                
+                # Count valid keypoints
+                valid_keypoints = sum(1 for x, y, c in reshaped_keypoints if c >= min_confidence)
+                
+                if valid_keypoints < min_valid_keypoints:
+                    continue  # Skip this person
+                
                 angles_adjusted = compute_human_angles(reshaped_keypoints, min_confidence)
+
+                # Count valid angles
+                valid_angles = sum(1 for angle in angles_adjusted if angle != 0.0)
                 
-                frame_data[frame_number]['angles'].append(angles_adjusted)
-                frame_data[frame_number]['keypoints'].append(reshaped_keypoints)
-                frame_data[frame_number]['bbox'].append(bbox)
+                if valid_angles < min_valid_angles:
+                    continue  # Skip this person
                 
+                normalized_angles = normalize_angles(angles_adjusted)
+                
+                d['angles'].append(angles_adjusted)
+                d['angle_vec'].append(normalized_angles.tolist())  # Store normalized angle vector
+                d['keypoints'].append(reshaped_keypoints)
+                d['bbox'].append(bbox)
+                d['num_subjects'] += 1  # Increment for each valid person
+            
+            if d['num_subjects'] > 0:
+                frame_data[frame_number] = d
+
     return frame_data
