@@ -123,6 +123,7 @@ def recursive_glob(path, file_extension='.json', match_name: Optional[str] = Non
 
 
 def dataframe_to_hdf5(outdir: str, name: str, df: pd.DataFrame) -> bool:
+    Path(outdir).mkdir(parents=True, exist_ok=True)
     try:
         df.to_hdf(os.path.join(outdir, f'{name}.hdf5'), key='df', mode='w')
         return True

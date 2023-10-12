@@ -9,15 +9,20 @@ import rts.features.audio
 import rts.features.text
 import rts.pipelines.rts
 
+import rts.preprocess.ioc
+
 from datetime import datetime
+from pathlib import Path
 
 from rts.settings import DB_HOST, DB_NAME, DB_PORT, SUPERUSER_CLI_KEY, DB_USER, DB_PASSWORD
+from rts.settings import IOC_ROOT_FOLDER
+
 from rts.db.utils import create_database
 from rts.db.queries import create_library, create_new_user, allow_user_to_access_library
 from rts.api.models import LibraryCreate
 from rts.api.routers.auth_router import UserInDB as User
 
-from rts.pipelines.rts import RTS_ROOT_FOLDER, RTS_LOCAL_VIDEOS
+from rts.pipelines.rts import RTS_LOCAL_VIDEOS
 
 
 @click.group()
@@ -26,17 +31,17 @@ def cli():
 
 
 @cli.group()
-def rts():
+def rts_archive():
     pass
 
 
 @cli.group()
-def ioc():
+def ioc_archive():
     pass
 
 
 @cli.group()
-def mjf():
+def mjf_archive():
     pass
 
 
@@ -45,7 +50,7 @@ def db():
     pass
 
 
-@rts.command()
+@rts_archive.command()
 @click.option('--continuous', is_flag=True, help='Merge continuous sentences from the same speaker')
 @click.option('--compute-transcript', is_flag=True, help='Compute transcript')
 @click.option('--compute-clips', is_flag=True, help='Create clips from transcript')
@@ -193,6 +198,17 @@ def export_db(path: str):
     subprocess.run(command, shell=True, check=True)
     click.echo(f"Database dump completed. Output written to {path}")
 
+
+@ioc_archive.command()
+def build_video_metadata():
+    click.echo('Building video metadata...')
+    metadata = Path(IOC_ROOT_FOLDER) / 'metadata'
+    outdir = Path(IOC_ROOT_FOLDER) / 'data'
+    video_folder = Path(IOC_ROOT_FOLDER) / 'videos'
+    df = rts.preprocess.ioc.create_df_from_xml(metadata, outdir, force=False)
+    df = rts.preprocess.ioc.get_sport_df(df)
+    df = rts.preprocess.ioc.match_video_files(df, video_folder)
+    rts.utils.dataframe_to_hdf5(outdir, 'ioc_consolidated', df)
 
 if __name__ == '__main__':
     cli()
