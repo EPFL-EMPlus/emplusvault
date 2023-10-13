@@ -17,6 +17,7 @@ from pathlib import Path
 from rts.settings import DB_HOST, DB_NAME, DB_PORT, SUPERUSER_CLI_KEY, DB_USER, DB_PASSWORD
 from rts.settings import IOC_ROOT_FOLDER
 
+
 from rts.db.utils import create_database
 from rts.db.queries import create_library, create_new_user, allow_user_to_access_library
 from rts.api.models import LibraryCreate
@@ -158,6 +159,36 @@ def create_user(username: str, full_name: str, email: str):
 def allow_library_access(user_id: int, library_id: int):
     allow_user_to_access_library(user_id, library_id)
     click.echo('User has been granted access to the library.')
+
+@db.command()
+@click.option('--data', type=str, default='{}', help='csv dataframe')
+def ingest_ioc(data: str):
+    from rts.pipelines.ioc import PipelineIOC
+    df = pd.read_csv(data)
+
+    def find_mp4_files(root_folder):
+        import os
+        mp4_files = []
+
+        for foldername, _, filenames in os.walk(root_folder):
+            for filename in filenames:
+                if filename.endswith('.mp4'):
+                    mp4_files.append(os.path.join(foldername, filename))
+
+        return mp4_files
+
+    mp4_files = find_mp4_files(os.path.join(IOC_ROOT_FOLDER, "videos/"))
+    file_map = {}
+    for mp4 in mp4_files:
+        file_map[mp4.split('/')[-1].split('.')[0]] = mp4
+
+    def get_path(guid):
+        return file_map[guid] if guid in file_map else None
+    df['path'] = df.guid.apply(get_path)
+
+    click.echo(f"Processing {len(df)} rows")
+    pipeline = PipelineIOC()
+    pipeline.ingest(df)
 
 
 @db.command()
