@@ -1,33 +1,29 @@
 import os
 import argparse
 import logging
-import orjson
-
 import base64
 import io
 import re
-
-from pathlib import Path
-
 import numpy as np
-
 import cv2
 import PIL
 import torch
+import orjson
 
 import openpifpaf
 import openpifpaf.predict
 
-from openpifpaf import transforms
-from enum import Enum
-
 import rts.utils
+
+from enum import Enum
+from pathlib import Path
+from openpifpaf import transforms
+from typing import List, Dict, Tuple, Union, Optional
+
 from rts.utils import FileVideoStream, timeit
 
 
 LOG = rts.utils.get_logger()
-
-openpifpaf.network.process.logger.setLevel(logging.ERROR)
 
 
 class ExtendedEnum(str, Enum):
@@ -367,7 +363,7 @@ def get_tmp_lock_path(annot_path: Path, video_path: Path) -> Path:
     # invalid results
     tmp_file = video_path.stem + '.tmp'
     tmp_file = annot_path.parent.joinpath(tmp_file)
-    return tmp_file
+    return tmp_file.resolve()
 
 
 def get_annotations_path(model_name: str, video_path: Path, data_folder: Path) -> Path:
@@ -395,7 +391,7 @@ def check_if_valid_annotations(annot_path: Path, video_path: Path) -> bool:
 
 
 @timeit
-def process_video(model_name: str, annot_path: Path, video_path: Path, options=None):
+def process_video(model_name: str, annot_path: Path, video_path: Path, skip_frame: int = 0, options=None):
     """Process and run pose detection algorithm
        Returns path to results as st, None if error.
     """
@@ -426,6 +422,7 @@ def process_video(model_name: str, annot_path: Path, video_path: Path, options=N
 
     tmp_file = get_tmp_lock_path(annot_path, video_path)
     if not tmp_file.exists():
+        tmp_file.parent.mkdir(parents=True, exist_ok=True)
         tmp_file.touch()
 
     # loop over frames from the video file stream
@@ -440,6 +437,8 @@ def process_video(model_name: str, annot_path: Path, video_path: Path, options=N
                 break
 
             frame_i += 1
+            if skip_frame > 0 and frame_i % skip_frame != 0:
+                continue
 
             results = processor.process_pil_image(image_pil)
             js = orjson.dumps({
@@ -470,3 +469,195 @@ def get_current_device_name():
     gpu_id = torch.cuda.current_device()
     return get_gpu_props(gpu_id).name
 
+
+def reshape_keypoints(keypoints: List[float]) -> List[Tuple[float, float, float]]:
+    """
+    Reshape a list of keypoints into a list of tuples (x, y, confidence).
+
+    Parameters:
+    - keypoints (List[float]): The list of keypoints as floats.
+
+    Returns:
+    - List[Tuple[float, float, float]]: The reshaped keypoints.
+    """
+    return [(keypoints[i], keypoints[i+1], keypoints[i+2]) for i in range(0, len(keypoints), 3)]
+
+
+def compute_angle(p1: Tuple[float, float, float], 
+                    p2: Tuple[float, float, float], 
+                    p3: Tuple[float, float, float],
+                    min_confidence: float = 0.5) -> float:
+    """
+    Compute the angle at p2 given points p1, p2, and p3 in 2D space, using a confidence threshold for filtering.
+
+    Parameters:
+    - p1, p2, p3 (Tuple[float, float, float]): Points with x, y coordinates and confidence level.
+    - min_confidence (float): The minimum confidence level for a keypoint to be considered.
+
+    Returns:
+    - float: The computed angle in degrees.
+    """
+    vec1 = np.array([p1[0] - p2[0], p1[1] - p2[1]])
+    vec2 = np.array([p3[0] - p2[0], p3[1] - p2[1]])
+
+    mag1 = np.linalg.norm(vec1)
+    mag2 = np.linalg.norm(vec2)
+
+    # Check for zero magnitudes or low confidence
+    if mag1 == 0 or mag2 == 0:
+        return 0.0  # Angle is undefined, return 0
+    
+    if p1[2] < min_confidence or p2[2] < min_confidence or p3[2] < min_confidence:
+        return 0.0  # Low confidence, return 0
+    
+    dot_product = np.dot(vec1, vec2)
+    cos_theta = dot_product / (mag1 * mag2)
+
+    # Clip value to be in the range [-1, 1] to avoid invalid values due to numerical errors
+    cos_theta = np.clip(cos_theta, -1.0, 1.0)
+    
+    angle_rad = np.arccos(cos_theta)
+    angle_deg = np.degrees(angle_rad)
+
+    if angle_deg < 1:
+        angle_deg = 0.0
+
+    return angle_deg
+
+
+def normalize_angles(angles: List[Optional[float]]) -> np.ndarray:
+    """
+    Normalize angles to the range [0, 1].
+
+    Parameters:
+    - angles (List[Optional[float]]): List of angles in degrees.
+
+    Returns:
+    - np.ndarray: NumPy array of normalized angles.
+    """
+    # Replace None values with 0 and convert to NumPy array
+    angles_clean = np.array([angle if angle is not None else 0 for angle in angles])
+    
+    # Normalize angles to [0, 1]
+    normalized_angles = angles_clean / 180.0
+    
+    return normalized_angles
+
+
+def compute_human_angles(keypoints: List[Tuple[float, float, float]], min_confidence: float = 0.5) -> List[Optional[float]]:
+    """
+    Compute meaningful angles for human pose based on keypoints.
+    
+    Parameters:
+    - keypoints (List[Tuple[float, float, float]]): List of keypoints (x, y, confidence).
+    - min_confidence (float): Minimum confidence level to consider a keypoint valid.
+
+    Returns:
+    - List[Optional[float]]: List of computed angles in degrees. Missing or undefined angles are set to None.
+    """
+    # Define the associations to compute angles
+    associations = [
+        (5, 7, 9),   # Left elbow
+        (6, 8, 10),  # Right elbow
+        (11, 13, 15), # Left knee
+        (12, 14, 16), # Right knee
+        (5, 11, 13),  # Left hip
+        (6, 12, 14),  # Right hip
+        (3, 5, 7),    # Left shoulder
+        (4, 6, 8),    # Right shoulder
+        (5, 0, 6),    # Neck
+        (13, 15, 16), # Left ankle
+        (14, 16, 15)  # Right ankle
+    ]
+    
+    angles = []
+    for p1_i, p2_i, p3_i in associations:
+        # Check that all required keypoints exist
+        if p1_i >= len(keypoints) or p2_i >= len(keypoints) or p3_i >= len(keypoints):
+            angles.append(None)
+            continue
+
+        p1, p2, p3 = keypoints[p1_i], keypoints[p2_i], keypoints[p3_i]
+        
+        # Check for incomplete keypoints
+        if p1 is None or p2 is None or p3 is None:
+            angles.append(None)
+            continue
+
+        # Check for confidence threshold
+        if p1[2] < min_confidence or p2[2] < min_confidence or p3[2] < min_confidence:
+            angles.append(None)
+            continue
+        
+        # Compute and store the angle
+        angle = compute_angle(p1, p2, p3)
+        angles.append(angle)
+        
+    return angles
+
+
+def extract_frame_data(jsonl_file_path: Union[str, Path], min_confidence: float = 0.5, min_valid_keypoints: int = 10, min_valid_angles: int = 5) -> Dict[int, Dict[str, Union[List[Dict[str, float]], List[List[float]], Dict[str, int]]]]:
+    """
+    Extract and compute angles, keypoints, bounding boxes, and frame dimensions for each frame from a JSONLines file.
+
+    Parameters:
+    - jsonl_file_path (str): The path to the JSONLines file.
+    - min_valid_keypoints (int): Minimum number of valid keypoints required to include a person.
+    - min_valid_angles (int): Minimum number of valid angles required to include a person.
+
+    Returns:
+    - Dict[int, Dict[str, Union[List[Dict[str, float]], List[List[float]], Dict[str, int]]]]: The extracted and computed data.
+    """
+    frame_data = {}
+
+    with open(str(jsonl_file_path), 'rb') as f:
+        for line in f:
+            obj = orjson.loads(line)
+            frame_number = obj['frame']
+            annotations = obj['data']['annotations']
+
+            if not annotations:
+                continue
+            frame_width, frame_height = obj['data']['width_height']
+            
+            d = {
+                'angles': [],
+                'angle_vec': [],  # To store normalized angle vectors
+                'keypoints': [],
+                'bbox': [],
+                'frame_width': frame_width,
+                'frame_height': frame_height,
+                'num_subjects': 0  # Initialize to 0; will increment for each valid person
+            }
+            
+            for person in annotations:
+                keypoints = person['keypoints']
+                bbox = person['bbox']
+                reshaped_keypoints = reshape_keypoints(keypoints)
+                
+                # Count valid keypoints
+                valid_keypoints = sum(1 for x, y, c in reshaped_keypoints if c >= min_confidence)
+                
+                if valid_keypoints < min_valid_keypoints:
+                    continue  # Skip this person
+                
+                angles_adjusted = compute_human_angles(reshaped_keypoints, min_confidence)
+
+                # Count valid angles
+                valid_angles = sum(1 for angle in angles_adjusted if angle != 0.0)
+                
+                if valid_angles < min_valid_angles:
+                    continue  # Skip this person
+                
+                normalized_angles = normalize_angles(angles_adjusted)
+                
+                d['angles'].append(angles_adjusted)
+                d['angle_vec'].append(normalized_angles.tolist())  # Store normalized angle vector
+                d['keypoints'].append(reshaped_keypoints)
+                d['bbox'].append(bbox)
+                d['num_subjects'] += 1  # Increment for each valid person
+            
+            if d['num_subjects'] > 0:
+                frame_data[frame_number] = d
+
+    return frame_data
