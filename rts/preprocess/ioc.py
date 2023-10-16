@@ -4,6 +4,8 @@ import fnmatch
 from typing import Optional, List, Dict, Any
 from pathlib import Path
 from lxml import etree
+import numpy as np
+import pandas as pd
 
 import rts.utils
 
@@ -11,9 +13,9 @@ LOG = rts.utils.get_logger()
 
 DATA_KEYS = [
         'c_theme_en', # 404165 rows
-        'f_action_en', # 160566 rows
+        'f_action_en', # 160566 rows 5%
         'f_mouvement_en', # 117245 rows
-        'f_emotion_en', # 22503 rows
+        'f_emotion_en', # 22503 rows 1%
         'f_valeur_en', # 1459 rows
         'f_symbole_en', # 1229 rows
         'f_symbole_en_189',
@@ -423,3 +425,49 @@ def match_video_files(df: pd.DataFrame, root_folder: str) -> pd.DataFrame:
     # # we need a path for each video, otherwise we can't process
     df = df[df['path'].notna()]
     return df.reset_index(drop=True)
+
+def plot_occurrences_prop(df, key, figsize=(18, 12), rotation=45, title_prefix='Count of Occurrences for ', threshold=0.01):
+    """
+    Plots a bar chart showing the count of occurrences for each unique element in a specified key of the df DataFrame.
+    
+    Parameters:
+        df (DataFrame): The input DataFrame.
+        key (str): The key for which the occurrences need to be counted.
+        figsize (tuple): Figure size for the plot. Default is (18, 12).
+        rotation (int): Rotation angle for x-axis labels. Default is 45.
+        title_prefix (str): Prefix for the plot title. Default is 'Count of Occurrences for '.
+        threshold (float): Minimum percentage of occurrences for a label to be included in the plot.
+    """
+    import matplotlib.pyplot as plt
+    # Get the series corresponding to the key
+    series = get_extra_prop_series(df, key)
+    
+    # Remove NaN or None values
+    series = series.dropna()
+     # Calculate the percentage of the length of the series by the length of the DataFrame
+    percentage = (len(series) / len(df)) * 100
+
+    # Flatten the series
+    flat_series = pd.Series(np.concatenate(series.values))
+    
+    # Count the occurrences of each unique element
+    count_series = flat_series.value_counts()
+    
+    # Calculate total number of occurrences
+    total_count = count_series.sum()
+    
+    # Filter based on the threshold
+    count_series = count_series[count_series / total_count >= threshold]
+    
+    # Create the bar chart
+    plt.figure(figsize=figsize)
+    count_series.plot(kind='bar')
+    plt.xlabel(key)
+    plt.ylabel('Occurrences')
+    plt.title(f"{title_prefix}{key}")
+    plt.xticks(rotation=rotation)
+      
+    # Add the calculated percentage to the figure, centered and quite big
+    plt.annotate(f"Percentage of sequences: {percentage:.2f}%", xy=(0.7, 0.9), xycoords='axes fraction', ha='center', va='center', fontsize=24)
+
+    plt.show()
