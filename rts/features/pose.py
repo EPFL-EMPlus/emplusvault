@@ -26,6 +26,47 @@ from rts.utils import FileVideoStream, timeit
 LOG = rts.utils.get_logger()
 
 
+KEYPOINTS_NAMES = openpifpaf.Annotation.from_cif_meta(
+    openpifpaf.plugins.coco.CocoKp().head_metas[0]).keypoints
+
+CONNECTIONS = [
+    ("nose", "left_eye"),
+    ("nose", "right_eye"),
+    ("left_eye", "left_ear"),
+    ("right_eye", "right_ear"),
+    ("left_shoulder", "right_shoulder"),
+    ("left_shoulder", "left_elbow"),
+    ("right_shoulder", "right_elbow"),
+    ("left_elbow", "left_wrist"),
+    ("right_elbow", "right_wrist"),
+    ("left_hip", "right_hip"),
+    ("left_hip", "left_knee"),
+    ("right_hip", "right_knee"),
+    ("left_knee", "left_ankle"),
+    ("right_knee", "right_ankle"),
+    ("left_shoulder", "left_hip"),
+    ("right_shoulder", "right_hip")
+]
+
+ANGLES_ASSOCIATIONS = {
+    "left_elbow": ("left_shoulder", "left_elbow", "left_wrist"),
+    "right_elbow": ("right_shoulder", "right_elbow", "right_wrist"),
+    "left_shoulder": ("left_hip", "left_shoulder", "left_elbow"),
+    "right_shoulder": ("right_hip", "right_shoulder", "right_elbow"),
+    "left_hip": ("left_shoulder", "left_hip", "left_knee"),
+    "right_hip": ("right_shoulder", "right_hip", "right_knee"),
+    "left_knee": ("left_hip", "left_knee", "left_ankle"),
+    "right_knee": ("right_hip", "right_knee", "right_ankle"),
+    "neck": ("left_shoulder", "nose", "right_shoulder")
+}
+
+def keypoint_name_to_id(keypoint):
+    return KEYPOINTS_NAMES.index(keypoint)
+
+def format_keypoints_to_read(keypoints):
+    return {k:v for k,v in zip(KEYPOINTS_NAMES, keypoints)}
+
+
 class ExtendedEnum(str, Enum):
     @classmethod
     def list(cls):
@@ -556,20 +597,8 @@ def compute_human_angles(keypoints: List[Tuple[float, float, float]], min_confid
     - List[Optional[float]]: List of computed angles in degrees. Missing or undefined angles are set to None.
     """
     # Define the associations to compute angles
-    associations = [
-        (5, 7, 9),   # Left elbow
-        (6, 8, 10),  # Right elbow
-        (11, 13, 15), # Left knee
-        (12, 14, 16), # Right knee
-        (5, 11, 13),  # Left hip
-        (6, 12, 14),  # Right hip
-        (3, 5, 7),    # Left shoulder
-        (4, 6, 8),    # Right shoulder
-        (5, 0, 6),    # Neck
-        (13, 15, 16), # Left ankle
-        (14, 16, 15)  # Right ankle
-    ]
-    
+    associations = [[KEYPOINTS_NAMES.index(k) for k in assoc] for angle,assoc in ANGLES_ASSOCIATIONS.items()]
+
     angles = []
     for p1_i, p2_i, p3_i in associations:
         # Check that all required keypoints exist
