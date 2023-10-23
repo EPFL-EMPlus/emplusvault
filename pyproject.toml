@@ -47,6 +47,10 @@ nltk = "^3.8.1"
 pyannote-audio = {git = "https://github.com/pyannote/pyannote-audio", rev = "11b56a137a578db9335efc00298f6ec1932e6317"}
 # sox = "^1.4.1"
 opencv-python = "^4.8.1.78"
+ninja = "^1.11.1.1"
+seaborn = "^0.13.0"
+umap-learn = "^0.5.4"
+bokeh = "^3.3.0"
 
 [tool.poetry.dev-dependencies]
 poethepoet = "^0.19.0"
