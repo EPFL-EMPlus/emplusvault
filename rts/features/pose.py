@@ -542,6 +542,7 @@ def compute_angle(p1: Tuple[float, float, float],
 
     Returns:
     - float: The computed angle in degrees.
+    - float: The computed angle confidence scores (as the mean score of the 3 keypoints)
     """
     vec1 = np.array([p1[0] - p2[0], p1[1] - p2[1]])
     vec2 = np.array([p3[0] - p2[0], p3[1] - p2[1]])
@@ -551,10 +552,10 @@ def compute_angle(p1: Tuple[float, float, float],
 
     # Check for zero magnitudes or low confidence
     if mag1 == 0 or mag2 == 0:
-        return 0.0  # Angle is undefined, return 0
+        return 0.0, 0.0  # Angle is undefined, return 0
     
     if p1[2] < min_confidence or p2[2] < min_confidence or p3[2] < min_confidence:
-        return 0.0  # Low confidence, return 0
+        return 0.0, 0.0  # Low confidence, return 0
     
     dot_product = np.dot(vec1, vec2)
     cos_theta = dot_product / (mag1 * mag2)
@@ -568,7 +569,9 @@ def compute_angle(p1: Tuple[float, float, float],
     if angle_deg < 1:
         angle_deg = 0.0
 
-    return angle_deg
+    angle_score = np.mean([p1[2], p2[2], p3[2]])
+
+    return angle_deg, angle_score
 
 
 def normalize_angles(angles: List[Optional[float]]) -> np.ndarray:
@@ -602,13 +605,15 @@ def compute_human_angles(keypoints: List[Tuple[float, float, float]], min_confid
     - List[Optional[float]]: List of computed angles in degrees. Missing or undefined angles are set to None.
     """
     # Define the associations to compute angles
-    associations = [[KEYPOINTS_NAMES.index(k) for k in assoc] for angle,assoc in ANGLES_ASSOCIATIONS.items()]
+    associations = [[keypoint_name_to_id(k) for k in assoc] for angle,assoc in ANGLES_ASSOCIATIONS.items()]
 
     angles = []
+    angles_scores = []
     for p1_i, p2_i, p3_i in associations:
         # Check that all required keypoints exist
         if p1_i >= len(keypoints) or p2_i >= len(keypoints) or p3_i >= len(keypoints):
             angles.append(None)
+            angles_scores.append(0.0)
             continue
 
         p1, p2, p3 = keypoints[p1_i], keypoints[p2_i], keypoints[p3_i]
@@ -616,18 +621,21 @@ def compute_human_angles(keypoints: List[Tuple[float, float, float]], min_confid
         # Check for incomplete keypoints
         if p1 is None or p2 is None or p3 is None:
             angles.append(None)
+            angles_scores.append(0.0)
             continue
 
         # Check for confidence threshold
         if p1[2] < min_confidence or p2[2] < min_confidence or p3[2] < min_confidence:
             angles.append(None)
+            angles_scores.append(0.0)
             continue
         
         # Compute and store the angle
-        angle = compute_angle(p1, p2, p3)
+        angle, angle_score = compute_angle(p1, p2, p3)
         angles.append(angle)
-        
-    return angles
+        angles_scores.append(angle_score)
+
+    return angles, angles_scores
 
 
 def extract_frame_data(jsonl_file_path: Union[str, Path], min_confidence: float = 0.5, min_valid_keypoints: int = 10, min_valid_angles: int = 5) -> Dict[int, Dict[str, Union[List[Dict[str, float]], List[List[float]], Dict[str, int]]]]:
@@ -657,6 +665,7 @@ def extract_frame_data(jsonl_file_path: Union[str, Path], min_confidence: float 
             d = {
                 'angles': [],
                 'angle_vec': [],  # To store normalized angle vectors
+                'angle_scores': [], # To store angle confidence scores
                 'keypoints': [],
                 'bbox': [],
                 'frame_width': frame_width,
@@ -675,7 +684,7 @@ def extract_frame_data(jsonl_file_path: Union[str, Path], min_confidence: float 
                 if valid_keypoints < min_valid_keypoints:
                     continue  # Skip this person
                 
-                angles_adjusted = compute_human_angles(reshaped_keypoints, min_confidence)
+                angles_adjusted, angle_scores = compute_human_angles(reshaped_keypoints, min_confidence)
 
                 # Count valid angles
                 valid_angles = sum(1 for angle in angles_adjusted if angle != 0.0)
@@ -687,6 +696,7 @@ def extract_frame_data(jsonl_file_path: Union[str, Path], min_confidence: float 
                 
                 d['angles'].append(angles_adjusted)
                 d['angle_vec'].append(normalized_angles.tolist())  # Store normalized angle vector
+                d['angle_scores'].append(angle_scores)
                 d['keypoints'].append(reshaped_keypoints)
                 d['bbox'].append(bbox)
                 d['num_subjects'] += 1  # Increment for each valid person
@@ -757,7 +767,9 @@ def load_all_poses(poses_folder: Union[str, Path]):
     for pose_json in poses_jl:
         extracted_data = extract_frame_data(pose_json, 0.5)
         if len(extracted_data.keys()) > 0:
-            pose_exp = [[{"frame_number":k, "angle_vec":angle, "keypoints":keypoint, "bbox":bbox} for angle,keypoint,bbox in zip(v["angle_vec"], v["keypoints"], v["bbox"])] for k,v in extracted_data.items()]
+            pose_exp = [[{"frame_number":k, "angle_vec":angle, "angle_score":score, "keypoints":keypoint, "bbox":bbox} 
+                         for angle,score,keypoint,bbox 
+                         in zip(v["angle_vec"], v["angle_scores"], v["keypoints"], v["bbox"])] for k,v in extracted_data.items()]
             pose_exp = [item for sublist in pose_exp for item in sublist]
             [p.update({"video_name":pose_json.split("/")[-1].split(".")[0]}) for p in pose_exp]
             poses.extend(pose_exp)
