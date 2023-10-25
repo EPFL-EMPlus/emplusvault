@@ -9,6 +9,7 @@ import cv2
 import PIL
 import torch
 import orjson
+import matplotlib.pyplot as plt
 
 import openpifpaf
 import openpifpaf.predict
@@ -690,3 +691,73 @@ def extract_frame_data(jsonl_file_path: Union[str, Path], min_confidence: float 
                 frame_data[frame_number] = d
 
     return frame_data
+
+
+def get_frame(video_name: Union[str, Path], video_folder: Union[str, Path], frame_number: int):
+    video_path = [f for f in os.listdir(video_folder + video_name) if f.endswith(".mp4")][0]
+    cap = cv2.VideoCapture(video_folder + video_name + "/" + video_path)
+    cap.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
+    ret, frame = cap.read()
+    if ret:
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    cap.release()
+    return frame
+
+def draw_pose(pose, video_folder, ax = None, cut: bool=True, threshold: float=0.1):
+    """
+    Draw extracted skeleton on frame.
+
+    Parameters:
+    - pose (Dict[str, Any]): The pose data.
+    - ax (matplotlib.axes.Axes): The axes to draw on.
+    - cut (bool): Whether to cut the frame to the bounding box.
+    - threshold (float): The confidence threshold for keypoints. Keypoints with confidence below this value will not be drawn.
+
+    Returns:
+    - matplotlib.axes.Axes: The axes with the drawn pose.
+    """
+
+    keypoints = pose["keypoints"]
+    frame = get_frame(pose["video_name"], video_folder, pose["frame_number"])
+
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(6,6))
+
+    ax.imshow(frame)
+    ax.scatter([k[0] for k in keypoints if k[2] > threshold], 
+               [k[1] for k in keypoints if k[2] > threshold], 
+               s=10)
+    for c in CONNECTIONS:
+        k1 = keypoints[KEYPOINTS_NAMES.index(c[0])]
+        k2 = keypoints[KEYPOINTS_NAMES.index(c[1])]
+        if k1[2] > threshold and k2[2] > threshold:
+            ax.plot([k1[0], k2[0]], 
+                    [k1[1], k2[1]], 
+                    linewidth=1, color='black')
+        
+    # cut frame to bbox
+    if cut:
+        bbox = pose["bbox"]
+        ax.set_xlim(int(bbox[0]),int(bbox[0] + bbox[2]))
+        ax.set_ylim(int(bbox[1] + bbox[3]), int(bbox[1]))
+
+    ax.axis("off")
+    ax.set_aspect('equal')
+    plt.tight_layout()
+
+    return ax
+
+def load_all_poses(poses_folder: Union[str, Path]):
+    poses_jl = [poses_folder + f for f in os.listdir(poses_folder)]
+    poses = []
+    for pose_json in poses_jl:
+        extracted_data = extract_frame_data(pose_json, 0.5)
+        if len(extracted_data.keys()) > 0:
+            pose_exp = [[{"frame_number":k, "angle_vec":angle, "keypoints":keypoint, "bbox":bbox} for angle,keypoint,bbox in zip(v["angle_vec"], v["keypoints"], v["bbox"])] for k,v in extracted_data.items()]
+            pose_exp = [item for sublist in pose_exp for item in sublist]
+            [p.update({"video_name":pose_json.split("/")[-1].split(".")[0]}) for p in pose_exp]
+            poses.extend(pose_exp)
+
+    print("Extracted %d poses" %len(poses))
+
+    return poses
