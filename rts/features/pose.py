@@ -30,11 +30,12 @@ LOG = rts.utils.get_logger()
 KEYPOINTS_NAMES = openpifpaf.Annotation.from_cif_meta(
     openpifpaf.plugins.coco.CocoKp().head_metas[0]).keypoints
 
+for k in ["left_ear", "right_ear", "left_eye", "right_eye"]:
+    KEYPOINTS_NAMES.remove(k)
+
 CONNECTIONS = [
-    ("nose", "left_eye"),
-    ("nose", "right_eye"),
-    ("left_eye", "left_ear"),
-    ("right_eye", "right_ear"),
+    ("nose", "right_shoulder"),
+    ("nose", "left_shoulder"),
     ("left_shoulder", "right_shoulder"),
     ("left_shoulder", "left_elbow"),
     ("right_shoulder", "right_elbow"),
@@ -515,6 +516,7 @@ def get_current_device_name():
 def reshape_keypoints(keypoints: List[float]) -> List[Tuple[float, float, float]]:
     """
     Reshape a list of keypoints into a list of tuples (x, y, confidence).
+    Drop keypoints not used: "left_ear", "right_ear", "left_eye", "right_eye".
 
     Parameters:
     - keypoints (List[float]): The list of keypoints as floats.
@@ -522,7 +524,9 @@ def reshape_keypoints(keypoints: List[float]) -> List[Tuple[float, float, float]
     Returns:
     - List[Tuple[float, float, float]]: The reshaped keypoints.
     """
-    return [(keypoints[i], keypoints[i+1], keypoints[i+2]) for i in range(0, len(keypoints), 3)]
+    keypoints = [(keypoints[i], keypoints[i+1], keypoints[i+2]) for i in range(0, len(keypoints), 3)]
+    keypoints = keypoints[:1] + keypoints[5:] # Drop unused keypoints
+    return keypoints
 
 
 def compute_angle(p1: Tuple[float, float, float], 
