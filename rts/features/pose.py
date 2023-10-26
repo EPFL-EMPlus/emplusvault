@@ -761,7 +761,31 @@ def draw_pose(pose, video_folder, ax = None, cut: bool=True, threshold: float=0.
 
     return ax
 
-def load_all_poses(poses_folder: Union[str, Path]):
+
+standing_still_angle = {
+    "left_elbow": 0.9,
+    "right_elbow": 0.9,
+    "left_shoulder": 0.15,
+    "right_shoulder": 0.15,
+    "left_hip": 0.95,
+    "right_hip": 0.95,
+    "left_knee":0.95,
+    "right_knee":0.95,
+    "neck":0.5
+}
+
+def drop_pose(input_pose, filter_pose_angles, threshold = 0.1):
+    """
+    Drop pose unless at least one angle is different from the filter pose angles
+    """
+    input_angle = input_pose["angle_vec"]
+    input_angle_scores = input_pose["angle_score"]
+    angles_diff = [np.abs(input_angle[i] - filter_pose_angles[k]) for i,k in enumerate(filter_pose_angles.keys()) if input_angle_scores[i] > 0.1]
+    return sum([a > threshold for a in angles_diff]) < 1
+
+def load_all_poses(poses_folder: Union[str, Path], 
+                   drop_poses: List[object] = [standing_still_angle],
+                   drop_threshold: float = 0.1):
     poses_jl = [poses_folder + f for f in os.listdir(poses_folder)]
     poses = []
     for pose_json in poses_jl:
@@ -773,6 +797,9 @@ def load_all_poses(poses_folder: Union[str, Path]):
             pose_exp = [item for sublist in pose_exp for item in sublist]
             [p.update({"video_name":pose_json.split("/")[-1].split(".")[0]}) for p in pose_exp]
             poses.extend(pose_exp)
+    
+    for filter_pose in drop_poses:
+        poses = [p for p in poses if not drop_pose(p, filter_pose_angles=filter_pose, threshold=drop_threshold)]
 
     print("Extracted %d poses" %len(poses))
 
