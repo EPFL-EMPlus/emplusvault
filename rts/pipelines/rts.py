@@ -64,9 +64,11 @@ class PipelineRTS(Pipeline):
         total_duration = df.mediaDuration.sum()
         with self.tqdm(total=total_duration, file=sys.stdout) as pbar:
             for _, row in df.iterrows():
-
-                input_file_path = os.path.join(self.library['prefix_path'], row['mediaFolderPath'])
-                self.ingest_single_video(input_file_path, merge_continous_sentences, compute_transcript, compute_clips, force_media, force_trans, force_clips)
+                try:
+                    input_file_path = os.path.join(self.library['prefix_path'], row['mediaFolderPath'])
+                    self.ingest_single_video(input_file_path, merge_continous_sentences, compute_transcript, compute_clips, force_media, force_trans, force_clips)
+                except TypeError as e:
+                    LOG.error(f"Error processing media: {row['mediaFolderPath']}")
                 pbar.update(row.mediaDuration)
 
     def ingest_single_video(self, 
@@ -86,7 +88,7 @@ class PipelineRTS(Pipeline):
     
         media = queries.get_media_by_id(archive_media_id)
         if media is None or force_media:
-            LOG.info("Processing media: %s", archive_media_id)
+            # LOG.info("Processing media: %s", archive_media_id)
             media_info = get_media_info(original_path, input_file_path)
             metadata = {}
 

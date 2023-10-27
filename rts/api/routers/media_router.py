@@ -31,7 +31,7 @@ async def get_media(media_id: int, current_user: User = Depends(get_current_acti
     return get_media_by_id(media_id)
 
 
-@media_router.get("/media/library/{library_id}", response_model=List[Media])
+@media_router.get("/media/library/{library_id}")
 async def get_media_by_library(library_id: int, last_seen_date: str = None, last_seen_media_id: str = None, page_size: int = 20, current_user: User = Depends(get_current_active_user)):
     try:
         resp = get_all_media_by_library_id(
