@@ -382,16 +382,15 @@ def get_annotations_path(model_name: str, video_path: Path, data_folder: Path) -
     return annot_path
 
 
-def check_if_valid_annotations(annot_path: Path, video_path: Path) -> bool:
+def check_if_valid_annotations(annot_path: Path) -> bool:
     """Check if already processed and without error"""
-    tmp_file = get_tmp_lock_path(annot_path, video_path)
-    if annot_path.exists() and not tmp_file.exists():
+    if annot_path.exists():
         return True
     return False
 
 
 @timeit
-def process_video(model_name: str, annot_path: Path, video_path: Path, skip_frame: int = 0, options=None):
+def process_video(model_name: str, annot_path: Path, video_bytes: bytes, skip_frame: int = 0, options=None):
     """Process and run pose detection algorithm
        Returns path to results as st, None if error.
     """
@@ -402,7 +401,7 @@ def process_video(model_name: str, annot_path: Path, video_path: Path, skip_fram
         image_pil = PIL.Image.fromarray(image)
         return image_pil
 
-    already_processed = check_if_valid_annotations(annot_path, video_path)
+    already_processed = check_if_valid_annotations(annot_path)
 
     force = False
     if options and 'force' in options:
@@ -417,16 +416,10 @@ def process_video(model_name: str, annot_path: Path, video_path: Path, skip_fram
     # TODO: switch GPU if possible here
     processor.reset()
 
-    LOG.info(f'Processing {video_path}')
-    # LOG.info(processor.args)
-
-    tmp_file = get_tmp_lock_path(annot_path, video_path)
-    if not tmp_file.exists():
-        tmp_file.parent.mkdir(parents=True, exist_ok=True)
-        tmp_file.touch()
+    LOG.info(f'Processing {annot_path}')
 
     # loop over frames from the video file stream
-    fvs = FileVideoStream(str(video_path), image_reader)
+    fvs = FileVideoStream(video_bytes, image_reader)
     fvs.start()
     frame_i = -1
 
@@ -448,8 +441,6 @@ def process_video(model_name: str, annot_path: Path, video_path: Path, skip_fram
             f.write(js)       
         fvs.stop()
     
-    # Remove tmp_file
-    tmp_file.unlink()
     return True
 
 
