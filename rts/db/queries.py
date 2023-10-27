@@ -278,6 +278,19 @@ def get_feature_by_media_id(media_id: str, feature_type: str) -> dict:
         query, {"media_id": media_id, "feature_type": feature_type})
     return result
 
+def get_features_by_type(feature_type: str) -> dict:
+    query = text(
+        "SELECT * FROM feature WHERE feature_type = :feature_type")
+    result = DataAccessObject().fetch_all(
+        query, {"feature_type": feature_type})
+    return result
+
+def get_feature_data_by_media_id(media_id: str, feature_type: str) -> dict:
+    query = text(
+        "SELECT data FROM feature WHERE media_id = :media_id AND feature_type = :feature_type")
+    result = DataAccessObject().fetch_one(
+        query, {"media_id": media_id, "feature_type": feature_type})
+    return result
 
 def get_feature_by_media_id_and_type(media_id: str, feature_type: str) -> dict:
     query = text(
@@ -318,6 +331,15 @@ def delete_feature(feature_id: int):
         RETURNING *
     """)
     result = DataAccessObject().fetch_one(query, {"feature_id": feature_id})
+    return result
+
+def delete_feature_by_type(feature_type: str):
+    query = text("""
+        DELETE FROM feature
+        WHERE feature_type = :feature_type
+        RETURNING *
+    """)
+    result = DataAccessObject().fetch_one(query, {"feature_type": feature_type})
     return result
 
 

@@ -390,9 +390,9 @@ def check_if_valid_annotations(annot_path: Path) -> bool:
 
 
 @timeit
-def process_video(model_name: str, annot_path: Path, video_bytes: bytes, skip_frame: int = 0, options=None):
+def process_video(model_name: str, video_bytes: bytes, skip_frame: int = 0, options=None):
     """Process and run pose detection algorithm
-       Returns path to results as st, None if error.
+       Returns poses jsonl
     """
     def image_reader(frame):
         if frame is None:
@@ -401,47 +401,39 @@ def process_video(model_name: str, annot_path: Path, video_bytes: bytes, skip_fr
         image_pil = PIL.Image.fromarray(image)
         return image_pil
 
-    already_processed = check_if_valid_annotations(annot_path)
-
     force = False
     if options and 'force' in options:
         force = options['force']
     
-    if already_processed and not force:
-        return True
- 
     # Create new model because it is executed async in another process
     # not really thread-safe :/
     processor = PIFPAF_FACTORY.build_model(model_name)
     # TODO: switch GPU if possible here
     processor.reset()
 
-    LOG.info(f'Processing {annot_path}')
-
     # loop over frames from the video file stream
     fvs = FileVideoStream(video_bytes, image_reader)
     fvs.start()
     frame_i = -1
 
-    with annot_path.open('wb') as f:
-        while fvs.more():
-            image_pil = fvs.read()
-            if image_pil is None: # last frame
-                break
+    processed = []
+    while fvs.more():
+        image_pil = fvs.read()
+        if image_pil is None: # last frame
+            break
 
-            frame_i += 1
-            if skip_frame > 0 and frame_i % skip_frame != 0:
-                continue
+        frame_i += 1
+        if skip_frame > 0 and frame_i % skip_frame != 0:
+            continue
 
-            results = processor.process_pil_image(image_pil)
-            js = orjson.dumps({
-                'frame': frame_i,
-                'data': results
-            }, option=orjson.OPT_APPEND_NEWLINE | orjson.OPT_SERIALIZE_NUMPY)
-            f.write(js)       
-        fvs.stop()
+        results = processor.process_pil_image(image_pil)
+        processed.append({
+            'frame': frame_i,
+            'data': results            
+        })
+    fvs.stop()
     
-    return True
+    return processed
 
 
 def get_pifpaf_version():
