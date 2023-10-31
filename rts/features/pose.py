@@ -638,75 +638,6 @@ def compute_human_angles(keypoints: List[Tuple[float, float, float]], min_confid
     return angles, angles_scores
 
 
-def extract_frame_data(jsonl_file_path: Union[str, Path], min_confidence: float = 0.5, min_valid_keypoints: int = 10, min_valid_angles: int = 5) -> Dict[int, Dict[str, Union[List[Dict[str, float]], List[List[float]], Dict[str, int]]]]:
-    """
-    Extract and compute angles, keypoints, bounding boxes, and frame dimensions for each frame from a JSONLines file.
-
-    Parameters:
-    - jsonl_file_path (str): The path to the JSONLines file.
-    - min_valid_keypoints (int): Minimum number of valid keypoints required to include a person.
-    - min_valid_angles (int): Minimum number of valid angles required to include a person.
-
-    Returns:
-    - Dict[int, Dict[str, Union[List[Dict[str, float]], List[List[float]], Dict[str, int]]]]: The extracted and computed data.
-    """
-    frame_data = {}
-
-    with open(str(jsonl_file_path), 'rb') as f:
-        for line in f:
-            obj = orjson.loads(line)
-            frame_number = obj['frame']
-            annotations = obj['data']['annotations']
-
-            if not annotations:
-                continue
-            frame_width, frame_height = obj['data']['width_height']
-            
-            d = {
-                'angles': [],
-                'angle_vec': [],  # To store normalized angle vectors
-                'angle_scores': [], # To store angle confidence scores
-                'keypoints': [],
-                'bbox': [],
-                'frame_width': frame_width,
-                'frame_height': frame_height,
-                'num_subjects': 0  # Initialize to 0; will increment for each valid person
-            }
-            
-            for person in annotations:
-                keypoints = person['keypoints']
-                bbox = person['bbox']
-                reshaped_keypoints = reshape_keypoints(keypoints)
-                
-                # Count valid keypoints
-                valid_keypoints = sum(1 for x, y, c in reshaped_keypoints if c >= min_confidence)
-                
-                if valid_keypoints < min_valid_keypoints:
-                    continue  # Skip this person
-                
-                angles_adjusted, angle_scores = compute_human_angles(reshaped_keypoints, min_confidence)
-
-                # Count valid angles
-                valid_angles = sum(1 for angle in angles_adjusted if angle != 0.0)
-                
-                if valid_angles < min_valid_angles:
-                    continue  # Skip this person
-                
-                normalized_angles = normalize_angles(angles_adjusted)
-                
-                d['angles'].append(angles_adjusted)
-                d['angle_vec'].append(normalized_angles.tolist())  # Store normalized angle vector
-                d['angle_scores'].append(angle_scores)
-                d['keypoints'].append(reshaped_keypoints)
-                d['bbox'].append(bbox)
-                d['num_subjects'] += 1  # Increment for each valid person
-            
-            if d['num_subjects'] > 0:
-                frame_data[frame_number] = d
-
-    return frame_data
-
-
 def get_frame(video_name: Union[str, Path], video_folder: Union[str, Path], frame_number: int):
     video_path = [f for f in os.listdir(video_folder + video_name) if f.endswith(".mp4")][0]
     cap = cv2.VideoCapture(video_folder + video_name + "/" + video_path)
@@ -795,6 +726,90 @@ def drop_pose(input_pose, filter_pose_angles, drop_threshold = 0.1):
     angles_diff = [np.abs(input_angle[i] - filter_pose_angles[k]) for i,k in enumerate(filter_pose_angles.keys()) if input_angle_scores[i] > 0.1]
     return sum([a > drop_threshold for a in angles_diff]) < 1
 
+
+def process_frame_data(frame_data: dict, 
+                       min_confidence: float = 0.5, 
+                       min_valid_keypoints: int = 10, 
+                       min_valid_angles: int = 5 ):
+    frame_width, frame_height = frame_data['data']['width_height']
+    frame_number = frame_data['frame']
+    media_id = frame_data['media_id']
+
+    d = {
+        'media_id': media_id,
+        'frame_number': frame_number,
+        'angles': [],
+        'angle_vec': [],  # To store normalized angle vectors
+        'angle_scores': [], # To store angle confidence scores
+        'keypoints': [],
+        'bbox': [],
+        'frame_width': frame_width,
+        'frame_height': frame_height,
+        'num_subjects': 0  # Initialize to 0; will increment for each valid person
+    }
+    
+    annotations = frame_data['data']['annotations']
+    if not annotations:
+        return d
+    
+    for person in annotations:
+        keypoints = person['keypoints']
+        bbox = person['bbox']
+        reshaped_keypoints = reshape_keypoints(keypoints)
+        
+        # Count valid keypoints
+        valid_keypoints = sum(1 for x, y, c in reshaped_keypoints if c >= min_confidence)
+        
+        if valid_keypoints < min_valid_keypoints:
+            continue  # Skip this person
+        
+        angles_adjusted, angle_scores = compute_human_angles(reshaped_keypoints, min_confidence)
+
+        # Count valid angles
+        valid_angles = sum(1 for angle in angles_adjusted if angle != 0.0)
+        
+        if valid_angles < min_valid_angles:
+            continue  # Skip this person
+        
+        normalized_angles = normalize_angles(angles_adjusted)
+        
+        d['angles'].append(angles_adjusted)
+        d['angle_vec'].append(normalized_angles.tolist())  # Store normalized angle vector
+        d['angle_scores'].append(angle_scores)
+        d['keypoints'].append(reshaped_keypoints)
+        d['bbox'].append(bbox)
+        d['num_subjects'] += 1  # Increment for each valid person
+
+    return d
+
+def extract_frame_data(jsonl_file_path: Union[str, Path], 
+                       min_confidence: float = 0.5, 
+                       min_valid_keypoints: int = 10, 
+                       min_valid_angles: int = 5) -> Dict[int, Dict[str, Union[List[Dict[str, float]], List[List[float]], Dict[str, int]]]]:
+    """
+    Extract and compute angles, keypoints, bounding boxes, and frame dimensions for each frame from a JSONLines file.
+
+    Parameters:
+    - jsonl_file_path (str): The path to the JSONLines file.
+    - min_valid_keypoints (int): Minimum number of valid keypoints required to include a person.
+    - min_valid_angles (int): Minimum number of valid angles required to include a person.
+
+    Returns:
+    - Dict[int, Dict[str, Union[List[Dict[str, float]], List[List[float]], Dict[str, int]]]]: The extracted and computed data.
+    """
+    frame_data = {}
+
+    with open(str(jsonl_file_path), 'rb') as f:
+        for line in f:
+            obj = orjson.loads(line)
+            frame_number = obj['frame']
+            
+            d = process_frame_data(obj, min_confidence, min_valid_keypoints, min_valid_angles)
+            if d['num_subjects'] > 0:
+                frame_data[frame_number] = d
+
+    return frame_data
+
 def load_all_poses(poses_folder: Union[str, Path], 
                    drop_poses: List[object] = [standing_still_angle, sitting_pose_angle],
                    drop_threshold: float = 0.1):
@@ -807,7 +822,7 @@ def load_all_poses(poses_folder: Union[str, Path],
                          for angle,score,keypoint,bbox 
                          in zip(v["angle_vec"], v["angle_scores"], v["keypoints"], v["bbox"])] for k,v in extracted_data.items()]
             pose_exp = [item for sublist in pose_exp for item in sublist]
-            [p.update({"video_name":pose_json.split("/")[-1].split(".")[0]}) for p in pose_exp]
+            [p.update({"media_id":pose_json.split("/")[-1].split(".")[0]}) for p in pose_exp]
             poses.extend(pose_exp)
     
     for filter_pose in drop_poses:
@@ -816,3 +831,38 @@ def load_all_poses(poses_folder: Union[str, Path],
     print("Extracted %d poses" %len(poses))
 
     return poses
+
+def process_all_poses(results: list,
+                      drop_poses: List[object] = [standing_still_angle, sitting_pose_angle],
+                      drop_threshold: float = 0.1):
+
+    poses = [(p["data"]["frames"], p["media_id"]) for p in results]
+    [[p.update({"media_id":data[1]}) for p in data[0]][0] for data in poses]
+    poses = [p[0] for p in poses]
+    poses = [process_frame_data(pose) for poses_list in poses for pose in poses_list]
+
+    poses_flat = []
+    for pose in poses:
+        pose_exp = [{
+                        "media_id":pose["media_id"], 
+                        "frame_number":pose["frame_number"], 
+                        "angle_vec":angle, 
+                        "angle_score":score, 
+                        "keypoints":keypoint, 
+                        "bbox":bbox
+                    } 
+                    for angle, score, keypoint, bbox 
+                    in zip(pose["angle_vec"], pose["angle_scores"], pose["keypoints"], pose["bbox"])]
+        poses_flat.extend(pose_exp)
+
+    if np.sum([len(pose["angle_vec"]) for pose in poses]) == len(poses_flat):
+        print(f"All {len(poses_flat)} poses were flattened correctly")
+
+    # Drop uninteresting poses
+    for filter_pose in drop_poses:
+        poses_flat = [p for p in poses_flat 
+        if not drop_pose(p, filter_pose_angles=filter_pose, drop_threshold=drop_threshold)]
+    if len(drop_poses) > 0:
+        print(f"{len(poses_flat)} poses left after filtering")
+
+    return poses_flat 
