@@ -133,7 +133,7 @@ def transcribe_media(audio_path: str, lang: str = 'fr', min_duration: float = 0,
 
     if not _model['whisper_model']:
         LOG.debug(f'Load whisper model: large-v2')
-        _model['whisper_model'] = whisperx.load_model("large-v2", device, compute_type=compute_type, language=lang)
+        _model['whisper_model'] = whisperx.load_model("large-v2", device, device_index=1, compute_type=compute_type, language=lang)
         
     if not _model['align_model']:
         _model['align_model'], _model['align_meta'] = whisperx.load_align_model(language_code=lang, device=device)

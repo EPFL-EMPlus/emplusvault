@@ -278,6 +278,47 @@ def get_feature_by_media_id(media_id: str, feature_type: str) -> dict:
         query, {"media_id": media_id, "feature_type": feature_type})
     return result
 
+def get_features_by_type(feature_type: str) -> dict:
+    query = text(
+        "SELECT * FROM feature WHERE feature_type = :feature_type")
+    result = DataAccessObject().fetch_all(
+        query, {"feature_type": feature_type})
+    return result
+
+def get_features_by_type_paginated(feature_type: str, page_size: int = 20, last_seen_feature_id: int = -1) -> dict:
+    query = "SELECT * FROM feature WHERE feature_type = :feature_type"
+
+    # Add conditions for the last_seen values
+    if last_seen_feature_id:
+        query += " AND feature_id > :last_seen_feature_id"
+
+    # Order by both created_at and media_id
+    query += " ORDER BY feature_id LIMIT :page_size"
+
+    params = {
+        "feature_type": feature_type,
+        "page_size": page_size
+    }
+
+    if last_seen_feature_id:
+        params["last_seen_feature_id"] = last_seen_feature_id
+
+    return DataAccessObject().fetch_all(text(query), params)
+
+def count_features_by_type(feature_type: str) -> dict:
+    query = text(
+        "SELECT COUNT(*) FROM feature WHERE feature_type = :feature_type")
+    result = DataAccessObject().fetch_one(
+        query, {"feature_type": feature_type})
+    return result
+
+
+def get_feature_data_by_media_id(media_id: str, feature_type: str) -> dict:
+    query = text(
+        "SELECT data FROM feature WHERE media_id = :media_id AND feature_type = :feature_type")
+    result = DataAccessObject().fetch_one(
+        query, {"media_id": media_id, "feature_type": feature_type})
+    return result
 
 def get_feature_by_media_id_and_type(media_id: str, feature_type: str) -> dict:
     query = text(
@@ -318,6 +359,15 @@ def delete_feature(feature_id: int):
         RETURNING *
     """)
     result = DataAccessObject().fetch_one(query, {"feature_id": feature_id})
+    return result
+
+def delete_feature_by_type(feature_type: str):
+    query = text("""
+        DELETE FROM feature
+        WHERE feature_type = :feature_type
+        RETURNING *
+    """)
+    result = DataAccessObject().fetch_one(query, {"feature_type": feature_type})
     return result
 
 

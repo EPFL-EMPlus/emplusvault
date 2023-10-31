@@ -13,6 +13,7 @@ from functools import wraps
 from pathlib import Path
 from queue import Queue
 from threading import Thread
+import tempfile
 
 
 LOG = logging.getLogger('RTS')
@@ -185,87 +186,95 @@ def remove_path_prefix(text: str, prefix: str) -> str:
 
 
 class FileVideoStream:
-	def __init__(self, path, transform=None, queue_size=128):
-		# initialize the file video stream along with the boolean
-		# used to indicate if the thread should be stopped or not
-		self.stream = cv2.VideoCapture(path)
-		self.fps = self.stream.get(cv2.CAP_PROP_FPS)
-		self.stopped = False
-		self.transform = transform
+    def __init__(self, video_bytes, transform=None, queue_size=128):
+        # initialize the file video stream along with the boolean
+        # used to indicate if the thread should be stopped or not
+        self.tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
+        self.tmp_file.write(video_bytes)
+        self.tmp_file.close()
+        self.stream = cv2.VideoCapture(self.tmp_file.name)
 
-		# initialize the queue used to store frames read from
-		# the video file
-		self.Q = Queue(maxsize=queue_size)
-		# intialize thread
-		self.thread = Thread(target=self.update, args=())
-		self.thread.daemon = True
+        self.fps = self.stream.get(cv2.CAP_PROP_FPS)
+        self.stopped = False
+        self.transform = transform
 
-	def start(self):
-		# start a thread to read frames from the file video stream
-		self.thread.start()
-		return self
+        # initialize the queue used to store frames read from
+        # the video file
+        self.Q = Queue(maxsize=queue_size)
+        # intialize thread
+        self.thread = Thread(target=self.update, args=())
+        self.thread.daemon = True
+    
+    def __del__(self):
+        # Clean up the temporary file when the object is destroyed
+        os.remove(self.tmp_file.name)
 
-	def update(self):
-		# keep looping infinitely
-		while True:
-			# if the thread indicator variable is set, stop the
-			# thread
-			if self.stopped:
-				break
+    def start(self):
+        # start a thread to read frames from the file video stream
+        self.thread.start()
+        return self
 
-			# otherwise, ensure the queue has room in it
-			if not self.Q.full():
-				# read the next frame from the file
-				(grabbed, frame) = self.stream.read()
+    def update(self):
+        # keep looping infinitely
+        while True:
+            # if the thread indicator variable is set, stop the
+            # thread
+            if self.stopped:
+                break
 
-				# if the `grabbed` boolean is `False`, then we have
-				# reached the end of the video file
-				if not grabbed:
-					self.stopped = True
-					
-				# if there are transforms to be done, might as well
-				# do them on producer thread before handing back to
-				# consumer thread. ie. Usually the producer is so far
-				# ahead of consumer that we have time to spare.
-				#
-				# Python is not parallel but the transform operations
-				# are usually OpenCV native so release the GIL.
-				#
-				# Really just trying to avoid spinning up additional
-				# native threads and overheads of additional
-				# producer/consumer queues since this one was generally
-				# idle grabbing frames.
-				if self.transform:
-					frame = self.transform(frame)
+            # otherwise, ensure the queue has room in it
+            if not self.Q.full():
+                # read the next frame from the file
+                (grabbed, frame) = self.stream.read()
 
-				# add the frame to the queue
-				self.Q.put(frame)
-			else:
-				time.sleep(0.1)  # Rest for 10ms, we have a full queue
+                # if the `grabbed` boolean is `False`, then we have
+                # reached the end of the video file
+                if not grabbed:
+                    self.stopped = True
+                    
+                # if there are transforms to be done, might as well
+                # do them on producer thread before handing back to
+                # consumer thread. ie. Usually the producer is so far
+                # ahead of consumer that we have time to spare.
+                #
+                # Python is not parallel but the transform operations
+                # are usually OpenCV native so release the GIL.
+                #
+                # Really just trying to avoid spinning up additional
+                # native threads and overheads of additional
+                # producer/consumer queues since this one was generally
+                # idle grabbing frames.
+                if self.transform:
+                    frame = self.transform(frame)
 
-		self.stream.release()
+                # add the frame to the queue
+                self.Q.put(frame)
+            else:
+                time.sleep(0.1)  # Rest for 10ms, we have a full queue
 
-	def read(self):
-		# return next frame in the queue
-		return self.Q.get()
+        self.stream.release()
 
-	# Insufficient to have consumer use while(more()) which does
-	# not take into account if the producer has reached end of
-	# file stream.
-	def running(self):
-		return self.more() or not self.stopped
+    def read(self):
+        # return next frame in the queue
+        return self.Q.get()
 
-	def more(self):
-		# return True if there are still frames in the queue. If stream is not stopped, try to wait a moment
-		tries = 0
-		while self.Q.qsize() == 0 and not self.stopped and tries < 5:
-			time.sleep(0.1)
-			tries += 1
+    # Insufficient to have consumer use while(more()) which does
+    # not take into account if the producer has reached end of
+    # file stream.
+    def running(self):
+        return self.more() or not self.stopped
 
-		return self.Q.qsize() > 0
+    def more(self):
+        # return True if there are still frames in the queue. If stream is not stopped, try to wait a moment
+        tries = 0
+        while self.Q.qsize() == 0 and not self.stopped and tries < 5:
+            time.sleep(0.1)
+            tries += 1
 
-	def stop(self):
-		# indicate that the thread should be stopped
-		self.stopped = True
-		# wait until stream resources are released (producer thread might be still grabbing frame)
-		self.thread.join()
+        return self.Q.qsize() > 0
+
+    def stop(self):
+        # indicate that the thread should be stopped
+        self.stopped = True
+        # wait until stream resources are released (producer thread might be still grabbing frame)
+        self.thread.join()

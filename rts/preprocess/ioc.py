@@ -53,6 +53,8 @@ DATA_KEYS = [
         'f_sport_autre_en_127',
         'f_sport_autre_en_206',
         'f_sport_autre_en_207',
+        'f_athlete_fr',
+        'f_athlete_en',
 ]
 
 SPORT_MAP = {
@@ -304,10 +306,12 @@ def parse_xml(filepath: str, mapping: Optional[Dict] = None) -> List[Dict]:
 def parse_all_xml_files(directory: str, mapping: Optional[Dict] = None) -> List[Dict]:
     xml_files = read_all_xml_files(directory)
     results = []
-
-    for file in xml_files:
+    from tqdm import tqdm
+    # try:
+    for file in tqdm(xml_files):
         results += parse_xml(file, mapping)
-
+    # except:
+    #     return results
     return results
 
 
