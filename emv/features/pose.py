@@ -821,7 +821,8 @@ def load_all_poses(poses_folder: Union[str, Path],
 
 def process_all_poses(results: list,
                       drop_poses: List[object] = [standing_still_angle, sitting_pose_angle],
-                      drop_threshold: float = 0.1) -> pd.DataFrame:
+                      drop_threshold: float = 0.1,
+                      merge_metadata: bool = True) -> pd.DataFrame:
 
     poses = [(p["data"]["frames"], p["media_id"]) for p in results]
     [[p.update({"media_id":data[1]}) for p in data[0]][0] for data in poses]
@@ -852,9 +853,12 @@ def process_all_poses(results: list,
     if len(drop_poses) > 0:
         print(f"{len(poses_flat)} poses left after filtering")
 
+    pose_df = pd.DataFrame(poses_flat)
+
     # Merge with metadata
-    data = dataframe_from_hdf5(DRIVE_PATH, "metadata")
-    data["seq_id"] = data.seq_id.map(lambda x: f"ioc-{x}")
-    pose_df = pd.merge(pd.DataFrame(poses_flat), data[["seq_id", "sport"]], left_on="media_id", right_on="seq_id")
+    if merge_metadata:
+        data = dataframe_from_hdf5(DRIVE_PATH, "metadata")
+        data["seq_id"] = data.seq_id.map(lambda x: f"ioc-{x}")
+        pose_df = pd.merge(pose_df, data[["seq_id", "sport"]], left_on="media_id", right_on="seq_id")
 
     return pose_df 
