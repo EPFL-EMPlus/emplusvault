@@ -436,10 +436,14 @@ def process_video(model_name: str, video_bytes: bytes, skip_frame: int = 0, opti
         if skip_frame > 0 and frame_i % skip_frame != 0:
             continue
 
+        image_bytes = io.BytesIO()
+        image_pil.save(image_bytes, format="JPEG")
+
         results = processor.process_pil_image(image_pil)
         processed.append({
             'frame': frame_i,
-            'data': results
+            'data': results,
+            'image': image_bytes.getvalue()
         })
     fvs.stop()
 
