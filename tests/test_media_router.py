@@ -1,11 +1,11 @@
 from fastapi.testclient import TestClient
 import pytest
-from rts.api.server import app, mount_routers
-from rts.api.api_settings import Settings, get_settings
-from rts.api.models import Media, LibraryCreate
+from emv.api.server import app, mount_routers
+from emv.api.api_settings import Settings, get_settings
+from emv.api.models import Media, LibraryCreate
 from .conftest import reset_database, mock_authenticate, media_data
-from rts.db.queries import create_library
-from rts.api.routers.auth_router import get_current_active_user
+from emv.db.queries import create_library
+from emv.api.routers.auth_router import get_current_active_user
 import json
 from json import JSONDecodeError
 from dateutil.parser import parse

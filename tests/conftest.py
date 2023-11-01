@@ -1,13 +1,13 @@
 import pytest
-from rts.utils import get_logger
-from rts.db.utils import create_database
-from rts.db.dao import DataAccessObject
+from emv.utils import get_logger
+from emv.db.utils import create_database
+from emv.db.dao import DataAccessObject
 import sqlalchemy
 from sqlalchemy.sql import text
 from alembic.config import Config
-from rts.api.routers.auth_router import User
-from rts.api.models import LibraryCreate
-from rts.db.queries import allow_user_to_access_library, create_library
+from emv.api.routers.auth_router import User
+from emv.api.models import LibraryCreate
+from emv.db.queries import allow_user_to_access_library, create_library
 from alembic import command
 import json
 import time
