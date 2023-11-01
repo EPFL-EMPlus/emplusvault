@@ -1,8 +1,8 @@
 [tool.poetry]
-name = "rts"
+name = "emv"
 version = "0.1.0"
 description = ""
-authors = ["Kirell Benzi <kirell.benzi@epfl.ch>"]
+authors = ["Kirell Benzi <kirell.benzi@epfl.ch>", "André Rattinger <andre.rattinger@epfl.ch>", "Giacomo Alliata <giacomo.alliata@epfl.ch>"]
 
 [tool.poetry.dependencies]
 python = ">=3.9,<4.0"
@@ -62,8 +62,8 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-dev = "rts.api.server:start_dev"
-prod = "rts.api.server:start_prod"
+dev = "emv.api.server:start_dev"
+prod = "emv.api.server:start_prod"
 
 [tool.poe.tasks]
 spacy-models = 'python -m spacy download fr_core_news_lg'
@@ -71,15 +71,15 @@ spacy-models = 'python -m spacy download fr_core_news_lg'
 force-torch = 'pip3 install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu121'
 pifpaf = "pip install --no-build-isolation openpifpaf-vita"
 
-run-pipeline = "python -m rts.cli rts pipeline --compute-transcript"
-atlas = "python -m rts.cli rts atlas"
-serve = "python -m rts.api.server"
-serve-dev = "python -m rts.api.server dev -l rts"
-serve-prod = "python -m rts.api.server prod -l rts"
-init-db = "python -m rts.cli db init-db"
-new-sample-project = "python -m rts.cli db new-sample-project"
+run-pipeline = "python -m emv.cli rts pipeline --compute-transcript"
+atlas = "python -m emv.cli rts atlas"
+serve = "python -m emv.api.server"
+serve-dev = "python -m emv.api.server dev -l rts"
+serve-prod = "python -m emv.api.server prod -l rts"
+init-db = "python -m emv.cli db init-db"
+new-sample-project = "python -m emv.cli db new-sample-project"
 pull-cables = { "shell" = "cables -e 7DZVup -D -d public --skip-backups --no-index" }
-cli = "python -m rts.cli"
+cli = "python -m emv.cli"
 
 [tool.pytest.ini_options]
 testpaths = [

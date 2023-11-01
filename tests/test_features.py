@@ -1,10 +1,10 @@
 import pytest
 from fastapi.testclient import TestClient
-from rts.api.server import app, mount_routers
-from rts.api.api_settings import Settings, get_settings
-from rts.api.models import Feature
+from emv.api.server import app, mount_routers
+from emv.api.api_settings import Settings, get_settings
+from emv.api.models import Feature
 from .test_media_router import create_media, assert_media_response
-from rts.api.routers.auth_router import get_current_active_user
+from emv.api.routers.auth_router import get_current_active_user
 from .conftest import reset_database, mock_authenticate
 from json import JSONDecodeError
 import json

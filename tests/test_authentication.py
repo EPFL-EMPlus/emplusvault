@@ -1,8 +1,8 @@
 from fastapi.testclient import TestClient
 import pytest
-from rts.api.server import app, mount_routers
-from rts.api.api_settings import Settings, get_settings
-from rts.db.queries import allow_user_to_access_library
+from emv.api.server import app, mount_routers
+from emv.api.api_settings import Settings, get_settings
+from emv.db.queries import allow_user_to_access_library
 from .conftest import media_data, reset_database
 
 client = TestClient(app)

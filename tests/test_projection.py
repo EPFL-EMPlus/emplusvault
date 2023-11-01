@@ -1,10 +1,10 @@
 import pytest
 from fastapi.testclient import TestClient
-from rts.api.server import app
+from emv.api.server import app
 from .conftest import reset_database, mock_authenticate
-from rts.api.routers.auth_router import get_current_active_user
-from rts.db.queries import create_library
-from rts.api.models import LibraryCreate
+from emv.api.routers.auth_router import get_current_active_user
+from emv.db.queries import create_library
+from emv.api.models import LibraryCreate
 import json
 
 
