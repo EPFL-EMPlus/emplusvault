@@ -25,7 +25,7 @@ from typing import List, Dict, Tuple, Union, Optional
 from emv.utils import FileVideoStream, timeit, dataframe_from_hdf5
 from emv.client.get_content import get_frame
 
-from rts.settings import DRIVE_PATH
+from emv.settings import DRIVE_PATH
 
 LOG = emv.utils.get_logger()
 
