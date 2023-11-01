@@ -53,6 +53,12 @@ DATA_KEYS = [
         'f_sport_autre_en_127',
         'f_sport_autre_en_206',
         'f_sport_autre_en_207',
+        'f_athlete_fr',
+        'f_athlete_en',
+        'f_lieux_ref_site_olympique_en_2',
+        'c_cadrage_en',
+        'f_team_en',
+        'f_autre_decription_en',
 ]
 
 SPORT_MAP = {
