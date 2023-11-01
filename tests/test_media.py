@@ -1,6 +1,6 @@
 import pytest
 from PIL import Image, ImageDraw
-from rts.io.media import generate_image_pyramid
+from emv.io.media import generate_image_pyramid
 
 
 def generate_test_image(width: int, height: int) -> Image:
