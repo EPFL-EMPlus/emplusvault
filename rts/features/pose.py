@@ -5,6 +5,7 @@ import base64
 import io
 import re
 import numpy as np
+import pandas as pd
 import cv2
 import PIL
 import torch
@@ -21,8 +22,10 @@ from pathlib import Path
 from openpifpaf import transforms
 from typing import List, Dict, Tuple, Union, Optional
 
-from rts.utils import FileVideoStream, timeit
+from rts.utils import FileVideoStream, timeit, dataframe_from_hdf5
+from rts.client.get_content import get_frame
 
+from rts.settings import DRIVE_PATH
 
 LOG = rts.utils.get_logger()
 
@@ -638,17 +641,7 @@ def compute_human_angles(keypoints: List[Tuple[float, float, float]], min_confid
     return angles, angles_scores
 
 
-def get_frame(video_name: Union[str, Path], video_folder: Union[str, Path], frame_number: int):
-    video_path = [f for f in os.listdir(video_folder + video_name) if f.endswith(".mp4")][0]
-    cap = cv2.VideoCapture(video_folder + video_name + "/" + video_path)
-    cap.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
-    ret, frame = cap.read()
-    if ret:
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    cap.release()
-    return frame
-
-def draw_pose(pose, video_folder, ax = None, cut: bool=True, threshold: float=0.1):
+def draw_pose(pose, ax = None, cut: bool=True, threshold: float=0.1):
     """
     Draw extracted skeleton on frame.
 
@@ -663,7 +656,7 @@ def draw_pose(pose, video_folder, ax = None, cut: bool=True, threshold: float=0.
     """
 
     keypoints = pose["keypoints"]
-    frame = get_frame(pose["video_name"], video_folder, pose["frame_number"])
+    frame = get_frame(pose["media_id"], pose["frame_number"])
 
     if ax is None:
         fig, ax = plt.subplots(figsize=(6,6))
@@ -834,7 +827,7 @@ def load_all_poses(poses_folder: Union[str, Path],
 
 def process_all_poses(results: list,
                       drop_poses: List[object] = [standing_still_angle, sitting_pose_angle],
-                      drop_threshold: float = 0.1):
+                      drop_threshold: float = 0.1) -> pd.DataFrame:
 
     poses = [(p["data"]["frames"], p["media_id"]) for p in results]
     [[p.update({"media_id":data[1]}) for p in data[0]][0] for data in poses]
@@ -865,4 +858,9 @@ def process_all_poses(results: list,
     if len(drop_poses) > 0:
         print(f"{len(poses_flat)} poses left after filtering")
 
-    return poses_flat 
+    # Merge with metadata
+    data = dataframe_from_hdf5(DRIVE_PATH, "metadata")
+    data["seq_id"] = data.seq_id.map(lambda x: f"ioc-{x}")
+    pose_df = pd.merge(pd.DataFrame(poses_flat), data[["seq_id", "sport"]], left_on="media_id", right_on="seq_id")
+
+    return pose_df 

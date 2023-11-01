@@ -26,3 +26,10 @@ HF_TOKEN = os.getenv("HF_TOKEN")
 RTS_ROOT_FOLDER = os.getenv("RTS_ROOT_FOLDER") or "/media/data/rts/"
 IOC_ROOT_FOLDER = os.getenv("IOC_ROOT_FOLDER") or "/media/data/ioc/"
 MJF_ROOT_FOLDER = os.getenv("MJF_ROOT_FOLDER") or "/media/data/mjf/"
+
+API_BASE_URL = "https://10.179.68.6:32034"
+API_MAX_CALLS = 100
+API_USERNAME = os.getenv("API_USERNAME")
+API_PASSWORD = os.getenv("API_PASSWORD")
+
+DRIVE_PATH = "/mnt/g/ioc/data/"
