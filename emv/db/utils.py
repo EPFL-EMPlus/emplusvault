@@ -1,9 +1,9 @@
 import os
 import psycopg2
 from typing import Optional, Dict
-from rts.db.dao import DataAccessObject
-from rts.settings import DB_NAME
-from rts.utils import get_logger
+from emv.db.dao import DataAccessObject
+from emv.settings import DB_NAME
+from emv.utils import get_logger
 
 LOG = get_logger()
 

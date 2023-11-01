@@ -1,9 +1,9 @@
 from fastapi import (APIRouter, Depends, HTTPException)
-from rts.api.models import Projection
-from rts.utils import get_logger
-from rts.db.queries import create_projection, get_projection_by_id, get_all_projections, update_projection, delete_projection, get_projection_coordinates, get_projection_atlases, get_projection_coordinates_by_atlas
+from emv.api.models import Projection
+from emv.utils import get_logger
+from emv.db.queries import create_projection, get_projection_by_id, get_all_projections, update_projection, delete_projection, get_projection_coordinates, get_projection_atlases, get_projection_coordinates_by_atlas
 from sqlalchemy.sql import text
-from rts.api.routers.auth_router import get_current_active_user, User
+from emv.api.routers.auth_router import get_current_active_user, User
 import json
 
 LOG = get_logger()

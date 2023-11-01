@@ -1,6 +1,6 @@
 import time
 import pandas as pd
-import rts.utils
+import emv.utils
 
 from pathlib import Path
 from typing import Dict, List, Optional, Union
@@ -8,7 +8,7 @@ from typing import Dict, List, Optional, Union
 
 DEFAULT_FILENAME = 'sdsc_files'
 
-LOG = rts.utils.get_logger()
+LOG = emv.utils.get_logger()
 
 
 def extract_people(data: dict) -> dict:
@@ -132,22 +132,22 @@ class MJFMetadataImporter:
         self.id_to_path = None
 
     def load_metadata_from_disk(self, filename: str = DEFAULT_FILENAME,
-            force: bool = False) -> bool:
+                                force: bool = False) -> bool:
 
         mfolder = self.metadata_dir
         if not mfolder:
             return False
-        
+
         mfolder = Path(mfolder)
         pick_path = mfolder / 'metadata.pickle'
-        
+
         self.metadata = dict()
 
         # Load from cache
         if not force and pick_path.exists():
             try:
                 LOG.debug(f'Try loading metadata from pickle: {pick_path}')
-                self.metadata = rts.utils.dict_from_pickle(pick_path)
+                self.metadata = emv.utils.dict_from_pickle(pick_path)
                 return True
             except Exception as e:
                 pass
@@ -155,10 +155,9 @@ class MJFMetadataImporter:
         # Read from raw JSON export
         LOG.debug(f'Try loading metadata from raw JSON {filename}.json')
         concerts_path = str(mfolder / f'{filename}.json')
-        data = rts.utils.obj_from_json(concerts_path)
+        data = emv.utils.obj_from_json(concerts_path)
         if not data:
             return False
-
 
         self.metadata['concerts'] = extract_concerts(data)
         self.metadata['people'] = extract_people(data)
@@ -168,10 +167,10 @@ class MJFMetadataImporter:
         self.metadata['songs'] = extract_songs(data)
         self.metadata['export_date'] = extract_export_date(data)
 
-        rts.utils.dict_to_pickle(self.metadata, pick_path)
+        emv.utils.dict_to_pickle(self.metadata, pick_path)
 
         return True
-    
+
     def index_songs_by_local_video_path(self) -> bool:
         if not self.metadata:
             LOG.error('Metadata not loaded - call load_metadata_from_disk first')
@@ -181,8 +180,8 @@ class MJFMetadataImporter:
         self.path_to_id_public = dict()
         self.id_to_path = dict()
         for s in self.metadata['songs'].values():
-            new_k = rts.utils.remove_path_prefix(s['video_path'], 'file://')
-            new_k = new_k[:-4] # remove ext mkv
+            new_k = emv.utils.remove_path_prefix(s['video_path'], 'file://')
+            new_k = new_k[:-4]  # remove ext mkv
             if not new_k:  # some video files are missing
                 continue
 
@@ -196,16 +195,17 @@ class MJFMetadataImporter:
 
     def get_metadata_by_local_path(self, media_path: Union[Path, str]) -> Optional[Dict]:
         if not self.metadata:
-            LOG.error('Metadata not loaded - call load_metadata_from_disk then index_songs_by_local_video_path')
+            LOG.error(
+                'Metadata not loaded - call load_metadata_from_disk then index_songs_by_local_video_path')
             return None
-        
+
         media_path = Path(media_path)
         if not media_path.is_file():
             LOG.error(f'{str(media_path)} is not a valid file')
             return None
 
         prefix = str(media_path.parent.parent) + '/'
-        filepath = rts.utils.remove_path_prefix(str(media_path), prefix)
+        filepath = emv.utils.remove_path_prefix(str(media_path), prefix)
         fileid = filepath.split('.')[0]
         song_id = self.path_to_id.get(fileid)
 
@@ -214,7 +214,7 @@ class MJFMetadataImporter:
             return None
 
         return self.get_metadata_by_song_id(song_id)
-    
+
     def get_metadata_by_song_id(self, song_id: int) -> Optional[Dict]:
         if not self.metadata:
             LOG.error('Metadata not loaded - call load_metadata_from_disk')
@@ -227,12 +227,14 @@ class MJFMetadataImporter:
 
         concert = self.metadata['concerts'].get(song['concert_id'])
         if not concert:
-            LOG.error(f"Cannot retrieve concert_id {song['concert_id']}, for song {song_id}")
+            LOG.error(
+                f"Cannot retrieve concert_id {song['concert_id']}, for song {song_id}")
             return None
 
         location = self.metadata['locations'].get(concert['location_id'])
         if not location:
-            LOG.error(f"Cannot retrieve concert location {song['concert_id']}, for song {song_id}")
+            LOG.error(
+                f"Cannot retrieve concert location {song['concert_id']}, for song {song_id}")
             return None
 
         d = {
@@ -254,11 +256,12 @@ class MJFMetadataImporter:
             if genre:
                 d['genre'] = str(genre['name'])
                 if genre['parents']:
-                    top_parent_genre = self.metadata['genres'].get(genre['parents'][0])
+                    top_parent_genre = self.metadata['genres'].get(
+                        genre['parents'][0])
                     d['top_genre'] = str(top_parent_genre['name'])
                 else:
                     d['top_genre'] = d['genre']
-        
+
         # Artists
         artists = []
         instruments = set()
@@ -298,11 +301,11 @@ class MJFMetadataImporter:
             paths.append(Path(d))
 
         return paths
-    
+
     def get_song_dataframe(self) -> pd.DataFrame:
         df = pd.DataFrame.from_records(self.iter_all_songs())
         return df[df.path != '']
-    
+
 
 def build_mjf_importer(metadata_dir: str, data_filename: str = DEFAULT_FILENAME, force: bool = False) -> MJFMetadataImporter:
     importer = MJFMetadataImporter(metadata_dir)

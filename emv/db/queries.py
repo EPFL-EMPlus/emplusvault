@@ -1,15 +1,15 @@
 import json
-import rts.utils
+import emv.utils
 
 from typing import Optional, Any, Dict
 from sqlalchemy.sql import text
 from sqlalchemy.exc import IntegrityError, ProgrammingError
-from rts.db.dao import DataAccessObject
-from rts.api.models import LibraryBase, Projection, Media, Feature, MapProjectionFeatureCreate, Atlas, AccessLog
-from rts.api.routers.auth_router import get_password_hash, UserInDB as User
+from emv.db.dao import DataAccessObject
+from emv.api.models import LibraryBase, Projection, Media, Feature, MapProjectionFeatureCreate, Atlas, AccessLog
+from emv.api.routers.auth_router import get_password_hash, UserInDB as User
 from fastapi import HTTPException
 
-LOG = rts.utils.get_logger()
+LOG = emv.utils.get_logger()
 
 
 def get_library_id_from_name(library_name: str) -> Optional[int]:
@@ -278,12 +278,14 @@ def get_feature_by_media_id(media_id: str, feature_type: str) -> dict:
         query, {"media_id": media_id, "feature_type": feature_type})
     return result
 
+
 def get_features_by_type(feature_type: str) -> dict:
     query = text(
         "SELECT * FROM feature WHERE feature_type = :feature_type")
     result = DataAccessObject().fetch_all(
         query, {"feature_type": feature_type})
     return result
+
 
 def get_features_by_type_paginated(feature_type: str, page_size: int = 20, last_seen_feature_id: int = -1) -> dict:
     query = "SELECT * FROM feature WHERE feature_type = :feature_type"
@@ -305,6 +307,7 @@ def get_features_by_type_paginated(feature_type: str, page_size: int = 20, last_
 
     return DataAccessObject().fetch_all(text(query), params)
 
+
 def count_features_by_type(feature_type: str) -> dict:
     query = text(
         "SELECT COUNT(*) FROM feature WHERE feature_type = :feature_type")
@@ -319,6 +322,7 @@ def get_feature_data_by_media_id(media_id: str, feature_type: str) -> dict:
     result = DataAccessObject().fetch_one(
         query, {"media_id": media_id, "feature_type": feature_type})
     return result
+
 
 def get_feature_by_media_id_and_type(media_id: str, feature_type: str) -> dict:
     query = text(
@@ -361,13 +365,15 @@ def delete_feature(feature_id: int):
     result = DataAccessObject().fetch_one(query, {"feature_id": feature_id})
     return result
 
+
 def delete_feature_by_type(feature_type: str):
     query = text("""
         DELETE FROM feature
         WHERE feature_type = :feature_type
         RETURNING *
     """)
-    result = DataAccessObject().fetch_one(query, {"feature_type": feature_type})
+    result = DataAccessObject().fetch_one(
+        query, {"feature_type": feature_type})
     return result
 
 

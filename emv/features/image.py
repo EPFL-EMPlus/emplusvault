@@ -5,14 +5,15 @@ from img2vec_pytorch import Img2Vec
 from PIL import Image
 from pathlib import Path
 
-import rts.utils
-LOG = rts.utils.get_logger()
+import emv.utils
+LOG = emv.utils.get_logger()
 
 
 _model = {
     'name': None,
     'model': None
 }
+
 
 def load_model(model_name: str = 'resnet50') -> None:
     with warnings.catch_warnings():
@@ -39,13 +40,14 @@ def load_model(model_name: str = 'resnet50') -> None:
 def embed_images(image_paths: List[str], model_name: str = 'resnet50') -> Optional[np.ndarray]:
     if not image_paths:
         return None
-    
+
     global _model
     load_model(model_name=model_name)
 
     if isinstance(image_paths, str) or isinstance(image_paths, Path):
         image_paths = [image_paths]
-        
-    images = [Image.open(str(image_path)).convert('RGB') for image_path in image_paths]
+
+    images = [Image.open(str(image_path)).convert('RGB')
+              for image_path in image_paths]
     vecs = _model['model'].get_vec(images, tensor=False)
     return vecs

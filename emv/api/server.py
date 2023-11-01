@@ -5,20 +5,20 @@ from fastapi.staticfiles import StaticFiles
 from fastapi import FastAPI, HTTPException, Depends, Form
 from pathlib import Path
 # Local imports
-from rts.api.api_settings import Settings, get_settings, get_app, init_library, get_public_folder_path
+from emv.api.api_settings import Settings, get_settings, get_app, init_library, get_public_folder_path
 # from audioverse.utils import read_jsonlines_file
-from rts.api import router
-from rts.utils import get_logger
-from rts.db.dao import DataAccessObject
-from rts.db.queries import get_library_id_from_name
-from rts.api.routers.library_router import library_router
-from rts.api.routers.projection_router import projection_router
-from rts.api.routers.media_router import media_router
-from rts.api.routers.feature_router import feature_router
-from rts.api.routers.atlas_router import atlas_router
-from rts.api.routers.stream_router import stream_router
-from rts.api.routers.auth_router import auth_router
-from rts.settings import DATABASE_URL
+from emv.api import router
+from emv.utils import get_logger
+from emv.db.dao import DataAccessObject
+from emv.db.queries import get_library_id_from_name
+from emv.api.routers.library_router import library_router
+from emv.api.routers.projection_router import projection_router
+from emv.api.routers.media_router import media_router
+from emv.api.routers.feature_router import feature_router
+from emv.api.routers.atlas_router import atlas_router
+from emv.api.routers.stream_router import stream_router
+from emv.api.routers.auth_router import auth_router
+from emv.settings import DATABASE_URL
 
 
 LOG = get_logger()

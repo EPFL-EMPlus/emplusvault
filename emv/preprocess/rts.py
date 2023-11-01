@@ -9,9 +9,9 @@ from typing import Dict, List, Optional, Tuple, Any
 from datetime import datetime
 from pathlib import Path
 
-import rts.utils
+import emv.utils
 
-LOG = rts.utils.get_logger()
+LOG = emv.utils.get_logger()
 
 
 def build_video_folder_index(rts_drive_path: str) -> Dict:
@@ -27,19 +27,19 @@ def build_video_folder_index(rts_drive_path: str) -> Dict:
                 l3 = os.listdir(os.path.join(rts_drive_path, i0, i1, i2))
                 for vid in l3:
                     p = os.path.join(rts_drive_path, i0, i1, i2, vid)
-                    vidx[vid] = p             
+                    vidx[vid] = p
     return vidx
 
 
 def read_video_folder_index(index_path: str) -> Optional[Dict]:
-    return rts.utils.dict_from_json(index_path)
+    return emv.utils.dict_from_json(index_path)
 
 
 def create_load_video_folder_index(rts_drive_path: str, index_path: str) -> Optional[Dict]:
     vidx = read_video_folder_index(index_path)
     if not vidx:
         vidx = build_video_folder_index(rts_drive_path)
-        rts.utils.obj_to_json(vidx, index_path)
+        emv.utils.obj_to_json(vidx, index_path)
         return vidx
     return vidx
 
@@ -66,12 +66,12 @@ def parse_item_sequences(data: Dict, media: Dict) -> Dict:
     for m in mat:
         seqid, mat = m.split('@')
         seqs[seqid]['mat'].append(mat.lower())
-    
+
     pp = data.get('VisuelsPPSequence', [])
     for p in pp:
         seqid, name = p.split('@')
         seqs[seqid]['pp'].append(name.lower())
-    
+
     return seqs
 
 
@@ -87,13 +87,13 @@ def parse_item(raw: Dict, vidx: Dict) -> Optional[Dict]:
     except IndexError as e:
         # LOG.error(e, raw)
         return None
-    
+
     try:
         seq_idx, media_id = find_media_id(d['idSupport'])
     except KeyError as e:
         # LOG.error(e)
         return None
-    
+
     if not media_id:
         return None
 
@@ -121,13 +121,13 @@ def parse_item(raw: Dict, vidx: Dict) -> Optional[Dict]:
         'ratio': ratio,
         'formatResolution': d['DefinitionMedia'][seq_idx],
         'publishedDate': d.get('DatePublication'),
-        
+
         'categoryName': d.get('CategorieAsset'),
         'assetType': d.get('TypeAsset'),
         'contentType': d.get('TypeContenu', [None])[0],
         'backgoundType': bckType,
         'collection': d.get('Collection'),
-        
+
         'publishedBy': d.get('CanalPublication', [None])[0],
         'rights': d.get('SemaphoreDroit'),
         'title': d.get('Titre'),
@@ -173,8 +173,8 @@ def read_metadata_zippart(root_dir: str, part_num: int, vidx: Dict) -> Dict:
                 js = orjson.loads(fp.read())
                 media = parse_item(js, vidx)
                 if media:
-                # ts = read_txt_transcript(srts, media)
-                # media['ts'] = ts
+                    # ts = read_txt_transcript(srts, media)
+                    # media['ts'] = ts
                     medias[media['guid']] = media
 
     return medias
@@ -185,7 +185,7 @@ def read_all_metadata(root_dir: str, vidx: Dict) -> pd.DataFrame:
     for i in range(0, 10):
         d = read_metadata_zippart(root_dir, i, vidx)
         all_d.update(d)
-    
+
     return pd.DataFrame.from_records(list(all_d.values()))
 
 
@@ -193,14 +193,14 @@ def build_metadata_df(input_video_dir: str, outdir: str, force: bool = False) ->
     metadata_dir = os.path.join(outdir, 'metadata')
     df_path = os.path.join(metadata_dir, 'rts_metadata.hdf5')
     if os.path.exists(df_path) and not force:
-        return rts.utils.dataframe_from_hdf5(metadata_dir, 'rts_metadata', silent=True)
-    
+        return emv.utils.dataframe_from_hdf5(metadata_dir, 'rts_metadata', silent=True)
+
     index_path = os.path.join(metadata_dir, 'video_folder_index.json')
     vidx = create_load_video_folder_index(input_video_dir, index_path)
     df = read_all_metadata(input_video_dir, vidx)
     df.drop_duplicates(subset=['mediaId'], inplace=True)
     df.set_index('mediaId', inplace=True)
-    rts.utils.dataframe_to_hdf5(metadata_dir, 'rts_metadata', df)
+    emv.utils.dataframe_to_hdf5(metadata_dir, 'rts_metadata', df)
     return df
 
 
@@ -219,7 +219,7 @@ def export_metadata_stats(df: pd.DataFrame, outdir: str) -> bool:
 def link_aivectors_to_metadata(metadata: pd.DataFrame, input_dir: str, name: str = 'videos.csv') -> pd.DataFrame:
     def match_feat_to_folder():
         base_path = input_dir + '/videos/'
-        files = glob.glob(base_path + '*/*/*/*/features.npz', recursive = False)
+        files = glob.glob(base_path + '*/*/*/*/features.npz', recursive=False)
         feats = {}
         for file in files:
             f = os.path.relpath(str(Path(file).parent), base_path)
@@ -239,5 +239,3 @@ def link_aivectors_to_metadata(metadata: pd.DataFrame, input_dir: str, name: str
 
     s = match_feat_to_folder()
     return merged.join(s, on='aivector_id', how='left')
-
-

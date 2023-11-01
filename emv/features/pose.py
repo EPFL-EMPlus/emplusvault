@@ -13,17 +13,17 @@ import orjson
 import openpifpaf
 import openpifpaf.predict
 
-import rts.utils
+import emv.utils
 
 from enum import Enum
 from pathlib import Path
 from openpifpaf import transforms
 from typing import List, Dict, Tuple, Union, Optional
 
-from rts.utils import FileVideoStream, timeit
+from emv.utils import FileVideoStream, timeit
 
 
-LOG = rts.utils.get_logger()
+LOG = emv.utils.get_logger()
 
 
 class ExtendedEnum(str, Enum):
@@ -51,6 +51,7 @@ class PifPafModel(ExtendedEnum):
     nuscenes = "NuScenes_2D"
     cocodet = "cocodet"
 
+
 class AnnotationCategory(ExtendedEnum):
     human = 1
     hands_only = 100
@@ -61,18 +62,21 @@ class AnnotationCategory(ExtendedEnum):
 
 MODEL_MAP = {
     PifPafModel.fast: "shufflenetv2k16",  # shufflenetv2k16-center, shufflenetv2k16
-    PifPafModel.accurate: "shufflenetv2k30",  # shufflenetv2k30-center, shufflenetv2k30
-    PifPafModel.fast_wholebody: "shufflenetv2k16-wholebody", # shufflenetv2k16-wb-hand or shufflenetv2k16-wholebody
+    # shufflenetv2k30-center, shufflenetv2k30
+    PifPafModel.accurate: "shufflenetv2k30",
+    # shufflenetv2k16-wb-hand or shufflenetv2k16-wholebody
+    PifPafModel.fast_wholebody: "shufflenetv2k16-wholebody",
     PifPafModel.wb_hand: "shufflenetv2k16-wb-hand",
     PifPafModel.accurate_wholebody: "shufflenetv2k30-wholebody",
-    PifPafModel.pose_track: "tshufflenetv2k30",    
+    PifPafModel.pose_track: "tshufflenetv2k30",
     PifPafModel.fast_car: "shufflenetv2k16-apollo-24",
     PifPafModel.accurate_car: "shufflenetv2k16-apollo-66",
     PifPafModel.animal: "shufflenetv2k30-animalpose",
     # PifPafModel.fast_center: "v2-shufflenetv2k16-center",
     # PifPafModel.accurate_center: "v2-shufflenetv2k30-center",
     PifPafModel.hand: "shufflenetv2k16-hand",
-    PifPafModel.nuscenes: "shufflenetv2k16-nuscenes",#"shufflenetv2k16-nuscenes",#"resnet18-cocodet",# "shufflenetv2k16-nuscenes", #"resnet18-cocodet", #"shufflenetv2k16-nuscenes",
+    # "shufflenetv2k16-nuscenes",#"resnet18-cocodet",# "shufflenetv2k16-nuscenes", #"resnet18-cocodet", #"shufflenetv2k16-nuscenes",
+    PifPafModel.nuscenes: "shufflenetv2k16-nuscenes",
     PifPafModel.cocodet: "resnet18-cocodet",
 }
 
@@ -107,7 +111,8 @@ class StandardProcessor(object):
     def preprocess_factory(self, args):
         rescale_t = None
         if 'long_edge' in args and args.long_edge:
-            rescale_t = transforms.RescaleAbsolute(args.long_edge, fast=args.fast_rescaling)
+            rescale_t = transforms.RescaleAbsolute(
+                args.long_edge, fast=args.fast_rescaling)
 
         pad_t = None
         if args.batch_size > 1:
@@ -121,7 +126,7 @@ class StandardProcessor(object):
             rescale_t,
             pad_t,
             transforms.EVAL_TRANSFORM,
-        ])      
+        ])
 
     def update_parameter(self, arg_name, arg_value):
         if arg_name in self.args:
@@ -160,7 +165,8 @@ class StandardProcessor(object):
         processed_image, _, meta = self.preprocess(im, [], None)
 
         image_tensors_batch = torch.unsqueeze(processed_image.float(), 0)
-        pred_anns = self.processor.batch(self.model, image_tensors_batch, device=self.device)[0]
+        pred_anns = self.processor.batch(
+            self.model, image_tensors_batch, device=self.device)[0]
         # All predictions in the image, rescaled to the original image size
 
         res = []
@@ -176,7 +182,7 @@ class StandardProcessor(object):
             'width_height': (int(meta['width_height'][0]), int(meta['width_height'][1])),
             'model_name': self.name
         }
-    
+
     def reset(self):
         for d in self.processor.decoders:
             # print('Available decoders', self.processor.decoders)
@@ -184,7 +190,7 @@ class StandardProcessor(object):
                 # print('frame number before: ', d.frame_number)
                 d.reset()
                 # print('frame number after:', d.frame_number)
-        
+
 
 class PifPafFactory(object):
     def __init__(self):
@@ -216,7 +222,7 @@ class PifPafFactory(object):
         if torch.cuda.is_available():
             self.args.device = torch.device('cuda')
         LOG.debug(f'neural network device: {self.args.device}')
-        
+
     def configure(self):
         openpifpaf.decoder.configure(self.args)
         openpifpaf.network.Factory.configure(self.args)
@@ -260,7 +266,8 @@ class PifPafFactory(object):
         # self.args.fast_rescaling = True
         self.args.decoder = ['trackingpose:0']
         self.configure()
-        proc = StandardProcessor(PifPafModel.pose_track, self.args, AnnotationCategory.human)
+        proc = StandardProcessor(
+            PifPafModel.pose_track, self.args, AnnotationCategory.human)
         proc.reset()
         return proc
 
@@ -286,7 +293,7 @@ class PifPafFactory(object):
         self.args.checkpoint = MODEL_MAP[PifPafModel.accurate_car]
         self.args.decoder = ['cifcaf:0']
         self.configure()
-        return StandardProcessor(PifPafModel.accurate_car, self.args, AnnotationCategory.accurate_car)    
+        return StandardProcessor(PifPafModel.accurate_car, self.args, AnnotationCategory.accurate_car)
 
     def build_nuscenes(self):
         self.args.checkpoint = "shufflenetv2k16-nuscenes"
@@ -299,7 +306,7 @@ class PifPafFactory(object):
         self.args.decoder = ['cifdet:0']
         self.configure()
         return StandardProcessor(PifPafModel.cocodet, self.args)
-    
+
     def build_model(self, model_name):
         if model_name == PifPafModel.fast:
             return self.build_fast_pifpaf()
@@ -324,10 +331,12 @@ class PifPafFactory(object):
         else:
             LOG.error(f'Model: {model_name} not implemented')
             return None
-    
+
 
 _model_cache = dict()
 PIFPAF_FACTORY = PifPafFactory()
+
+
 def get_model(model_name):
     if model_name in _model_cache:
         LOG.debug(f"Using cached model {model_name}")
@@ -357,6 +366,7 @@ def get_video_info(video_path):
         'video_size': video_size,
         'video_path': str(video_path)
     }
+
 
 def get_tmp_lock_path(annot_path: Path, video_path: Path) -> Path:
     # Check temporary file while the video is processing to prevent
@@ -404,7 +414,7 @@ def process_video(model_name: str, video_bytes: bytes, skip_frame: int = 0, opti
     force = False
     if options and 'force' in options:
         force = options['force']
-    
+
     # Create new model because it is executed async in another process
     # not really thread-safe :/
     processor = PIFPAF_FACTORY.build_model(model_name)
@@ -419,7 +429,7 @@ def process_video(model_name: str, video_bytes: bytes, skip_frame: int = 0, opti
     processed = []
     while fvs.more():
         image_pil = fvs.read()
-        if image_pil is None: # last frame
+        if image_pil is None:  # last frame
             break
 
         frame_i += 1
@@ -429,10 +439,10 @@ def process_video(model_name: str, video_bytes: bytes, skip_frame: int = 0, opti
         results = processor.process_pil_image(image_pil)
         processed.append({
             'frame': frame_i,
-            'data': results            
+            'data': results
         })
     fvs.stop()
-    
+
     return processed
 
 
@@ -466,10 +476,10 @@ def reshape_keypoints(keypoints: List[float]) -> List[Tuple[float, float, float]
     return [(keypoints[i], keypoints[i+1], keypoints[i+2]) for i in range(0, len(keypoints), 3)]
 
 
-def compute_angle(p1: Tuple[float, float, float], 
-                    p2: Tuple[float, float, float], 
-                    p3: Tuple[float, float, float],
-                    min_confidence: float = 0.5) -> float:
+def compute_angle(p1: Tuple[float, float, float],
+                  p2: Tuple[float, float, float],
+                  p3: Tuple[float, float, float],
+                  min_confidence: float = 0.5) -> float:
     """
     Compute the angle at p2 given points p1, p2, and p3 in 2D space, using a confidence threshold for filtering.
 
@@ -489,16 +499,16 @@ def compute_angle(p1: Tuple[float, float, float],
     # Check for zero magnitudes or low confidence
     if mag1 == 0 or mag2 == 0:
         return 0.0  # Angle is undefined, return 0
-    
+
     if p1[2] < min_confidence or p2[2] < min_confidence or p3[2] < min_confidence:
         return 0.0  # Low confidence, return 0
-    
+
     dot_product = np.dot(vec1, vec2)
     cos_theta = dot_product / (mag1 * mag2)
 
     # Clip value to be in the range [-1, 1] to avoid invalid values due to numerical errors
     cos_theta = np.clip(cos_theta, -1.0, 1.0)
-    
+
     angle_rad = np.arccos(cos_theta)
     angle_deg = np.degrees(angle_rad)
 
@@ -519,18 +529,19 @@ def normalize_angles(angles: List[Optional[float]]) -> np.ndarray:
     - np.ndarray: NumPy array of normalized angles.
     """
     # Replace None values with 0 and convert to NumPy array
-    angles_clean = np.array([angle if angle is not None else 0 for angle in angles])
-    
+    angles_clean = np.array(
+        [angle if angle is not None else 0 for angle in angles])
+
     # Normalize angles to [0, 1]
     normalized_angles = angles_clean / 180.0
-    
+
     return normalized_angles
 
 
 def compute_human_angles(keypoints: List[Tuple[float, float, float]], min_confidence: float = 0.5) -> List[Optional[float]]:
     """
     Compute meaningful angles for human pose based on keypoints.
-    
+
     Parameters:
     - keypoints (List[Tuple[float, float, float]]): List of keypoints (x, y, confidence).
     - min_confidence (float): Minimum confidence level to consider a keypoint valid.
@@ -542,17 +553,17 @@ def compute_human_angles(keypoints: List[Tuple[float, float, float]], min_confid
     associations = [
         (5, 7, 9),   # Left elbow
         (6, 8, 10),  # Right elbow
-        (11, 13, 15), # Left knee
-        (12, 14, 16), # Right knee
+        (11, 13, 15),  # Left knee
+        (12, 14, 16),  # Right knee
         (5, 11, 13),  # Left hip
         (6, 12, 14),  # Right hip
         (3, 5, 7),    # Left shoulder
         (4, 6, 8),    # Right shoulder
         (5, 0, 6),    # Neck
-        (13, 15, 16), # Left ankle
+        (13, 15, 16),  # Left ankle
         (14, 16, 15)  # Right ankle
     ]
-    
+
     angles = []
     for p1_i, p2_i, p3_i in associations:
         # Check that all required keypoints exist
@@ -561,7 +572,7 @@ def compute_human_angles(keypoints: List[Tuple[float, float, float]], min_confid
             continue
 
         p1, p2, p3 = keypoints[p1_i], keypoints[p2_i], keypoints[p3_i]
-        
+
         # Check for incomplete keypoints
         if p1 is None or p2 is None or p3 is None:
             angles.append(None)
@@ -571,11 +582,11 @@ def compute_human_angles(keypoints: List[Tuple[float, float, float]], min_confid
         if p1[2] < min_confidence or p2[2] < min_confidence or p3[2] < min_confidence:
             angles.append(None)
             continue
-        
+
         # Compute and store the angle
         angle = compute_angle(p1, p2, p3)
         angles.append(angle)
-        
+
     return angles
 
 
@@ -602,7 +613,7 @@ def extract_frame_data(jsonl_file_path: Union[str, Path], min_confidence: float 
             if not annotations:
                 continue
             frame_width, frame_height = obj['data']['width_height']
-            
+
             d = {
                 'angles': [],
                 'angle_vec': [],  # To store normalized angle vectors
@@ -612,34 +623,38 @@ def extract_frame_data(jsonl_file_path: Union[str, Path], min_confidence: float 
                 'frame_height': frame_height,
                 'num_subjects': 0  # Initialize to 0; will increment for each valid person
             }
-            
+
             for person in annotations:
                 keypoints = person['keypoints']
                 bbox = person['bbox']
                 reshaped_keypoints = reshape_keypoints(keypoints)
-                
+
                 # Count valid keypoints
-                valid_keypoints = sum(1 for x, y, c in reshaped_keypoints if c >= min_confidence)
-                
+                valid_keypoints = sum(
+                    1 for x, y, c in reshaped_keypoints if c >= min_confidence)
+
                 if valid_keypoints < min_valid_keypoints:
                     continue  # Skip this person
-                
-                angles_adjusted = compute_human_angles(reshaped_keypoints, min_confidence)
+
+                angles_adjusted = compute_human_angles(
+                    reshaped_keypoints, min_confidence)
 
                 # Count valid angles
-                valid_angles = sum(1 for angle in angles_adjusted if angle != 0.0)
-                
+                valid_angles = sum(
+                    1 for angle in angles_adjusted if angle != 0.0)
+
                 if valid_angles < min_valid_angles:
                     continue  # Skip this person
-                
+
                 normalized_angles = normalize_angles(angles_adjusted)
-                
+
                 d['angles'].append(angles_adjusted)
-                d['angle_vec'].append(normalized_angles.tolist())  # Store normalized angle vector
+                # Store normalized angle vector
+                d['angle_vec'].append(normalized_angles.tolist())
                 d['keypoints'].append(reshaped_keypoints)
                 d['bbox'].append(bbox)
                 d['num_subjects'] += 1  # Increment for each valid person
-            
+
             if d['num_subjects'] > 0:
                 frame_data[frame_number] = d
 

@@ -1,10 +1,10 @@
 from fastapi import (APIRouter, Depends, Request, Response, HTTPException)
 from fastapi.responses import HTMLResponse, StreamingResponse, FileResponse
 from io import BytesIO
-from rts.api.routers.auth_router import get_current_active_user, User
-from rts.db.queries import check_access, get_media_for_streaming
-from rts.storage.storage import get_storage_client
-from rts.settings import BUCKET_NAME
+from emv.api.routers.auth_router import get_current_active_user, User
+from emv.db.queries import check_access, get_media_for_streaming
+from emv.storage.storage import get_storage_client
+from emv.settings import BUCKET_NAME
 
 BYTES_PER_RESPONSE = 300000
 stream_router = APIRouter()

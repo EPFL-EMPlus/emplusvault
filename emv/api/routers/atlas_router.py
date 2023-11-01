@@ -4,13 +4,13 @@ from fastapi.responses import FileResponse, Response
 from typing import Any, Dict, Optional
 
 # Local imports
-from rts.api.api_settings import Settings, get_settings
-from rts.utils import obj_from_json
-from rts.db.queries import get_atlas, create_atlas, get_atlases
-from rts.settings import BUCKET_NAME
-from rts.storage.storage import get_storage_client
-from rts.api.models import Atlas
-from rts.api.routers.auth_router import get_current_active_user, User
+from emv.api.api_settings import Settings, get_settings
+from emv.utils import obj_from_json
+from emv.db.queries import get_atlas, create_atlas, get_atlases
+from emv.settings import BUCKET_NAME
+from emv.storage.storage import get_storage_client
+from emv.api.models import Atlas
+from emv.api.routers.auth_router import get_current_active_user, User
 
 atlas_router = APIRouter()
 

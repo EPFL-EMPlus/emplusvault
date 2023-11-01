@@ -5,8 +5,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.engine.url import URL
 from sqlalchemy.sql import text
 
-from rts.utils import get_logger
-from rts.settings import DATABASE_URL
+from emv.utils import get_logger
+from emv.settings import DATABASE_URL
 
 LOG = get_logger()
 

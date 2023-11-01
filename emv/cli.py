@@ -3,27 +3,26 @@ import click
 import subprocess
 import pandas as pd
 
-import rts.utils
-import rts.io.media
-import rts.features.audio
-import rts.features.text
-import rts.pipelines.rts
-
-import rts.preprocess.ioc
+import emv.utils
+import emv.io.media
+import emv.features.audio
+import emv.features.text
+import emv.pipelines.rts
+import emv.preprocess.ioc
 
 from datetime import datetime
 from pathlib import Path
 
-from rts.settings import DB_HOST, DB_NAME, DB_PORT, SUPERUSER_CLI_KEY, DB_USER, DB_PASSWORD
-from rts.settings import IOC_ROOT_FOLDER
+from emv.settings import DB_HOST, DB_NAME, DB_PORT, SUPERUSER_CLI_KEY, DB_USER, DB_PASSWORD
+from emv.settings import IOC_ROOT_FOLDER
 
 
-from rts.db.utils import create_database
-from rts.db.queries import create_library, create_new_user, allow_user_to_access_library
-from rts.api.models import LibraryCreate
-from rts.api.routers.auth_router import UserInDB as User
+from emv.db.utils import create_database
+from emv.db.queries import create_library, create_new_user, allow_user_to_access_library
+from emv.api.models import LibraryCreate
+from emv.api.routers.auth_router import UserInDB as User
 
-from rts.pipelines.rts import RTS_LOCAL_VIDEOS
+from emv.pipelines.rts import RTS_LOCAL_VIDEOS
 
 
 @click.group()
@@ -62,13 +61,13 @@ def pipeline(continuous: bool,
              compute_transcript: bool, compute_clips: bool, force_media: bool,
              force_transcript: bool, force_clips: bool) -> None:
 
-    df = rts.pipelines.rts.get_sample_df()
+    df = emv.pipelines.rts.get_sample_df()
     # df = get_aivectors_df()
 
     click.echo('Processing archive')
     click.echo(
         f'Compute transcript: {compute_transcript}, Compute clips: {compute_clips}, ')
-    rts.pipelines.rts.simple_process_archive(df, RTS_LOCAL_VIDEOS, continuous,
+    emv.pipelines.rts.simple_process_archive(df, RTS_LOCAL_VIDEOS, continuous,
                                              compute_transcript, compute_clips,
                                              force_media, force_transcript, force_clips)
 
@@ -160,10 +159,11 @@ def allow_library_access(user_id: int, library_id: int):
     allow_user_to_access_library(user_id, library_id)
     click.echo('User has been granted access to the library.')
 
+
 @db.command()
 @click.option('--data', type=str, default='{}', help='csv dataframe')
 def ingest_ioc(data: str):
-    from rts.pipelines.ioc import PipelineIOC
+    from emv.pipelines.ioc import PipelineIOC
     df = pd.read_csv(data)
 
     def find_mp4_files(root_folder):
@@ -236,10 +236,11 @@ def build_video_metadata():
     metadata = Path(IOC_ROOT_FOLDER) / 'metadata'
     outdir = Path(IOC_ROOT_FOLDER) / 'data'
     video_folder = Path(IOC_ROOT_FOLDER) / 'videos'
-    df = rts.preprocess.ioc.create_df_from_xml(metadata, outdir, force=False)
-    df = rts.preprocess.ioc.get_sport_df(df)
-    df = rts.preprocess.ioc.match_video_files(df, video_folder)
-    rts.utils.dataframe_to_hdf5(outdir, 'ioc_consolidated', df)
+    df = emv.preprocess.ioc.create_df_from_xml(metadata, outdir, force=False)
+    df = emv.preprocess.ioc.get_sport_df(df)
+    df = emv.preprocess.ioc.match_video_files(df, video_folder)
+    emv.utils.dataframe_to_hdf5(outdir, 'ioc_consolidated', df)
+
 
 if __name__ == '__main__':
     cli()

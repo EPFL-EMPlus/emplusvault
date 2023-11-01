@@ -21,19 +21,19 @@ from PIL import Image, ImageOps
 from scenedetect import open_video, SceneManager, ContentDetector
 from scenedetect.frame_timecode import FrameTimecode
 
-import rts.utils
-from rts.settings import BUCKET_NAME
-from rts.db.queries import create_atlas, create_media, create_projection
-from rts.storage.storage import get_storage_client
-from rts.api.models import Atlas, Media, Projection
+import emv.utils
+from emv.settings import BUCKET_NAME
+from emv.db.queries import create_atlas, create_media, create_projection
+from emv.storage.storage import get_storage_client
+from emv.api.models import Atlas, Media, Projection
 
-LOG = rts.utils.get_logger()
+LOG = emv.utils.get_logger()
 
 logger = logging.getLogger('pyscenedetect')
 logger.setLevel(logging.ERROR)
 
 
-@rts.utils.timeit
+@emv.utils.timeit
 # noinspection PyUnresolvedReferenceskeep_only_ids
 def to_wav(in_path: str, out_path: str = None, sample_rate: int = 48000) -> str:
     """Arbitrary media files to wav"""
@@ -55,7 +55,7 @@ def to_wav(in_path: str, out_path: str = None, sample_rate: int = 48000) -> str:
     return out_path
 
 
-@rts.utils.timeit
+@emv.utils.timeit
 def to_mp3(in_path: str, out_path: str = None, bitrate: str = '') -> str:
     if out_path is None:
         out_path = str(Path(out_path).with_suffix('.mp3'))
@@ -79,7 +79,7 @@ def to_mp3(in_path: str, out_path: str = None, bitrate: str = '') -> str:
     return out_path
 
 
-@rts.utils.timeit
+@emv.utils.timeit
 def extract_audio(in_path: str, out_path: str = None) -> Optional[str]:
     try:
         with av.open(str(in_path)) as in_container:
@@ -147,7 +147,7 @@ def get_media_info(media_path: str) -> Dict:
     try:
         info['path'] = str(media_path)
         info['filesize'] = os.path.getsize(str(media_path))
-        info['human_filesize'] = rts.utils.human_readable_size(
+        info['human_filesize'] = emv.utils.human_readable_size(
             info['filesize'])
         with av.open(str(media_path)) as container:
             info['duration'] = container.duration / 1000000
@@ -161,14 +161,14 @@ def get_media_info(media_path: str) -> Dict:
                     info['video']['framerate'] = format_framerate(
                         stream.guessed_rate)
                     info['video']['bitrate'] = stream.codec_context.bit_rate
-                    info['video']['human_bitrate'] = rts.utils.human_readable_bitrate(
+                    info['video']['human_bitrate'] = emv.utils.human_readable_bitrate(
                         stream.codec_context.bit_rate)
                 elif stream.type == 'audio':
                     info['audio']['codec'] = stream.codec_context.name
                     info['audio']['channels'] = stream.codec_context.channels
                     info['audio']['sample_rate'] = stream.codec_context.sample_rate
                     info['audio']['bitrate'] = stream.codec_context.bit_rate
-                    info['audio']['human_bitrate'] = rts.utils.human_readable_bitrate(
+                    info['audio']['human_bitrate'] = emv.utils.human_readable_bitrate(
                         stream.codec_context.bit_rate)
 
             if not info['video']:
@@ -189,16 +189,16 @@ def get_frame_number(ts: float, framerate: str) -> int:
         framerate = float(num) / float(den)
     else:
         framerate = float(framerate)
-    
+
     # Calculate frame number
     frame_number = int(round(ts * framerate))
     return frame_number
 
 
-def trim(input_path: Union[str, Path], output_path: Union[str, Path], start_ts: float, end_ts: float) -> Tuple[bool, BytesIO]:    
-    input_stream = ffmpeg.input(str(input_path), ss=start_ts, 
+def trim(input_path: Union[str, Path], output_path: Union[str, Path], start_ts: float, end_ts: float) -> Tuple[bool, BytesIO]:
+    input_stream = ffmpeg.input(str(input_path), ss=start_ts,
                                 hide_banner=None, loglevel='error')
-    
+
     output_path = str(output_path)
     if output_path in ['pipe:', '-', ':']:
         output_path = "pipe:1"
@@ -206,14 +206,14 @@ def trim(input_path: Union[str, Path], output_path: Union[str, Path], start_ts: 
         # Create directories if output_path is a file path
         output_path_obj = Path(output_path)
         output_path_obj.parent.mkdir(parents=True, exist_ok=True)
-    
+
     output = input_stream.output(output_path,
-                        format='mp4', 
-                        vcodec='copy', 
-                        acodec='copy',
-                        t=end_ts - start_ts,
-                        strict='experimental', 
-                        movflags='faststart+frag_keyframe+empty_moov').overwrite_output()
+                                 format='mp4',
+                                 vcodec='copy',
+                                 acodec='copy',
+                                 t=end_ts - start_ts,
+                                 strict='experimental',
+                                 movflags='faststart+frag_keyframe+empty_moov').overwrite_output()
     try:
         out, _ = output.run(capture_stdout=True, capture_stderr=True)
         if output_path == 'pipe:1':
@@ -228,10 +228,11 @@ def trim(input_path: Union[str, Path], output_path: Union[str, Path], start_ts: 
 
 def get_frame_rate(input_path: Union[str, Path]) -> float:
     probe = ffmpeg.probe(str(input_path))
-    video_stream = next((stream for stream in probe['streams'] if stream['codec_type'] == 'video'), None)
+    video_stream = next(
+        (stream for stream in probe['streams'] if stream['codec_type'] == 'video'), None)
     if video_stream is None:
         return None
-    
+
     r_frame_rate = video_stream['r_frame_rate']
     num, den = map(int, r_frame_rate.split('/'))
     return num / den
@@ -250,13 +251,13 @@ def generate_image_pyramid(image: Image, name: str, base_res: int = 16, depth: i
     for i in range(1, depth):
         size = base_res * (2**i)
         res = ImageOps.fit(image, size=(size, size))
-        
+
         img_byte_array = io.BytesIO()
         res.save(img_byte_array, format='JPEG')
 
         key = f'{size}px/' + f'{name}.jpg'
         files_to_upload[key] = img_byte_array
-        
+
     return files_to_upload
 
 

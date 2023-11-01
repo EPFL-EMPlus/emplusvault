@@ -1,15 +1,13 @@
+import emv.io.media
+import emv.utils
+from typing import Dict, List, Optional, Tuple
+from pathlib import Path
+import logging
 import os
 os.environ["TORCHAUDIO_USE_BACKEND_DISPATCHER"] = "0"
-import logging
-
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 
-import rts.utils
-import rts.io.media
-
-LOG = rts.utils.get_logger()
+LOG = emv.utils.get_logger()
 
 _model = {
     'whisper_model': None,
@@ -31,7 +29,7 @@ _model = {
 
 #         if speaker not in speaker_data:
 #             speaker_data[speaker] = []
-        
+
 #         if len(speaker_data[speaker]) == 0 or segment['start'] - speaker_data[speaker][-1]['end'] > min_duration:
 #             # Start a new paragraph
 #             speaker_data[speaker].append({
@@ -44,7 +42,7 @@ _model = {
 #             current_paragraph = speaker_data[speaker][-1]
 #             current_paragraph['end'] = segment['end']
 #             current_paragraph['text'] += " " + segment['text'].strip()  # strip leading and trailing spaces
-            
+
 #             if max_duration is not None and current_paragraph['end'] - current_paragraph['start'] > max_duration:
 #                 # Split the current paragraph
 #                 current_paragraph['end'] = segment['start']
@@ -109,7 +107,7 @@ def transcribe_media(audio_path: str, lang: str = 'fr', min_duration: float = 0,
     #     _model['name'] = model_name
 
     # res = _model['model'].transcribe(audio_path, language='French')
-    
+
     # output = []
     # for d in res['segments']:
     #     output.append({
@@ -126,28 +124,34 @@ def transcribe_media(audio_path: str, lang: str = 'fr', min_duration: float = 0,
     device = "cuda"
     if not audio_path:
         return None
-    
+
     audio_file = str(audio_path)
-    batch_size = 16 # reduce if low on GPU mem
-    compute_type = "float16" # change to "int8" if low on GPU mem (may reduce accuracy)
+    batch_size = 16  # reduce if low on GPU mem
+    # change to "int8" if low on GPU mem (may reduce accuracy)
+    compute_type = "float16"
 
     if not _model['whisper_model']:
         LOG.debug(f'Load whisper model: large-v2')
-        _model['whisper_model'] = whisperx.load_model("large-v2", device, device_index=1, compute_type=compute_type, language=lang)
-        
+        _model['whisper_model'] = whisperx.load_model(
+            "large-v2", device, device_index=1, compute_type=compute_type, language=lang)
+
     if not _model['align_model']:
-        _model['align_model'], _model['align_meta'] = whisperx.load_align_model(language_code=lang, device=device)
+        _model['align_model'], _model['align_meta'] = whisperx.load_align_model(
+            language_code=lang, device=device)
 
     if not _model['diarize_model']:
         from dotenv import load_dotenv
         load_dotenv()
-        _model['diarize_model'] = whisperx.DiarizationPipeline(use_auth_token=os.getenv("HF_TOKEN"), device=device)
+        _model['diarize_model'] = whisperx.DiarizationPipeline(
+            use_auth_token=os.getenv("HF_TOKEN"), device=device)
 
     audio = whisperx.load_audio(audio_file)
-    result = _model['whisper_model'].transcribe(audio, batch_size=batch_size, language=lang)
+    result = _model['whisper_model'].transcribe(
+        audio, batch_size=batch_size, language=lang)
 
     # 2. Align whisper output
-    result = whisperx.align(result["segments"], _model['align_model'], _model['align_meta'], audio, device, return_char_alignments=False)
+    result = whisperx.align(result["segments"], _model['align_model'],
+                            _model['align_meta'], audio, device, return_char_alignments=False)
     try:
         diarize_segments = _model['diarize_model'](audio_file)
     except KeyError:
@@ -157,4 +161,3 @@ def transcribe_media(audio_path: str, lang: str = 'fr', min_duration: float = 0,
 
     result = whisperx.assign_word_speakers(diarize_segments, result)
     return extract_continuous_sentences(result["segments"], min_duration, max_duration)
-

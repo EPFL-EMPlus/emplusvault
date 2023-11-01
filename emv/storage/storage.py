@@ -1,17 +1,17 @@
 import os
 import boto3
 import threading
-import rts.utils
+import emv.utils
 
 from io import BytesIO
 from pathlib import Path
 from typing import Any, Optional
 from botocore.exceptions import ClientError, BotoCoreError
 from botocore.response import StreamingBody
-from rts.settings import S3_ACCESS_KEY, S3_SECRET_KEY, S3_ENDPOINT
+from emv.settings import S3_ACCESS_KEY, S3_SECRET_KEY, S3_ENDPOINT
 
 
-LOG = rts.utils.get_logger()
+LOG = emv.utils.get_logger()
 
 
 def get_storage_client():
@@ -67,23 +67,29 @@ class StorageClient:
         :param file_data: The file data to upload. Can be a file path (str or Path), raw binary data (bytes), or a file-like object.
         :return: True if the upload was successful, False otherwise.
         """
-        normalized_object_name = os.path.normpath(object_name).replace(os.sep, '/')
+        normalized_object_name = os.path.normpath(
+            object_name).replace(os.sep, '/')
         ok = True
         try:
             if isinstance(file_data, (str, Path)):
                 # If file_data is a file path, open the file in binary mode
                 with open(file_data, 'rb') as f:
-                    self.client.upload_fileobj(f, bucket_name, normalized_object_name)
+                    self.client.upload_fileobj(
+                        f, bucket_name, normalized_object_name)
             elif isinstance(file_data, bytes):
                 # If file_data is raw binary data, convert to a BytesIO object
                 with BytesIO(file_data) as f:
-                    self.client.upload_fileobj(f, bucket_name, normalized_object_name)
+                    self.client.upload_fileobj(
+                        f, bucket_name, normalized_object_name)
             else:
                 # If file_data is a file-like object, upload it directly
-                self.client.upload_fileobj(file_data, bucket_name, normalized_object_name)
-            LOG.debug(f"Upload successful: {bucket_name}/{normalized_object_name}")
+                self.client.upload_fileobj(
+                    file_data, bucket_name, normalized_object_name)
+            LOG.debug(
+                f"Upload successful: {bucket_name}/{normalized_object_name}")
         except (BotoCoreError, ClientError) as e:
-            LOG.error(f"Failed to upload: {bucket_name}/{normalized_object_name} due to {e}")
+            LOG.error(
+                f"Failed to upload: {bucket_name}/{normalized_object_name} due to {e}")
             ok = False
         return ok
 
@@ -108,13 +114,15 @@ class StorageClient:
                     self.client.download_fileobj(bucket_name, object_name, f)
             else:
                 # If file_or_buf is a file-like object, write to it directly
-                self.client.download_fileobj(bucket_name, object_name, file_or_buf)
+                self.client.download_fileobj(
+                    bucket_name, object_name, file_or_buf)
             LOG.debug(f"Download successful: {bucket_name}/{object_name}")
         except (BotoCoreError, ClientError, IOError) as e:
-            LOG.error(f"Failed to download: {bucket_name}/{object_name} due to {e}")
+            LOG.error(
+                f"Failed to download: {bucket_name}/{object_name} due to {e}")
             ok = False
         return ok
-    
+
     def get_stream(self, bucket_name: str, object_name: str, start: Optional[int] = None, end: Optional[int] = None) -> Optional[StreamingBody]:
         """
         Gets a streaming body for an object from the specified S3 bucket.
@@ -129,13 +137,14 @@ class StorageClient:
             range_header = None
             if start is not None or end is not None:
                 range_header = f"bytes={start or '0'}-{end or ''}"
-            response = self.client.get_object(Bucket=bucket_name, Key=object_name, Range=range_header)
+            response = self.client.get_object(
+                Bucket=bucket_name, Key=object_name, Range=range_header)
             LOG.debug(f"Got streaming body: {bucket_name}/{object_name}")
             return response['Body']
         except (BotoCoreError, ClientError, IOError) as e:
             LOG.error(f"Failed to get: {bucket_name}/{object_name} due to {e}")
             return None
-        
+
     def get_bytes(self, bucket_name: str, object_name: str) -> Optional[bytes]:
         """
         Downloads an object from the specified S3 bucket into memory and returns the data as bytes.
@@ -145,11 +154,13 @@ class StorageClient:
         :return: The downloaded data as bytes, or None if the download fails.
         """
         try:
-            response = self.client.get_object(Bucket=bucket_name, Key=object_name)
+            response = self.client.get_object(
+                Bucket=bucket_name, Key=object_name)
             LOG.debug(f"Download successful: {bucket_name}/{object_name}")
             return response['Body'].read()
         except (BotoCoreError, ClientError, IOError) as e:
-            LOG.error(f"Failed to download: {bucket_name}/{object_name} due to {e}")
+            LOG.error(
+                f"Failed to download: {bucket_name}/{object_name} due to {e}")
             return None
 
     def delete(self, bucket_name: str, object_name: str) -> bool:
@@ -158,9 +169,10 @@ class StorageClient:
             ok = self.client.delete_object(Bucket=bucket_name, Key=object_name)
             LOG.debug(f"Deleted: {bucket_name}/{object_name}")
         except (BotoCoreError, ClientError) as e:
-            LOG.error(f"Failed to delete: {bucket_name}/{object_name} due to {e}")
+            LOG.error(
+                f"Failed to delete: {bucket_name}/{object_name} due to {e}")
         return ok
-    
+
     def object_exists(self, bucket_name: str, object_name: str) -> bool:
         """
         Checks if an object exists in the specified S3 bucket.

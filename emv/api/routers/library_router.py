@@ -1,9 +1,9 @@
 from fastapi import (APIRouter, Depends, HTTPException)
-from rts.db.dao import DataAccessObject
-from rts.db.queries import create_library
-from rts.api.models import LibraryBase
-from rts.utils import get_logger
-from rts.api.routers.auth_router import get_current_active_user, User
+from emv.db.dao import DataAccessObject
+from emv.db.queries import create_library
+from emv.api.models import LibraryBase
+from emv.utils import get_logger
+from emv.api.routers.auth_router import get_current_active_user, User
 import json
 
 LOG = get_logger()

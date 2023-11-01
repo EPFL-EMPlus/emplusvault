@@ -2,10 +2,10 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.sql import text
 from sqlalchemy.exc import IntegrityError, ProgrammingError
-from rts.api.models import Media
-from rts.api.routers.auth_router import get_current_active_user, User
-from rts.db.dao import DataAccessObject
-from rts.db.queries import create_media, get_media_by_id, get_all_media, create_or_update_media, delete_media, get_all_media_by_library_id
+from emv.api.models import Media
+from emv.api.routers.auth_router import get_current_active_user, User
+from emv.db.dao import DataAccessObject
+from emv.db.queries import create_media, get_media_by_id, get_all_media, create_or_update_media, delete_media, get_all_media_by_library_id
 import json
 
 media_router = APIRouter()

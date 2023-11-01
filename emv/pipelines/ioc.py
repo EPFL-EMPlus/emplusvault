@@ -1,17 +1,17 @@
 import pandas as pd
-import rts.utils
+import emv.utils
 
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
 
-from rts.pipelines.base import Pipeline, get_hash
-from rts.io.media import get_frame_number
-from rts.api.models import Media
-from rts.db.queries import create_or_update_media, check_media_exists
+from emv.pipelines.base import Pipeline, get_hash
+from emv.io.media import get_frame_number
+from emv.api.models import Media
+from emv.db.queries import create_or_update_media, check_media_exists
 
-from rts.settings import IOC_ROOT_FOLDER
+from emv.settings import IOC_ROOT_FOLDER
 
-LOG = rts.utils.get_logger()
+LOG = emv.utils.get_logger()
 
 
 IOC_DATA = IOC_ROOT_FOLDER + 'data'
@@ -21,9 +21,9 @@ IOC_VIDEOS = IOC_ROOT_FOLDER + 'videos'
 class PipelineIOC(Pipeline):
     library_name: str = 'ioc'
 
-    def ingest(self, df: pd.DataFrame, 
+    def ingest(self, df: pd.DataFrame,
                force: bool = False,
-               min_duration: float = 0, 
+               min_duration: float = 0,
                max_duration: float = float('inf')) -> bool:
         """
         Ingest the IOC metadata and video files.
@@ -58,22 +58,24 @@ class PipelineIOC(Pipeline):
         try:
             assert len(df[df.seq_id == df.guid]) >= 1
         except AssertionError:
-            LOG.error(f'No guid section found for the video with ID {df.guid.iloc[0]}. Skipping ingestion.')
+            LOG.error(
+                f'No guid section found for the video with ID {df.guid.iloc[0]}. Skipping ingestion.')
             return False
         df = self.preprocess(df)
         LOG.info(f'Ingesting {len(df)} clips from {df.guid.iloc[0]}')
-        
+
         # Setting up nested progress bar in an alternative way as the default leads to a bug with a lot of blank lines in jupyter notebooks
         if not self.inner_progress_bar:
-            self.inner_progress_bar = self.tqdm(total=1, desc='Clips', position=1, leave=False)
+            self.inner_progress_bar = self.tqdm(
+                total=1, desc='Clips', position=1, leave=False)
         self.inner_progress_bar.reset()
         self.inner_progress_bar.total = len(df)
         self.inner_progress_bar.refresh()
-        
+
         # for i, row in self.tqdm(df.iterrows(), leave=False, total=len(df), position=1, desc='Clips'):
         for i, row in df.iterrows():
             self.inner_progress_bar.update()
-        
+
             media_id = f"{self.library_name}-{row.seq_id}"
             exists = check_media_exists(media_id)
             if exists and not force:
@@ -98,7 +100,7 @@ class PipelineIOC(Pipeline):
             if not media_info:
                 LOG.error(f'Failed to trim and upload clip {row.seq_id}')
                 return False
- 
+
             metadata = {
                 'sport': row.sport,
                 'description': row.description,

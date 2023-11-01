@@ -7,9 +7,9 @@ from collections import defaultdict
 from scenedetect.frame_timecode import FrameTimecode
 
 
-import rts.utils
+import emv.utils
 
-LOG = rts.utils.get_logger()
+LOG = emv.utils.get_logger()
 
 _model = {
     'name': None,
@@ -61,20 +61,22 @@ def get_swiss_cities() -> Dict:
         SWISS_CITIES = {}
         for k, v in cities.items():
             if v["countrycode"] == "CH":
-                SWISS_CITIES[v["name"]] = {"lat": v["latitude"], "lon": v["longitude"], 'geoid': v['geonameid']}
+                SWISS_CITIES[v["name"]] = {
+                    "lat": v["latitude"], "lon": v["longitude"], 'geoid': v['geonameid']}
                 for alt in v["alternatenames"]:
-                    SWISS_CITIES[alt] = {"lat": v["latitude"], "lon": v["longitude"], 'geoid': v['geonameid']}
-        
+                    SWISS_CITIES[alt] = {
+                        "lat": v["latitude"], "lon": v["longitude"], 'geoid': v['geonameid']}
+
         # Monkey patch cities
         SWISS_CITIES['Baal'] = SWISS_CITIES['Basel']
         SWISS_CITIES['Saint-Gal'] = SWISS_CITIES['St. Gallen']
         SWISS_CITIES['St-Maurice'] = SWISS_CITIES['Saint-Maurice']
     return SWISS_CITIES
-    
 
-def find_locations(transcript: List[Dict], 
-    filtered_locations: Optional[Dict] = None, 
-    model_name: Optional[str] = None) -> Optional[List[Dict]]:
+
+def find_locations(transcript: List[Dict],
+                   filtered_locations: Optional[Dict] = None,
+                   model_name: Optional[str] = None) -> Optional[List[Dict]]:
     """Add locations using entity recognition to transcript"""
 
     LOG.debug(f'Find locations in transcript')
@@ -86,14 +88,14 @@ def find_locations(transcript: List[Dict],
         locs = extract_locations(sent['t'], model_name)
         if not locs:
             continue
-        
+
         cities = list(filter(lambda x: x in filtered_locations, locs))
         if not cities:
             continue
-        
+
         norm_cities = []
         for city in cities:
-            geoid = filtered_locations[city]['geoid']                    
+            geoid = filtered_locations[city]['geoid']
             # Normalize city name
             c = ALL_CITIES[str(geoid)]['name']
             norm_cities.append(c)
@@ -114,7 +116,8 @@ def merge_continous_sentences(transcript: List[Dict[str, str]]) -> List[Dict[str
             if 'locations' in transcript[i]:
                 if 'locations' in merged_transcript[-1]:
                     # Get unique locations
-                    locations = set(merged_transcript[-1]['locations'].split(' | ') + transcript[i]['locations'].split(' | '))
+                    locations = set(
+                        merged_transcript[-1]['locations'].split(' | ') + transcript[i]['locations'].split(' | '))
                     merged_transcript[-1]['locations'] = ' | '.join(locations)
                 else:
                     merged_transcript[-1]['locations'] = transcript[i]['locations']
@@ -123,14 +126,14 @@ def merge_continous_sentences(transcript: List[Dict[str, str]]) -> List[Dict[str
     return merged_transcript
 
 
-def timecodes_from_transcript(transcript: List[Dict[str, str]], framerate: int = 25, 
-    min_seconds: float = 10,
-    extend_duration: float = 0,
-    min_words: int = 15,
-    location_only: bool = False) -> Optional[Tuple[List[Tuple[FrameTimecode, FrameTimecode]], List[int]]]:
+def timecodes_from_transcript(transcript: List[Dict[str, str]], framerate: int = 25,
+                              min_seconds: float = 10,
+                              extend_duration: float = 0,
+                              min_words: int = 15,
+                              location_only: bool = False) -> Optional[Tuple[List[Tuple[FrameTimecode, FrameTimecode]], List[int]]]:
     if not transcript:
         return None
-    
+
     timecodes = []
     saved_idx = []
     for i, sent in enumerate(transcript):
@@ -179,7 +182,7 @@ def enrich_scenes_with_transcript(scenes: Dict, ori_transcript: List[Dict]) -> D
             # if 'locations' in t:
             #     print(t_start, t_end, ' -- ', scene_start, scene_end)
 
-            if t_start > scene_end: # overshooting timestamp
+            if t_start > scene_end:  # overshooting timestamp
                 last_tidx = tidx
                 break
 
@@ -187,17 +190,20 @@ def enrich_scenes_with_transcript(scenes: Dict, ori_transcript: List[Dict]) -> D
                 scenes['clips'][i]['transcript'] += t['t'] + ' '
                 if 'locations' in t:
                     if 'locations' not in scenes['clips'][i]:
-                        scenes['clips'][i]['locations'] = set(t['locations'].split(' | '))
+                        scenes['clips'][i]['locations'] = set(
+                            t['locations'].split(' | '))
                     else:
-                        scenes['clips'][i]['locations'] |= set(t['locations'].split(' | '))
-        
+                        scenes['clips'][i]['locations'] |= set(
+                            t['locations'].split(' | '))
+
         # start from last_tidx
         transcript = transcript[last_tidx:]
 
     for i, s in scenes['clips'].items():
         if 'locations' in scenes['clips'][i]:
-            scenes['clips'][i]['locations'] = ' | '.join(scenes['clips'][i]['locations'])
-    
+            scenes['clips'][i]['locations'] = ' | '.join(
+                scenes['clips'][i]['locations'])
+
     return scenes
 
 
@@ -224,10 +230,10 @@ def build_location_df(transcripts: Dict[str, Dict]) -> pd.DataFrame:
             if 'locations' in sent:
                 cities = sent['locations'].split(' | ')
                 for city in cities:
-                    if not city: 
+                    if not city:
                         continue
 
-                    geoid = swiss_cities[city]['geoid']                    
+                    geoid = swiss_cities[city]['geoid']
                     # Normalize city name
                     c = all_cities[str(geoid)]['name']
                     res.append({

@@ -8,9 +8,9 @@ from datetime import datetime, timedelta
 from fastapi import FastAPI, HTTPException, Depends, Form, APIRouter, Header
 from sqlalchemy.sql import text
 
-from rts.db.dao import DataAccessObject
+from emv.db.dao import DataAccessObject
 from fastapi import Request
-from rts.settings import DATABASE_URL, DB_HOST, DB_NAME, SECRET_KEY
+from emv.settings import DATABASE_URL, DB_HOST, DB_NAME, SECRET_KEY
 
 auth_router = APIRouter()
 
