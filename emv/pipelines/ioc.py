@@ -218,9 +218,11 @@ class PipelineIOC(Pipeline):
             data={"frames": r},
             media_id=clip_media_id,
         )
-        if feature:
-            update_feature(feature['feature_id'], new_feature)
-        else:
-            create_feature(new_feature)
-
+        try:
+            if feature:
+                update_feature(feature['feature_id'], new_feature)
+            else:
+                create_feature(new_feature)
+        except IntegrityError as e:
+            LOG.error(f'Failed to create feature for {clip_media_id}: {e}')
         return True
