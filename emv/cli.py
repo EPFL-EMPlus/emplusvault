@@ -223,7 +223,7 @@ def export_db(path: str):
         command_get_container, shell=True).decode().strip()
 
     # # Prepare command
-    command = f'docker exec -i {container_name} pg_dump -U {user} -F p {database} > {path}'
+    command = f'docker exec -i {container_name} pg_dump -U postgres -F p -N tiger {database} > {path}'
 
     # Execute command
     subprocess.run(command, shell=True, check=True)
