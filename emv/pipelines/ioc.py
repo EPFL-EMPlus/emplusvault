@@ -189,7 +189,7 @@ class PipelineIOC(Pipeline):
                 'media_path': img_path,
                 'media_type': "image",
                 'media_info': {},
-                'sub_type': "screenshot",
+                'sub_type': "screenshot/frame",
                 'size': -1,
                 'metadata': {},
                 'library_id': self.library_id,
