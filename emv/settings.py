@@ -33,3 +33,4 @@ API_USERNAME = os.getenv("API_USERNAME")
 API_PASSWORD = os.getenv("API_PASSWORD")
 
 DRIVE_PATH = "/mnt/g/ioc/data/"
+LOCAL_POSES_PATH = "data/pose_df.csv"
