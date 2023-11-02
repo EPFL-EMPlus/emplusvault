@@ -7,7 +7,8 @@ import re
 import numpy as np
 import pandas as pd
 import cv2
-import PIL
+import PIL 
+import ast
 import torch
 import orjson
 import matplotlib.pyplot as plt
@@ -862,3 +863,14 @@ def process_all_poses(results: list,
         pose_df = pd.merge(pose_df, data[["seq_id", "sport"]], left_on="media_id", right_on="seq_id")
 
     return pose_df 
+
+def load_local_poses(fp: str = "data/pose_df.csv") -> pd.DataFrame:
+    def parse_list_string(s):
+        try:
+            return ast.literal_eval(s)
+        except (SyntaxError, ValueError):
+            # Handle cases where the string cannot be parsed as a list
+            return []
+
+    df = pd.read_csv("data/pose_df.csv", converters={"angle_vec": parse_list_string, "angle_score": parse_list_string, "keypoints": parse_list_string, "bbox": parse_list_string})
+    return df
