@@ -13,7 +13,6 @@ from emv.db.queries import get_feature_by_media_id_and_type, create_feature, upd
 from emv.api.models import Feature
 
 from emv.settings import IOC_ROOT_FOLDER
-from emv.storage.storage import get_storage_client
 from emv.features.pose import process_video, PifPafModel
 
 LOG = emv.utils.get_logger()
@@ -166,20 +165,43 @@ class PipelineIOC(Pipeline):
     
     def process_single_pose(self, row: pd.Series) -> bool:
         """ Process the poses of a single clip. """
-        result = get_storage_client().get_bytes("ioc", f"videos/{row.guid}/{row.seq_id}.mp4")
+        result = self.store.get_bytes("ioc", f"videos/{row.guid}/{row.seq_id}.mp4")
 
         if not result:
             # We won't have a result if the video is not in the storage
             return False
         
-        r = process_video(
+        r, images = process_video(
             MODEL, 
             result,
             skip_frame=10
         )
 
-        for i in range(len(r)):
-            r[i]['image'] = base64.b64encode(r[i]['image']).decode('utf-8')
+        # Upload to s3    
+        for i, img in enumerate(images):
+            img_path = f"images/{row.guid}/{row.seq_id}/pose_frame_{r[i]['frame']}.jpg"
+            self.store.upload(self.library_name, img_path, img)
+
+            screenshot = Media(**{
+                'media_id': f"ioc-{row.seq_id}-pose-{r[i]['frame']}",
+                'original_path': img_path,
+                'original_id': row.guid,
+                'media_path': img_path,
+                'media_type': "image",
+                'media_info': {},
+                'sub_type': "screenshot",
+                'size': -1,
+                'metadata': {},
+                'library_id': self.library_id,
+                'hash': get_hash(img_path),
+                'parent_id': "ioc-" + row.seq_id,
+                'start_ts': -1,
+                'end_ts': -1,
+                'start_frame': r[i]['frame'],
+                'end_frame': r[i]['frame'],
+                'frame_rate': -1,
+            })
+            create_or_update_media(screenshot)
 
         clip_media_id = f"ioc-{row.seq_id}"
         feature_type = 'pose'

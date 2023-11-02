@@ -427,6 +427,8 @@ def process_video(model_name: str, video_bytes: bytes, skip_frame: int = 0, opti
     frame_i = -1
 
     processed = []
+    images = []
+
     while fvs.more():
         image_pil = fvs.read()
         if image_pil is None:  # last frame
@@ -438,16 +440,16 @@ def process_video(model_name: str, video_bytes: bytes, skip_frame: int = 0, opti
 
         image_bytes = io.BytesIO()
         image_pil.save(image_bytes, format="JPEG")
+        images.append(image_bytes.getvalue())
 
         results = processor.process_pil_image(image_pil)
         processed.append({
             'frame': frame_i,
             'data': results,
-            'image': image_bytes.getvalue()
         })
     fvs.stop()
 
-    return processed
+    return processed, images
 
 
 def get_pifpaf_version():
