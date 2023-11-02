@@ -87,9 +87,11 @@ def get_features(feature_type, page_size = 100, max_features = 100):
     results = response.json()
 
     while len(results) < max_features:
-        if len(response.json()) == 0:
+        try:
+            last_seen_feature_id = response.json()[-1]['feature_id']
+        except:
+            print(response.json())
             break
-        last_seen_feature_id = response.json()[-1]['feature_id']
         response = requests.get(f"{API_BASE_URL}/features/{feature_type}", 
                                 params = {
                                     "page_size": page_size, 
@@ -98,7 +100,7 @@ def get_features(feature_type, page_size = 100, max_features = 100):
                                 headers=headers, 
                                 verify=False)
         new_results = response.json()
-        if len(new_results) == 0:
+        if new_results.get("feature_id", None) is None:
             break
         results += new_results
 
