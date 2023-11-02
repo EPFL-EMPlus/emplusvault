@@ -3,20 +3,25 @@ import emv.utils
 
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
+import base64
 
 from emv.pipelines.base import Pipeline, get_hash
 from emv.io.media import get_frame_number
 from emv.api.models import Media
 from emv.db.queries import create_or_update_media, check_media_exists
+from emv.db.queries import get_feature_by_media_id_and_type, create_feature, update_feature
+from emv.api.models import Feature
 
 from emv.settings import IOC_ROOT_FOLDER
+from emv.storage.storage import get_storage_client
+from emv.features.pose import process_video, PifPafModel
 
 LOG = emv.utils.get_logger()
 
 
 IOC_DATA = IOC_ROOT_FOLDER + 'data'
 IOC_VIDEOS = IOC_ROOT_FOLDER + 'videos'
-
+MODEL = PifPafModel.fast
 
 class PipelineIOC(Pipeline):
     library_name: str = 'ioc'
@@ -151,3 +156,49 @@ class PipelineIOC(Pipeline):
         df.loc[:, 'start_ts'] = df.start_ts - df.start_ts.min()
         df = df.sort_values(by='start_ts')
         return df
+
+
+    def process_poses(self, df: pd.DataFrame) -> bool:
+        """ Process the poses of all clips in the dataframe. """
+        for i, row in self.tqdm(df.iterrows(), leave=False, total=len(df), position=1, desc='Clips'):
+            self.process_single_pose(row)
+        return True
+    
+    def process_single_pose(self, row: pd.Series) -> bool:
+        """ Process the poses of a single clip. """
+        result = get_storage_client().get_bytes("ioc", f"videos/{row.guid}/{row.seq_id}.mp4")
+
+        if not result:
+            # We won't have a result if the video is not in the storage
+            return False
+        
+        r = process_video(
+            MODEL, 
+            result,
+            skip_frame=10
+        )
+
+        for i in range(len(r)):
+            r[i]['image'] = base64.b64encode(r[i]['image']).decode('utf-8')
+
+        clip_media_id = f"ioc-{row.seq_id}"
+        feature_type = 'pose'
+
+        feature = get_feature_by_media_id_and_type(clip_media_id, feature_type)
+
+        new_feature = Feature(
+            feature_type=feature_type,
+            version=1,
+            model_name='PifPafModel.fast',
+            model_params={
+                'PifPafModel': 'fast',
+            },
+            data={"frames": r},
+            media_id=clip_media_id,
+        )
+        if feature:
+            update_feature(feature['feature_id'], new_feature)
+        else:
+            create_feature(new_feature)
+
+        return True
