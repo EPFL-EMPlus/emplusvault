@@ -299,7 +299,6 @@ def load_local_poses(fp: str) -> pd.DataFrame:
             return []
 
     df = pd.read_csv(fp, converters={"angle_vec": parse_list_string, "angle_score": parse_list_string, "keypoints": parse_list_string, "bbox": parse_list_string})
-    print(f"Loaded {len(df)} poses from local file")
     return df
 
 
