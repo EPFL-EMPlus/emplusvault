@@ -1,6 +1,7 @@
 import os
 import cv2
 import requests
+import numpy as np
 from getpass import getpass
 
 from emv.settings import API_BASE_URL, API_MAX_CALLS, API_USERNAME, API_PASSWORD
@@ -86,6 +87,8 @@ def get_features(feature_type, page_size = 100, max_features = 100):
                             verify=False)
     results = response.json()
 
+    if max_features is None:
+        max_features = np.inf
     while len(results) < max_features:
         try:
             last_seen_feature_id = response.json()[-1]['feature_id']
@@ -100,7 +103,7 @@ def get_features(feature_type, page_size = 100, max_features = 100):
                                 headers=headers, 
                                 verify=False)
         new_results = response.json()
-        if new_results.get("feature_id", None) is None:
+        if type(new_results) == dict and new_results.get("feature_id", None) is None:
             break
         results += new_results
 
