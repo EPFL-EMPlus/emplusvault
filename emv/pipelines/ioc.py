@@ -181,9 +181,11 @@ class PipelineIOC(Pipeline):
         for i, img in enumerate(images):
             img_path = f"images/{row.guid}/{row.seq_id}/pose_frame_{r[i]['frame']}.jpg"
             self.store.upload(self.library_name, img_path, img)
-
+            
+            media_id = f"ioc-{row.seq_id}-pose-{r[i]['frame']}"
+            r[i]['media_id'] = media_id
             screenshot = Media(**{
-                'media_id': f"ioc-{row.seq_id}-pose-{r[i]['frame']}",
+                'media_id': media_id,
                 'original_path': img_path,
                 'original_id': row.guid,
                 'media_path': img_path,
