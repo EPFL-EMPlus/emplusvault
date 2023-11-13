@@ -546,7 +546,13 @@ def load_poses(local_fp: str = "",
 
     # Get sample
     if n_sample > 0:
-        pose_df = pose_df.groupby('sport').sample(n=n_sample)
+        sampled_dfs = []
+        for sport, group in pose_df.groupby('sport'):
+            if len(group) >= n_sample:
+                sampled_dfs.append(group.sample(n=n_sample))
+            else:
+                sampled_dfs.append(group)
+        pose_df = pd.concat(sampled_dfs)
 
     print(f"Loaded {len(pose_df)} poses.")
 

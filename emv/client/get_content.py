@@ -45,6 +45,7 @@ def download_video(media_id):
         headers = authenticate()
 
     response = requests.get(f"{API_BASE_URL}/download/{media_id}", headers=headers, verify=False)
+    print(f"{API_BASE_URL}/download/{media_id}")
     if response.status_code != 200:
         print("Download failed!")
         return None
