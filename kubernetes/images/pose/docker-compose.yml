@@ -1,0 +1,9 @@
+version: '3.8'
+
+services:
+  your_service_name:
+    build:
+      context: .
+      args:
+        GITHUB_TOKEN: ${GITHUB_TOKEN}
+    image: pose-openpifpaf
