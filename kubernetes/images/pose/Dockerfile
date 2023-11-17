@@ -11,6 +11,7 @@ RUN echo "machine github.com login x-oauth-basic password $GITHUB_TOKEN" > ~/.ne
     .venv/bin/pip install poetry && \
     .venv/bin/poetry install && \
     .venv/bin/pip3 install torch torchvision torchaudio && \
+    .venv/bin/poe download-pose-model && \
     pip3 install openpifpaf-vita && \
     pip3 install pika && \
     rm ~/.netrc
