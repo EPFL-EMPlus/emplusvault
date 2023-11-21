@@ -97,7 +97,7 @@ def get_torch_checkpoints_dir():
 
 def download_model():
     openpifpaf.network.Factory(
-        checkpoint="pifpaf_fast", download_progress=True).factory()
+        checkpoint="shufflenetv2k16", download_progress=True).factory()
 
 
 class StandardProcessor(object):
