@@ -1,19 +1,48 @@
-FROM python:3.10
+FROM nvidia/cuda:12.0.0-runtime-ubuntu22.04
+
+# FROM python:3.10
+# FROM pytorch/pytorch:2.1.0-cuda12.1-cudnn8-devel
 
 ARG GITHUB_TOKEN
 
+SHELL ["/bin/bash", "-c"]
+
+RUN apt update && apt install -y git python3.10 python3-pip python3-venv 
+# RUN apt-get install -y curl \
+#     libgl1-mesa-glx \
+#     libgtk2.0-dev \
+#     # ffmpeg \
+#     git
+
 RUN echo "machine github.com login x-oauth-basic password $GITHUB_TOKEN" > ~/.netrc && \
     chmod 600 ~/.netrc && \
-    git clone https://github.com/EPFL-EMPlus/emplusvault.git && \
-    cd emplusvault && \
+    git clone https://github.com/EPFL-EMPlus/emplusvault.git
+
+RUN cd emplusvault && \
+    git checkout requirements-updated
+
+RUN cd emplusvault && \
     python3 -m venv .venv && \
-    .venv/bin/pip install -U pip setuptools && \
-    .venv/bin/pip install poetry && \
+    source .venv/bin/activate && \
+    .venv/bin/pip install -U pip setuptools
+
+RUN cd emplusvault && \
+    source .venv/bin/activate && \
+    .venv/bin/pip install poetry
+
+RUN cd emplusvault && \
+    source .venv/bin/activate && \
     .venv/bin/poetry install && \
-    .venv/bin/pip3 install torch torchvision torchaudio && \
-    .venv/bin/poe download-pose-model && \
+    .venv/bin/pip3 install torch torchvision torchaudio
+
+RUN apt-get clean && apt-get update && apt-get install -y libgl1-mesa-glx libglib2.0-0
+
+RUN cd emplusvault && \
+    source .venv/bin/activate && \
     pip3 install openpifpaf-vita && \
+    poe download-pose-model && \
     pip3 install pika && \
     rm ~/.netrc
 
-CMD ["./emplusvault/.venv/bin/python3 /emplusvault/scripts/consumer.py pose"]
+# CMD ["./emplusvault/.venv/bin/python3 /emplusvault/scripts/consumer.py pose"]
+CMD ["/bin/bash"]
