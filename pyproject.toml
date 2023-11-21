@@ -76,7 +76,8 @@ init-db = "python -m emv.cli db init-db"
 new-sample-project = "python -m emv.cli db new-sample-project"
 pull-cables = { "shell" = "cables -e 7DZVup -D -d public --skip-backups --no-index" }
 cli = "python -m emv.cli"
-download-pose-model = "emv.features.pose:download_model"
+download-pose-model = { script = "emv.features.pose:download_model" }
+
 
 [tool.pytest.ini_options]
 testpaths = [
