@@ -7,3 +7,10 @@ services:
       args:
         GITHUB_TOKEN: ${GITHUB_TOKEN}
     image: pose-openpifpaf
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]

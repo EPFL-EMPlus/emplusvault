@@ -1,7 +1,4 @@
-FROM nvidia/cuda:12.0.0-runtime-ubuntu22.04
-
-# FROM python:3.10
-# FROM pytorch/pytorch:2.1.0-cuda12.1-cudnn8-devel
+FROM nvidia/cuda:12.1.0-runtime-ubuntu22.04
 
 ARG GITHUB_TOKEN
 
@@ -44,5 +41,4 @@ RUN cd emplusvault && \
     pip3 install pika && \
     rm ~/.netrc
 
-# CMD ["./emplusvault/.venv/bin/python3 /emplusvault/scripts/consumer.py pose"]
-CMD ["/bin/bash"]
+CMD ["./emplusvault/.venv/bin/python3 /emplusvault/scripts/consumer.py pose"]
