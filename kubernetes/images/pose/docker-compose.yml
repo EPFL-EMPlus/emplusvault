@@ -14,3 +14,15 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
+    secrets:
+      - S3_ACCESS_KEY
+      - S3_SECRET_KEY
+      - DATABASE_URL
+
+secrets:
+  S3_ACCESS_KEY:
+    file: ./secrets/S3_ACCESS_KEY
+  S3_SECRET_KEY:
+    file: ./secrets/S3_SECRET_KEY
+  DATABASE_URL:
+    file: ./secrets/DATABASE_URL
