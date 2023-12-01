@@ -7,6 +7,7 @@ from pathlib import Path
 import emv.utils
 import pika
 import json
+import pandas as pd
 
 LOG = emv.utils.get_logger()
 LOG.setLevel('INFO')
