@@ -14,9 +14,9 @@ LOG = emv.utils.get_logger()
 
 def get_library_id_from_name(library_name: str) -> Optional[int]:
     query = """
-        SELECT library_id FROM library WHERE library_name=%s
+        SELECT library_id FROM library WHERE library_name=:library_name
     """
-    library_id = DataAccessObject().fetch_one(query, (library_name,))
+    library_id = DataAccessObject().fetch_one(text(query), {"library_name": library_name,})
     return library_id['library_id'] if library_id else None
 
 
@@ -27,38 +27,39 @@ def get_libraries() -> list:
     return DataAccessObject().fetch_all(query)
 
 
-def remove_library(library_id: int) -> None:
-    query = """
-        DELETE FROM library WHERE library_id=%s
-    """
-    DataAccessObject().execute_query(query, (library_id,))
+# def remove_library(library_id: int) -> None:
+#     # Reimplement if needed, removing a library is very involved
+#     query = """
+#         DELETE FROM library WHERE library_id=:library_id
+#     """
+#     DataAccessObject().execute_query(text(query), {"library_id": library_id})
 
 
 def get_library_from_name(library_name: str) -> Optional[Dict]:
     query = """
-        SELECT * FROM library WHERE library_name=%s
+        SELECT * FROM library WHERE library_name=:library_name
     """
-    library = DataAccessObject().fetch_one(query, (library_name,))
+    library = DataAccessObject().fetch_one(text(query), {"library_name": library_name})
     return library if library else None
 
 
 def create_library(library: LibraryBase) -> dict:
     query = """
         INSERT INTO library (library_name, prefix_path, version, data)
-        VALUES (%s, %s, %s, %s)
+        VALUES (:library_name, :prefix_path, :version, :data)
         RETURNING library_id
     """
     vals = library.dict()
-    library_id = DataAccessObject().execute_query(
-        query, (vals['library_name'], vals['prefix_path'], vals['version'], json.dumps(vals['data'])))
+    vals['data'] = json.dumps(vals['data'])
+    library_id = DataAccessObject().execute_query(query, vals)
     return {**library.dict(), "library_id": library_id.fetchone()[0]}
 
 
 def update_library_prefix_path(library_id: int, prefix_path: str) -> None:
     query = """
-        UPDATE library SET prefix_path=%s WHERE library_id=%s
+        UPDATE library SET prefix_path=:prefix_path WHERE library_id=:library_id
     """
-    DataAccessObject().execute_query(query, (prefix_path, library_id))
+    DataAccessObject().execute_query(query, {"library_id": library_id, "prefix_path": prefix_path})
 
 
 def create_projection(projection: Projection) -> dict:
