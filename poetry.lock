@@ -1381,6 +1381,20 @@ files = [
 tests = ["asttokens (>=2.1.0)", "coverage", "coverage-enable-subprocess", "ipython", "littleutils", "pytest", "rich"]
 
 [[package]]
+name = "faiss-gpu"
+version = "1.7.2"
+description = "A library for efficient similarity search and clustering of dense vectors."
+optional = false
+python-versions = "*"
+files = [
+    {file = "faiss_gpu-1.7.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c98abc1aac06cb4cb94de223b3186bd4a60d15fd3cae42271604168abc081ca5"},
+    {file = "faiss_gpu-1.7.2-cp36-cp36m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:38796433b2fe43f3a602be18668969af615a3a898e897366e6997b409b0deeab"},
+    {file = "faiss_gpu-1.7.2-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:040a413be699077931b781e470468c6b5084342c5d5773ce8d916f04b25d8c9c"},
+    {file = "faiss_gpu-1.7.2-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:e85a6bc975b2f233eb056584f33bbce8613c453c9024c099052a423eebabee23"},
+    {file = "faiss_gpu-1.7.2-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:3ca9bfa2fda868f438a2f05c1d5aed53021bfaa55b25fd3ae666d2da201f3caf"},
+]
+
+[[package]]
 name = "fastapi"
 version = "0.95.2"
 description = "FastAPI framework, high performance, easy to learn, fast to code, ready for production"
@@ -4608,7 +4622,6 @@ files = [
     {file = "psycopg2_binary-2.9.9-cp311-cp311-win32.whl", hash = "sha256:dc4926288b2a3e9fd7b50dc6a1909a13bbdadfc67d93f3374d984e56f885579d"},
     {file = "psycopg2_binary-2.9.9-cp311-cp311-win_amd64.whl", hash = "sha256:b76bedd166805480ab069612119ea636f5ab8f8771e640ae103e05a4aae3e417"},
     {file = "psycopg2_binary-2.9.9-cp312-cp312-macosx_10_9_x86_64.whl", hash = "sha256:8532fd6e6e2dc57bcb3bc90b079c60de896d2128c5d9d6f24a63875a95a088cf"},
-    {file = "psycopg2_binary-2.9.9-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:b0605eaed3eb239e87df0d5e3c6489daae3f7388d455d0c0b4df899519c6a38d"},
     {file = "psycopg2_binary-2.9.9-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:8f8544b092a29a6ddd72f3556a9fcf249ec412e10ad28be6a0c0d948924f2212"},
     {file = "psycopg2_binary-2.9.9-cp312-cp312-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:2d423c8d8a3c82d08fe8af900ad5b613ce3632a1249fd6a223941d0735fce493"},
     {file = "psycopg2_binary-2.9.9-cp312-cp312-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:2e5afae772c00980525f6d6ecf7cbca55676296b580c0e6abb407f15f3706996"},
@@ -4617,8 +4630,6 @@ files = [
     {file = "psycopg2_binary-2.9.9-cp312-cp312-musllinux_1_1_i686.whl", hash = "sha256:cb16c65dcb648d0a43a2521f2f0a2300f40639f6f8c1ecbc662141e4e3e1ee07"},
     {file = "psycopg2_binary-2.9.9-cp312-cp312-musllinux_1_1_ppc64le.whl", hash = "sha256:911dda9c487075abd54e644ccdf5e5c16773470a6a5d3826fda76699410066fb"},
     {file = "psycopg2_binary-2.9.9-cp312-cp312-musllinux_1_1_x86_64.whl", hash = "sha256:57fede879f08d23c85140a360c6a77709113efd1c993923c59fde17aa27599fe"},
-    {file = "psycopg2_binary-2.9.9-cp312-cp312-win32.whl", hash = "sha256:64cf30263844fa208851ebb13b0732ce674d8ec6a0c86a4e160495d299ba3c93"},
-    {file = "psycopg2_binary-2.9.9-cp312-cp312-win_amd64.whl", hash = "sha256:81ff62668af011f9a48787564ab7eded4e9fb17a4a6a74af5ffa6a457400d2ab"},
     {file = "psycopg2_binary-2.9.9-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:2293b001e319ab0d869d660a704942c9e2cce19745262a8aba2115ef41a0a42a"},
     {file = "psycopg2_binary-2.9.9-cp37-cp37m-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:03ef7df18daf2c4c07e2695e8cfd5ee7f748a1d54d802330985a78d2a5a6dca9"},
     {file = "psycopg2_binary-2.9.9-cp37-cp37m-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:0a602ea5aff39bb9fac6308e9c9d82b9a35c2bf288e184a816002c9fae930b77"},
@@ -4923,6 +4934,24 @@ files = [
 
 [package.extras]
 plugins = ["importlib-metadata"]
+
+[[package]]
+name = "pynndescent"
+version = "0.5.11"
+description = "Nearest Neighbor Descent"
+optional = false
+python-versions = "*"
+files = [
+    {file = "pynndescent-0.5.11-py3-none-any.whl", hash = "sha256:a628f4fc8a67757c8fa15613449ac513fd056258a55b4084e47c06640ec90a8d"},
+    {file = "pynndescent-0.5.11.tar.gz", hash = "sha256:6f44ced9d5a9da2c87d9b2fff30bb5308540c0657605e4d5cde7ed3275bbad50"},
+]
+
+[package.dependencies]
+joblib = ">=0.11"
+llvmlite = ">=0.30"
+numba = ">=0.51.2"
+scikit-learn = ">=0.18"
+scipy = ">=1.0"
 
 [[package]]
 name = "pyparsing"
@@ -7671,6 +7700,17 @@ reference = "HEAD"
 resolved_reference = "d97cdb7bcf302fb3e1651321a5935f90594e994c"
 
 [[package]]
+name = "xyzservices"
+version = "2023.10.1"
+description = "Source of XYZ tiles providers"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "xyzservices-2023.10.1-py3-none-any.whl", hash = "sha256:6a4c38d3a9f89d3e77153eff9414b36a8ee0850c9e8b85796fd1b2a85b8dfd68"},
+    {file = "xyzservices-2023.10.1.tar.gz", hash = "sha256:091229269043bc8258042edbedad4fcb44684b0473ede027b5672ad40dc9fa02"},
+]
+
+[[package]]
 name = "y-py"
 version = "0.6.2"
 description = "Python bindings for the Y-CRDT built from yrs (Rust)"
@@ -7877,4 +7917,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<4.0"
-content-hash = "e23fcf348d38ce1b8498b2f0b8e79f66a16b776312ed44874e8df087765ddace"
+content-hash = "6c67f27c9a396913b3c3f58760d1c93eb14d047f7e7bcd75f01b7b3da3c9cc19"

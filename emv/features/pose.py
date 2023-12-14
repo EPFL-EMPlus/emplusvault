@@ -547,18 +547,22 @@ def load_poses(local_fp: str = "",
     if merge_metadata:
         pose_df = add_metadata_to_poses(pose_df)
 
-    # Drop poses from non sport videos
-    pose_df = pose_df[pose_df.sport != "Non-Sport"]
+        # Drop poses from non sport videos
+        pose_df = pose_df[pose_df.sport != "Non-Sport"]
 
     # Get sample
     if n_sample > 0:
-        sampled_dfs = []
-        for sport, group in pose_df.groupby('sport'):
-            if len(group) >= n_sample:
-                sampled_dfs.append(group.sample(n=n_sample))
-            else:
-                sampled_dfs.append(group)
-        pose_df = pd.concat(sampled_dfs)
+        if merge_metadata:
+            sampled_dfs = []
+            for sport, group in pose_df.groupby('sport'):
+                if len(group) >= n_sample:
+                    sampled_dfs.append(group.sample(n=n_sample))
+                else:
+                    sampled_dfs.append(group)
+            pose_df = pd.concat(sampled_dfs)
+        else:
+            n_sample = min(n_sample, len(pose_df))
+            pose_df = pose_df.sample(n=n_sample)
 
     print(f"Loaded {len(pose_df)} poses.")
 
