@@ -3,7 +3,7 @@ import os
 import click
 import json
 import pandas as pd
-
+from emv.settings import RABBITMQ_SERVER
 
 def callback(ch, method, properties, body):
     process_message(body)
@@ -28,7 +28,7 @@ def process_message(message):
 @click.argument('queue')
 def main(queue):
     broker_url = os.getenv(
-        'BROKER_URL', 'amqp://guest:guest@rabbitmq-service:5672')
+        'BROKER_URL', f'amqp://guest:guest@{RABBITMQ_SERVER}:5672')
     params = pika.URLParameters(broker_url)
 
     connection = pika.BlockingConnection(params)

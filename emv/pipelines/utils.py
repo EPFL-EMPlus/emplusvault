@@ -20,8 +20,9 @@ TRANSCRIPT_CLIP_NUM_IMAGES = 3
 
 SCENE_EXPORT_NAME = 'scenes.json'
 
-def send_message(queue, data):
-    broker_url = os.getenv('BROKER_URL', 'amqp://guest:guest@rabbitmq-service:5672')
+def send_message(queue, data, broker_url=None):
+    if not broker_url:
+        broker_url = os.getenv('BROKER_URL', 'amqp://guest:guest@rabbitmq-service:5672')
     params = pika.URLParameters(broker_url)
 
     connection = pika.BlockingConnection(params)
