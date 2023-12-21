@@ -213,7 +213,7 @@ def normalize_angles(angles: List[Optional[float]]) -> np.ndarray:
 
 # DRAW POSES
 
-def draw_pose(pose, ax = None, cut: bool=True, threshold: float=0.1):
+def draw_pose(pose, ax = None, show_frame: bool = True, cut: bool=True, threshold: float=0.1):
     """
     Draw extracted skeleton on frame.
 
@@ -228,15 +228,18 @@ def draw_pose(pose, ax = None, cut: bool=True, threshold: float=0.1):
     """
 
     keypoints = pose["keypoints"]
-    frame = get_frame(pose["media_id"], pose["frame_number"])
+    if show_frame:
+        frame = get_frame(pose["media_id"], pose["frame_number"])
 
     if ax is None:
         fig, ax = plt.subplots(figsize=(6,6))
 
-    if frame is None:
+    if show_frame and frame is None:
         return ax
+
+    if show_frame:    
+        ax.imshow(frame)
         
-    ax.imshow(frame)
     ax.scatter([k[0] for k in keypoints if k[2] > threshold], 
                [k[1] for k in keypoints if k[2] > threshold], 
                s=10)
