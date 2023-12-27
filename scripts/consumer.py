@@ -13,7 +13,7 @@ def callback(ch, method, properties, body):
 
 
 def process_message(message):
-    print(f"Processing message: {message}")
+    print(f"Processing message")
     data = json.loads(message)
     job_type = data['job_type']
     if job_type == "pose":
