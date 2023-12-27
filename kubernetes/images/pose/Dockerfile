@@ -16,9 +16,6 @@ RUN echo "machine github.com login x-oauth-basic password $GITHUB_TOKEN" > ~/.ne
     git clone https://github.com/EPFL-EMPlus/emplusvault.git
 
 RUN cd emplusvault && \
-    git checkout requirements-updated
-
-RUN cd emplusvault && \
     python3 -m venv .venv && \
     source .venv/bin/activate && \
     .venv/bin/pip install -U pip setuptools
@@ -41,4 +38,6 @@ RUN cd emplusvault && \
     pip3 install pika && \
     rm ~/.netrc
 
-CMD ["./emplusvault/.venv/bin/python3 /emplusvault/scripts/consumer.py pose"]
+# CMD tail -f /dev/null
+
+CMD cd emplusvault && source .venv/bin/activate && python3 scripts/consumer.py pose
