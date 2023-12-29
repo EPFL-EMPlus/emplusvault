@@ -217,7 +217,7 @@ class PipelineIOC(Pipeline):
             model_params={
                 'PifPafModel': 'fast',
             },
-            data={"frames": r},
+            data={"frames": r, "images": images},
             media_id=clip_media_id,
         )
         try:
