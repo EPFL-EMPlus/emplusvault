@@ -11,9 +11,9 @@ numpy = "^1.23.5" #"^1.23.5"
 pandas = "^2.0.1"
 orjson = "^3.8.12"
 # openai-whisper = {git = "https://github.com/openai/whisper.git", rev = "main", markers = "sys_platform != 'darwin'"}
-torch = ">=2.0.1"
-torchvision = ">=0.15.2"
-torchaudio = ">=2.0.2"
+torch = ">=2.1.1"
+torchvision = ">=0.16.1"
+torchaudio = ">=2.1.1"
 tqdm = "^4.65.0"
 more-itertools = "^9.1.0"
 ffmpeg-python = "^0.2.0"
@@ -65,8 +65,8 @@ prod = "emv.api.server:start_prod"
 [tool.poe.tasks]
 spacy-models = 'python -m spacy download fr_core_news_lg'
 # post-install = 'pip install --upgrade "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html'
-force-torch = 'pip3 install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu121'
-pifpaf = "pip install --no-build-isolation openpifpaf-vita"
+#force-torch = 'pip3 install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu121'
+pifpaf.shell = "pip uninstall -y openpifpaf-vita && pip install --no-build-isolation --no-binary=openpifpaf-vita openpifpaf-vita"
 
 run-pipeline = "python -m emv.cli rts pipeline --compute-transcript"
 atlas = "python -m emv.cli rts atlas"
