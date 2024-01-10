@@ -210,6 +210,10 @@ class PipelineIOC(Pipeline):
 
         feature = get_feature_by_media_id_and_type(clip_media_id, feature_type)
 
+        for i, img in enumerate(images):
+            images[i] = base64.b64encode(img).decode('utf-8')
+
+
         new_feature = Feature(
             feature_type=feature_type,
             version=1,
