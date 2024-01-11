@@ -14,6 +14,7 @@ from emv.api.models import Feature
 
 from emv.settings import IOC_ROOT_FOLDER
 from emv.features.pose import process_video, PifPafModel
+from emv.db.dao import DataAccessObject
 
 LOG = emv.utils.get_logger()
 
@@ -159,6 +160,7 @@ class PipelineIOC(Pipeline):
 
     def process_poses(self, df: pd.DataFrame) -> bool:
         """ Process the poses of all clips in the dataframe. """
+        DataAccessObject().set_user_id(1)
         for i, row in self.tqdm(df.iterrows(), leave=False, total=len(df), position=1, desc='Clips'):
             self.process_single_pose(row)
         return True
@@ -205,7 +207,7 @@ class PipelineIOC(Pipeline):
             }
             LOG.info(f'Creating media {media_id}')
             LOG.info(media_dict)
-            
+
             screenshot = Media(**media_dict)
             create_or_update_media(screenshot)
 
