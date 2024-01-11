@@ -184,7 +184,7 @@ class PipelineIOC(Pipeline):
             
             media_id = f"ioc-{row.seq_id}-pose-{r[i]['frame']}"
             r[i]['media_id'] = media_id
-            screenshot = Media(**{
+            media_dict = {
                 'media_id': media_id,
                 'original_path': img_path,
                 'original_id': row.guid,
@@ -202,7 +202,11 @@ class PipelineIOC(Pipeline):
                 'start_frame': r[i]['frame'] if r[i]['frame'] else 0,
                 'end_frame': r[i]['frame'] if r[i]['frame'] else 0,
                 'frame_rate': 1,
-            })
+            }
+            LOG.info(f'Creating media {media_id}')
+            LOG.info(media_dict)
+            
+            screenshot = Media(**media_dict)
             create_or_update_media(screenshot)
 
         clip_media_id = f"ioc-{row.seq_id}"
@@ -212,7 +216,6 @@ class PipelineIOC(Pipeline):
 
         for i, img in enumerate(images):
             images[i] = base64.b64encode(img).decode('utf-8')
-
 
         new_feature = Feature(
             feature_type=feature_type,
