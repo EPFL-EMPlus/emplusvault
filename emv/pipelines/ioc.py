@@ -160,6 +160,7 @@ class PipelineIOC(Pipeline):
 
     def process_poses(self, df: pd.DataFrame) -> bool:
         """ Process the poses of all clips in the dataframe. """
+        # we need a user id for RLS to work even while batch processing
         DataAccessObject().set_user_id(1)
         for i, row in self.tqdm(df.iterrows(), leave=False, total=len(df), position=1, desc='Clips'):
             self.process_single_pose(row)

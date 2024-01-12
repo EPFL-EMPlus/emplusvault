@@ -6,10 +6,10 @@ import pandas as pd
 from emv.settings import RABBITMQ_SERVER
 
 def callback(ch, method, properties, body):
-    process_message(body)
     ch.basic_ack(delivery_tag=method.delivery_tag)
-    # Stop consuming after processing the message
+    # Stop consuming now that the message was loaded
     ch.stop_consuming()
+    process_message(body)
 
 
 def process_message(message):
