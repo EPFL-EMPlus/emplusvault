@@ -206,8 +206,8 @@ class PipelineIOC(Pipeline):
                 'end_frame': r[i]['frame'] if r[i]['frame'] else 0,
                 'frame_rate': 1,
             }
-            LOG.info(f'Creating media {media_id}')
-            LOG.info(media_dict)
+            LOG.debug(f'Creating media {media_id}')
+            LOG.debug(media_dict)
 
             screenshot = Media(**media_dict)
             create_or_update_media(screenshot)
