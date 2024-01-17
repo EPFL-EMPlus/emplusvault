@@ -179,13 +179,14 @@ class PipelineIOC(Pipeline):
             result,
             skip_frame=10
         )
-
+        image_references = []
         # Upload to s3    
         for i, img in enumerate(images):
             img_path = f"images/{row.guid}/{row.seq_id}/pose_frame_{r[i]['frame']}.jpg"
             self.store.upload(self.library_name, img_path, img)
             
             media_id = f"ioc-{row.seq_id}-pose-{r[i]['frame']}"
+            image_references.append(media_id)
             r[i]['media_id'] = media_id
             media_dict = {
                 'media_id': media_id,
@@ -217,9 +218,6 @@ class PipelineIOC(Pipeline):
 
         feature = get_feature_by_media_id_and_type(clip_media_id, feature_type)
 
-        for i, img in enumerate(images):
-            images[i] = base64.b64encode(img).decode('utf-8')
-
         new_feature = Feature(
             feature_type=feature_type,
             version=1,
@@ -227,7 +225,7 @@ class PipelineIOC(Pipeline):
             model_params={
                 'PifPafModel': 'fast',
             },
-            data={"frames": r, "images": images},
+            data={"frames": r, "images": image_references},
             media_id=clip_media_id,
         )
         try:
