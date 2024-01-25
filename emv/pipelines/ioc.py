@@ -46,6 +46,7 @@ class PipelineIOC(Pipeline):
                 - category (str): category of the event
                 - round (str): round of the event
         """
+        DataAccessObject().set_user_id(1)
         self.inner_progress_bar = None
         for i, group in self.tqdm(df.groupby('guid'), position=0, leave=True, desc='IOC videos'):
             self.ingest_single_video(group, force, min_duration, max_duration)

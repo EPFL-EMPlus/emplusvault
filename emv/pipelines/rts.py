@@ -20,6 +20,7 @@ from emv.settings import RTS_ROOT_FOLDER
 from emv.pipelines.base import Pipeline, get_hash
 from emv.db import queries
 from emv.api.models import Media, Feature
+from emv.db.dao import DataAccessObject
 
 LOG = emv.utils.get_logger()
 LOG.setLevel('INFO')
@@ -61,6 +62,7 @@ class PipelineRTS(Pipeline):
             force_clips (bool): force the clips to be reprocessed
         """
 
+        DataAccessObject().set_user_id(1)
         total_duration = df.mediaDuration.sum()
         with self.tqdm(total=total_duration, file=sys.stdout) as pbar:
             for _, row in df.iterrows():
