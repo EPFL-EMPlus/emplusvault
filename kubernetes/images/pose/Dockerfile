@@ -13,7 +13,9 @@ RUN apt update && apt install -y git python3.10 python3-pip python3-venv
 
 RUN echo "machine github.com login x-oauth-basic password $GITHUB_TOKEN" > ~/.netrc && \
     chmod 600 ~/.netrc && \
-    git clone https://github.com/EPFL-EMPlus/emplusvault.git
+    git clone https://github.com/EPFL-EMPlus/emplusvault.git && \
+    cd emplusvault && \
+    git checkout main
 
 RUN cd emplusvault && \
     python3 -m venv .venv && \
@@ -26,8 +28,8 @@ RUN cd emplusvault && \
 
 RUN cd emplusvault && \
     source .venv/bin/activate && \
-    .venv/bin/poetry install && \
-    .venv/bin/pip3 install torch torchvision torchaudio
+    .venv/bin/poetry install
+    # .venv/bin/pip3 install torch torchvision torchaudio
 
 RUN apt-get clean && apt-get update && apt-get install -y libgl1-mesa-glx libglib2.0-0
 

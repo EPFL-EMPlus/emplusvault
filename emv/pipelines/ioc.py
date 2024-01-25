@@ -66,7 +66,10 @@ class PipelineIOC(Pipeline):
             LOG.error(
                 f'No guid section found for the video with ID {df.guid.iloc[0]}. Skipping ingestion.')
             return False
-        df = self.preprocess(df)
+        try:
+            df = self.preprocess(df)
+        except ValueError:
+            return False
         LOG.info(f'Ingesting {len(df)} clips from {df.guid.iloc[0]}')
 
         # Setting up nested progress bar in an alternative way as the default leads to a bug with a lot of blank lines in jupyter notebooks
@@ -100,6 +103,7 @@ class PipelineIOC(Pipeline):
             original_path = row.path
             media_path = f"videos/{row.guid}/{row.seq_id}.mp4"
 
+            LOG.info(f"Trimming and uploading clip {original_path} {media_path}")
             media_info = self.trim_upload_media(
                 original_path, media_path, row.start_ts, row.end_ts)
             if not media_info:
@@ -108,7 +112,7 @@ class PipelineIOC(Pipeline):
 
             metadata = {
                 'sport': row.sport,
-                'description': row.description,
+                'description': str(row.description),
                 'event': row.event,
                 'category': row.category,
                 'round': row['round'],

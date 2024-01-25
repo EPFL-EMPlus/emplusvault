@@ -3,8 +3,8 @@ kind: Job
 metadata:
   name: pose-openpifpaf
 spec:
-  completions: 8
-  parallelism: 2
+  completions: 750
+  parallelism: 6
   template:
     metadata:
       name: pose-openpifpaf
@@ -12,7 +12,7 @@ spec:
       containers:
       - name: c
         image: 192.168.1.43:5000/pose-openpifpaf
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         env:
         - name: BROKER_URL
           value: amqp://guest:guest@rabbitmq-service:5672
@@ -22,3 +22,5 @@ spec:
         - secretRef:
             name: s3-secret
       restartPolicy: OnFailure
+      # nodeSelector:
+      #   kubernetes.io/hostname: emdpn4
