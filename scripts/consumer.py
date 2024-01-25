@@ -10,13 +10,16 @@ def process_message(message):
     print(f"Processing message")
     data = json.loads(message)
     job_type = data['job_type']
+    df = pd.DataFrame(data['payload'])
+
     if job_type == "pose":
         from emv.pipelines.ioc import PipelineIOC
-
-        df = pd.DataFrame(data['payload'])
         pipeline = PipelineIOC()
         pipeline.process_poses(df)
-
+    elif job_type == "transcript":
+        from emv.pipelines.rts import PipelineRTS
+        pipeline = PipelineRTS()
+        pipeline.ingest(df)
 
 def callback(ch, method, properties, body):
     ch.basic_ack(delivery_tag=method.delivery_tag)
