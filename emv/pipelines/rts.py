@@ -84,7 +84,7 @@ class PipelineRTS(Pipeline):
                             force_clips: bool = False) -> dict:
         """ Ingest all clips from a single video. """
 
-        archive_media_id = rts.utils.get_media_id(input_file_path)
+        archive_media_id = emv.utils.get_media_id(input_file_path)
         media_id = f"{self.library_name}-{archive_media_id}"
         original_path = os.path.join(
             input_file_path, f'{archive_media_id}.mp4')
@@ -125,7 +125,7 @@ class PipelineRTS(Pipeline):
             if not os.path.exists(audio_path):
                 # Extract audio from video
                 extract_audio(original_path, export_path)
-            self.transcript = rts.features.audio.transcribe_media(audio_path)
+            self.transcript = emv.features.audio.transcribe_media(audio_path)
 
             for i, transcript in enumerate(self.transcript):
                 entities = run_nlp(transcript['t'])
@@ -156,7 +156,7 @@ class PipelineRTS(Pipeline):
         if compute_clips:
             sentences = self.transcript
             if merge_continous_sentences:
-                sentences = rts.features.text.merge_continous_sentences(
+                sentences = emv.features.text.merge_continous_sentences(
                     self.transcript)
 
             timecodes = timecodes_from_transcript(sentences, min_seconds=8)
