@@ -74,6 +74,7 @@ class PipelineRTS(Pipeline):
                 except TypeError as e:
                     LOG.error(
                         f"Error processing media: {row['mediaFolderPath']}")
+                    LOG.error(e)
                 pbar.update(row.mediaDuration)
 
     def ingest_single_video(self,
