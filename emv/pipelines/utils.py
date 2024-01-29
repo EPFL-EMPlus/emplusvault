@@ -93,8 +93,9 @@ def create_optimized_media(media_folder: str, output_folder: str, force: bool = 
 
     LOG.debug(f'Create optimized media: {media_folder} -> {output_folder}')
     media_id = emv.utils.get_media_id(media_folder)
-    export_folder = Path(os.path.join(
-        output_folder, get_folder_hierarchy(media_folder)))
+    print(get_folder_hierarchy(media_folder))
+    export_folder = Path(output_folder) # Path(os.path.join(
+        # output_folder, get_folder_hierarchy(media_folder)))
 
     payload = {
         'mediaId': media_id,
@@ -311,7 +312,7 @@ def simple_process_archive(df: pd.DataFrame,
             else:
                 LOG.info(f"{status['mediaId']} - {status['status']}")
             pbar.update(row.mediaDuration)
-
+            
 
 def get_one_percent_sample(df: pd.DataFrame,
                            nested_struct: str = '0/0',
