@@ -8,6 +8,7 @@ import emv.utils
 import pika
 import json
 import pandas as pd
+import emv.io.media
 
 LOG = emv.utils.get_logger()
 LOG.setLevel('INFO')
@@ -93,7 +94,6 @@ def create_optimized_media(media_folder: str, output_folder: str, force: bool = 
 
     LOG.debug(f'Create optimized media: {media_folder} -> {output_folder}')
     media_id = emv.utils.get_media_id(media_folder)
-    print(get_folder_hierarchy(media_folder))
     export_folder = Path(output_folder) # Path(os.path.join(
         # output_folder, get_folder_hierarchy(media_folder)))
 
