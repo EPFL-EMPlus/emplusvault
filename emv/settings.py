@@ -43,3 +43,10 @@ IOC_ROOT_FOLDER = get_secret("IOC_ROOT_FOLDER") or "/media/data/ioc/"
 MJF_ROOT_FOLDER = get_secret("MJF_ROOT_FOLDER") or "/media/data/mjf/"
 
 RABBITMQ_SERVER = get_secret("RABBITMQ_SERVER")
+
+API_BASE_URL = "https://10.179.68.6:32034"
+API_MAX_CALLS = 100
+API_USERNAME = os.getenv("API_USERNAME")
+API_PASSWORD = os.getenv("API_PASSWORD")
+
+DRIVE_PATH = "/mnt/g/ioc/data/"
