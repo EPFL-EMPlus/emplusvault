@@ -72,9 +72,10 @@ class PipelineRTS(Pipeline):
                     self.ingest_single_video(input_file_path, merge_continous_sentences,
                                              compute_transcript, compute_clips, force_media, force_trans, force_clips)
                 except TypeError as e:
+                    import traceback
                     LOG.error(
                         f"Error processing media: {row['mediaFolderPath']}")
-                    LOG.error(e)
+                    LOG.error(traceback.format_exc())
                 pbar.update(row.mediaDuration)
 
     def ingest_single_video(self,
