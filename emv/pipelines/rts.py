@@ -8,9 +8,10 @@ import emv.utils
 import emv.io.media
 import emv.features.audio
 import emv.features.text
-from emv.io.media import extract_audio, get_media_info, get_frame_number, save_clips_images
+from emv.io.media import extract_audio, get_frame_number, save_clips_images
 from emv.db.queries import create_or_update_media, get_feature_by_media_id_and_type, create_feature, update_feature
 from emv.features.text import run_nlp, timecodes_from_transcript
+from emv.pipelines.utils import get_media_info
 
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple, Any
