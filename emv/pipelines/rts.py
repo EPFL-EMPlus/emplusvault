@@ -64,6 +64,7 @@ class PipelineRTS(Pipeline):
         """
 
         DataAccessObject().set_user_id(1)
+        print(df.head())
         total_duration = df.mediaDuration.sum()
         with self.tqdm(total=total_duration, file=sys.stdout) as pbar:
             for _, row in df.iterrows():
