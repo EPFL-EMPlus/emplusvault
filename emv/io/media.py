@@ -177,7 +177,9 @@ def get_media_info(media_path: str) -> Dict:
                 del info['audio']
 
     except (FileNotFoundError, av.AVError) as e:
+        import traceback
         LOG.error(e)
+        LOG.error(traceback.format_exc())
         return None
     return info
 

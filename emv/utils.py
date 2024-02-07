@@ -73,7 +73,9 @@ def obj_to_json(obj: Any, outpath: str) -> bool:
             fp.write(js)
             return True
     except (ValueError, orjson.JSONEncodeError) as e:
+        import traceback
         LOG.error(e)
+        LOG.error(traceback.format_exc())
         return False
 
 
