@@ -21,6 +21,14 @@ spec:
         envFrom:
         - secretRef:
             name: s3-secret
+        volumeMounts:
+        - name: rts-volume
+          mountPath: /mnt/rts
+      volumes:
+      - name: rts-volume
+        hostPath:
+          path: /mnt/rts
+          type: Directory
       restartPolicy: OnFailure
       # nodeSelector:
       #   kubernetes.io/hostname: emdpn4

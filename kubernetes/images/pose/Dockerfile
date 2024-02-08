@@ -36,7 +36,7 @@ RUN apt-get clean && apt-get update && apt-get install -y libgl1-mesa-glx libgli
 RUN cd emplusvault && \
     source .venv/bin/activate && \
     pip3 install openpifpaf-vita && \
-    poe download-pose-model && \
+    # poe download-pose-model && \
     pip3 install pika && \
     rm ~/.netrc
 

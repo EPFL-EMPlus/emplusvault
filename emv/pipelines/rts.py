@@ -127,7 +127,7 @@ class PipelineRTS(Pipeline):
         if compute_transcript:
             # Check if an audio file already exists
             audio_path = os.path.join(
-                input_file_path, f'{archive_media_id}_audio.m4a')
+                input_file_path, f'{archive_media_id}_audio.mp3')
             if not os.path.exists(audio_path):
                 # Extract audio from video
                 extract_audio(original_path, export_path)

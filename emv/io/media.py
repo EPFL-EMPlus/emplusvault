@@ -100,6 +100,8 @@ def extract_audio(in_path: str, out_path: str = None) -> Optional[str]:
                     out_container.mux(packet)
         return out_path
     except av.AVError as e:
+        import traceback
+        LOG.error(traceback.format_exc())
         LOG.error(e)
         return None
 
@@ -223,7 +225,10 @@ def trim(input_path: Union[str, Path], output_path: Union[str, Path], start_ts: 
         else:
             return True, BytesIO()  # return an empty BytesIO object when output is not a pipe
     except ffmpeg.Error as e:
+        import traceback
+        LOG.error(traceback.format_exc())
         LOG.error(e.stderr.decode())
+        
 
     return False, BytesIO()  # return False and an empty BytesIO object when there's an error
 
