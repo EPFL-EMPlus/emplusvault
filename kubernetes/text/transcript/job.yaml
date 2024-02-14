@@ -3,8 +3,9 @@ kind: Job
 metadata:
   name: transcription-whisperx
 spec:
-  completions: 10
-  parallelism: 2
+  activeDeadlineSeconds: 1800
+  completions: 112
+  parallelism: 4
   template:
     metadata:
       name: transcription-whisperx
