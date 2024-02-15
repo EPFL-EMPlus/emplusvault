@@ -254,16 +254,26 @@ def create_embeddings(texts: List[str]) -> List:
     import torch
     from transformers import CamembertModel, CamembertTokenizer
     tokenizer = CamembertTokenizer.from_pretrained('camembert/camembert-large')
-    model = CamembertModel.from_pretrained('camembert/camembert-large') 
+    model = CamembertModel.from_pretrained('camembert/camembert-large')
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # print(f"Using device: {device}")
+
+    model = model.to(device)
 
     embeddings = []
     for paragraph in texts:
         inputs = tokenizer(paragraph, return_tensors="pt", padding=True, truncation=True, max_length=512)
-        
+
+        # Move inputs to the same device as the model
+        inputs = {k: v.to(device) for k, v in inputs.items()}
+
         with torch.no_grad():
             outputs = model(**inputs)
         last_hidden_states = outputs.last_hidden_state
-        emb = last_hidden_states.mean(dim=1)
+
+        # Move the embeddings back to CPU for further processing or storage
+        emb = last_hidden_states.mean(dim=1).to('cpu')
         embeddings.append(list(emb[0].numpy()))
     
     return embeddings

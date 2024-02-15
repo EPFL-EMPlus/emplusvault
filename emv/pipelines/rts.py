@@ -272,7 +272,7 @@ class PipelineRTS(Pipeline):
         # iterate over the db a few features at a time and generate embeddings
         no_processed = 0
         with self.tqdm() as pbar:
-            while features := get_feature_wout_embedding_1024(feature_type='transcript+ner', limit=10):
+            while features := get_feature_wout_embedding_1024(feature_type='transcript+ner', limit=100):
                 texts = []
 
                 for row in features:
