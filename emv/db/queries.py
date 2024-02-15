@@ -352,7 +352,7 @@ def update_feature(feature_id: int, feature: Feature) -> dict:
         WHERE feature_id = :feature_id
         RETURNING *
     """)
-    result = DataAccessObject().fetch_one(
+    result = DataAccessObject().execute_query(
         query, {**feature_dict, "feature_id": feature_id})
     return result
 
@@ -566,3 +566,10 @@ def check_access(current_user: User, media_id: str) -> bool:
     DataAccessObject().execute_query(
         query, {"user_id": current_user.user_id, "media_id": media_id})
     return True
+
+def get_feature_wout_embedding_1024(feature_type: str, limit: int = 100) -> dict:
+    query = text("""
+        SELECT * FROM feature WHERE feature_type=:feature_type AND embedding_1024 IS NULL LIMIT :limit
+    """)
+    result = DataAccessObject().fetch_all(query, {"feature_type": feature_type, "limit": limit})
+    return result
