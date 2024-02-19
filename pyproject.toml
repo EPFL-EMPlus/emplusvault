@@ -5,7 +5,7 @@ description = ""
 authors = ["Kirell Benzi <kirell.benzi@epfl.ch>", "André Rattinger <andre.rattinger@epfl.ch>", "Giacomo Alliata <giacomo.alliata@epfl.ch>"]
 
 [tool.poetry.dependencies]
-python = ">=3.9,<4.0"
+python = ">=3.9,<3.12"
 jupyterlab = "^3.6.3"
 numpy = "^1.23.5" #"^1.23.5"
 pandas = "^2.0.1"
@@ -36,7 +36,7 @@ psycopg2-binary = "^2.9.6"
 python-dotenv = "^1.0.0"
 # databases = {extras = ["postgresql"], version = "^0.7.0"}
 alembic = "^1.10.4"
-asyncpg = "^0.27.0"
+asyncpg = "^0.29.0"
 anyio = {extras = ["trio"], version = "^3.6.2"}
 boto3 = "^1.26.163"
 passlib = {extras = ["bcrypt"], version = "^1.7.4"}
@@ -48,6 +48,8 @@ nltk = "^3.8.1"
 # sox = "^1.4.1"
 opencv-python = "^4.8.1.78"
 llama-index = "^0.9.47"
+llama-index-vector-stores-postgres = "^0.1.1"
+pgvector = "^0.2.5"
 
 [tool.poetry.dev-dependencies]
 poethepoet = "^0.19.0"
