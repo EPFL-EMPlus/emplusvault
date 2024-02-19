@@ -9,8 +9,8 @@ import emv.io.media
 import emv.features.audio
 import emv.features.text
 from emv.io.media import extract_audio, get_frame_number, save_clips_images
-from emv.db.queries import create_or_update_media, get_feature_by_media_id_and_type, create_feature, update_feature
-from emv.features.text import run_nlp, timecodes_from_transcript
+from emv.db.queries import create_or_update_media, get_feature_by_media_id_and_type, create_feature, update_feature, get_feature_wout_embedding_1024
+from emv.features.text import run_nlp, timecodes_from_transcript, create_embeddings
 from emv.pipelines.utils import get_media_info
 
 from datetime import datetime
@@ -267,6 +267,32 @@ class PipelineRTS(Pipeline):
 
     def preprocess(self, df: pd.DataFrame, **kwargs) -> pd.DataFrame:
         pass
+
+    def generate_embeddings(self) -> pd.DataFrame:
+        # iterate over the db a few features at a time and generate embeddings
+        no_processed = 0
+        with self.tqdm() as pbar:
+            while features := get_feature_wout_embedding_1024(feature_type='transcript+ner', limit=100):
+                texts = []
+
+                for row in features:
+                    try:
+                        texts.append("".join([x['t'] for x in row['data']['transcript']]))
+                    except TypeError:
+                        # There are two feature types, full clip or split
+                        texts.append(row['data']['transcript'])
+                
+                embeddings = create_embeddings(texts)
+
+                for i, row in enumerate(features):
+                    updated_feature = dict(row)
+                    updated_feature['embedding_1024'] = list(embeddings[i])
+                    updated_feature['model_params']['embedding_1024'] = "camembert/camembert-large"
+                    updated_feature['embedding_size'] = 1024
+                    feature = Feature(**updated_feature)
+                    queries.update_feature(feature.feature_id, feature)
+            
+                pbar.update(len(features))
 
 
 def get_raw_video_audio_parts(media_folder: str) -> Tuple[str, str]:
