@@ -286,7 +286,7 @@ class PipelineRTS(Pipeline):
 
                 for i, row in enumerate(features):
                     updated_feature = dict(row)
-                    updated_feature['embedding_1024'] = list(embeddings[0])
+                    updated_feature['embedding_1024'] = list(embeddings[i])
                     updated_feature['model_params']['embedding_1024'] = "camembert/camembert-large"
                     updated_feature['embedding_size'] = 1024
                     feature = Feature(**updated_feature)
