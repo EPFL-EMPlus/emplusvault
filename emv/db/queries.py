@@ -1,7 +1,7 @@
 import json
 import emv.utils
 
-from typing import Optional, Any, Dict
+from typing import Optional, Any, Dict, List
 from sqlalchemy.sql import text
 from sqlalchemy.exc import IntegrityError, ProgrammingError
 from emv.db.dao import DataAccessObject
@@ -567,9 +567,43 @@ def check_access(current_user: User, media_id: str) -> bool:
         query, {"user_id": current_user.user_id, "media_id": media_id})
     return True
 
+
 def get_feature_wout_embedding_1024(feature_type: str, limit: int = 100) -> dict:
     query = text("""
         SELECT * FROM feature WHERE feature_type=:feature_type AND embedding_1024 IS NULL LIMIT :limit
     """)
     result = DataAccessObject().fetch_all(query, {"feature_type": feature_type, "limit": limit})
+    return result
+
+
+def get_topk_features_by_embedding(embedded_text: List, k: int = 10, short_clips_only: bool = True) -> dict:
+    # Determine the embedding column based on the length of embedded_text
+    embedding_column = ""
+    embedded_text_length = len(embedded_text)
+
+    if embedded_text_length <= 1024:
+        embedding_column = "embedding_1024"
+    elif embedded_text_length <= 1536:
+        embedding_column = "embedding_1536"
+    else:
+        embedding_column = "embedding_2048"
+
+    embedded_text = str(embedded_text)  # remove np.float32
+
+    where_clause = "WHERE media_id LIKE '%-%-%'" if short_clips_only else ""
+
+    _query = text(f"""
+        SELECT
+            media_id,
+            data,
+            ({embedding_column} <-> :vector) AS distance
+        FROM
+            feature
+        {where_clause}
+        ORDER BY
+            distance ASC
+        LIMIT :k;
+    """)
+    params = {'vector': embedded_text, 'k': k}
+    result = DataAccessObject().fetch_all(_query, params)
     return result

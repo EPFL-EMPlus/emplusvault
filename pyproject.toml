@@ -32,11 +32,9 @@ fastapi = {extras = ["all"], version = "^0.95.1"}
 img2vec-pytorch = "^1.0.1"
 llvmlite = "^0.39.1"
 numba = "^0.56.4"
-psycopg2-binary = "^2.9.6"
 python-dotenv = "^1.0.0"
 # databases = {extras = ["postgresql"], version = "^0.7.0"}
 alembic = "^1.10.4"
-asyncpg = "^0.29.0"
 anyio = {extras = ["trio"], version = "^3.6.2"}
 boto3 = "^1.26.163"
 passlib = {extras = ["bcrypt"], version = "^1.7.4"}
@@ -47,9 +45,11 @@ nltk = "^3.8.1"
 # pyannote-audio = {git = "https://github.com/pyannote/pyannote-audio", rev = "11b56a137a578db9335efc00298f6ec1932e6317"}
 # sox = "^1.4.1"
 opencv-python = "^4.8.1.78"
-llama-index = "^0.9.47"
-llama-index-vector-stores-postgres = "^0.1.1"
-pgvector = "^0.2.5"
+# llama-index = "^0.10.7"
+sentencepiece = "^0.2.0"
+sqlalchemy = "^2.0.27"
+psycopg2-binary = "^2.9.9"
+asyncpg = "^0.27.0"
 
 [tool.poetry.dev-dependencies]
 poethepoet = "^0.19.0"
