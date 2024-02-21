@@ -492,6 +492,16 @@ def get_atlases():
     return DataAccessObject().fetch_all(query)
 
 
+def get_atlas_by_projection_id_and_order(projection_id, atlas_order):
+    query = text("""
+        SELECT * FROM atlas
+        WHERE projection_id = :projection_id AND atlas_order = :atlas_order
+    """)
+    result = DataAccessObject().fetch_all(
+        query, {"projection_id": projection_id, "atlas_order": atlas_order})
+    return result
+
+
 def create_atlas(atlas: Atlas):
 
     query = text("""
