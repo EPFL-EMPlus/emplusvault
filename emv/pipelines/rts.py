@@ -46,7 +46,8 @@ class PipelineRTS(Pipeline):
                compute_clips: bool = True,
                force_media: bool = False,
                force_trans: bool = False,
-               force_clips: bool = False) -> bool:
+               force_clips: bool = False,
+               prefix_path: str = None) -> bool:
         """
         Ingest the RTS metadata and video files.
 
@@ -64,13 +65,17 @@ class PipelineRTS(Pipeline):
         """
 
         DataAccessObject().set_user_id(1)
-        print(df.head())
         total_duration = df.mediaDuration.sum()
+
+        if prefix_path is None:
+            prefix_path = self.library['prefix_path']
+
         with self.tqdm(total=total_duration, file=sys.stdout) as pbar:
             for _, row in df.iterrows():
                 try:
                     input_file_path = os.path.join(
-                        self.library['prefix_path'], row['mediaFolderPath'])
+                        prefix_path, row['mediaFolderPath'])
+                    print(input_file_path)
                     self.ingest_single_video(input_file_path, merge_continous_sentences,
                                              compute_transcript, compute_clips, force_media, force_trans, force_clips)
                 except TypeError as e:
@@ -128,10 +133,15 @@ class PipelineRTS(Pipeline):
             # Check if an audio file already exists
             audio_path = os.path.join(
                 input_file_path, f'{archive_media_id}_audio.mp3')
+            audio_path_mp4 = os.path.join(
+                input_file_path, f'{archive_media_id}_audio.m4a')
             if not os.path.exists(audio_path):
                 # Extract audio from video
                 extract_audio(original_path, export_path)
-            self.transcript = emv.features.audio.transcribe_media(audio_path)
+            try:
+                self.transcript = emv.features.audio.transcribe_media(audio_path)
+            except RuntimeError as e:
+                self.transcript = emv.features.audio.transcribe_media(audio_path_mp4)
 
             for i, transcript in enumerate(self.transcript):
                 entities = run_nlp(transcript['t'])

@@ -204,8 +204,7 @@ def get_all_media_by_library_id(library_id: int, last_seen_date: str = None, las
     if last_seen_date:
         params["last_seen_date"] = last_seen_date
     if last_seen_media_id:
-        params["last_seen_media_id"] = int(
-            last_seen_media_id)  # Ensure it's an integer
+        params["last_seen_media_id"] = last_seen_media_id
 
     return DataAccessObject().fetch_all(text(query), params)
 
@@ -445,8 +444,8 @@ def read_map_projection_features():
 
 def get_projection_coordinates(projection_id: int):
     query = text("""
-        SELECT ST_X(map_projection_feature.coordinates) as x, ST_Y(map_projection_feature.coordinates) as y,
-            media.media_path
+        SELECT ST_X(map_projection_feature.coordinates) as x, ST_Y(map_projection_feature.coordinates) as y, ST_Z(map_projection_feature.coordinates) as z,
+            media.media_path, map_projection_feature.media_id, map_projection_feature.atlas_order, map_projection_feature.index_in_atlas
         FROM map_projection_feature
         LEFT JOIN media ON media.media_id = map_projection_feature.media_id
         WHERE map_projection_feature.projection_id = :projection_id
@@ -459,8 +458,8 @@ def get_projection_coordinates(projection_id: int):
 
 def get_projection_coordinates_by_atlas(projection_id: int, atlas_order: int):
     query = text("""
-        SELECT ST_X(map_projection_feature.coordinates) as x, ST_Y(map_projection_feature.coordinates) as y,
-            media.media_path
+        SELECT ST_X(map_projection_feature.coordinates) as x, ST_Y(map_projection_feature.coordinates) as y, ST_Z(map_projection_feature.coordinates) as z,
+            media.media_path, map_projection_feature.media_id, map_projection_feature.atlas_order, map_projection_feature.index_in_atlas
         FROM map_projection_feature
         LEFT JOIN media ON media.media_id = map_projection_feature.media_id
         WHERE map_projection_feature.projection_id = :projection_id
@@ -493,6 +492,16 @@ def get_atlases():
 
 
 def get_atlas_by_projection_id_and_order(projection_id, atlas_order):
+    query = text("""
+        SELECT * FROM atlas
+        WHERE projection_id = :projection_id AND atlas_order = :atlas_order
+    """)
+    result = DataAccessObject().fetch_all(
+        query, {"projection_id": projection_id, "atlas_order": atlas_order})
+    return result
+
+
+def get_atlases_by_projection_id_and_order(projection_id, atlas_order):
     query = text("""
         SELECT * FROM atlas
         WHERE projection_id = :projection_id AND atlas_order = :atlas_order

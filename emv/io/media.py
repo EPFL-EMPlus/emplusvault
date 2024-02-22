@@ -557,6 +557,7 @@ def create_square_atlases(atlas_name: str,
                           keep_only_ids: bool = True,
                           format: str = 'jpg',
                           bg_color: Tuple[int, int, int, int] = (0, 0, 0, 0),
+                          bucket_name: str = BUCKET_NAME
                           ) -> Optional[Dict]:
     if not images:
         return None
@@ -578,8 +579,8 @@ def create_square_atlases(atlas_name: str,
         res_image.save(bytes_io, format='PNG')
         binary_image = bytes_io.getvalue()
 
-        get_storage_client().upload_binary(
-            BUCKET_NAME, f"atlas/{atlas_name}_{str(k)}.{format}", binary_image)
+        get_storage_client().upload(
+            bucket_name, f"atlas/{atlas_name}_{str(k)}.{format}", binary_image)
 
         atlas = Atlas(
             projection_id=projection_id,
