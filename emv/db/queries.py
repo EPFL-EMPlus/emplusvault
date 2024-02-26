@@ -377,6 +377,18 @@ def delete_feature_by_type(feature_type: str):
     return result
 
 
+def get_nearest_to_vector(vector: list) -> dict:
+    query = text("""
+        SELECT media_id, 
+        (embedding_1024 <-> :vector) as distance 
+        FROM feature 
+        ORDER BY distance ASC
+        LIMIT 10
+    """)
+    result = DataAccessObject().fetch_all(query, {"vector": vector})
+    return result
+
+
 def get_nearest_neighbors(media_id: int, feature_type: str, model_name: str, version: str, k: int = 10) -> dict:
     _query = """
         WITH target_embedding AS (
