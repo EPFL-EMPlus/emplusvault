@@ -46,7 +46,7 @@ def main(queue):
                 'payload': payload
             }
             try:
-                send_message(queue_name, data, broker_url='amqp://guest:guest@rabbitmq-service:5672')
+                send_message(queue_name, data, broker_url='amqp://guest:guest@{RABBITMQ_SERVER}:5672')
             except Exception as e:
                 print(f"Error sending message: {e}")
                 continue
