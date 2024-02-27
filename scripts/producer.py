@@ -36,7 +36,7 @@ def main(queue):
             payloads.append(
                 df_exists.iloc[i:i+message_length].to_dict('records')
             )
-
+        media_ids_send = []
         for payload in payloads:
             if len(payload) == 0:
                 continue
@@ -45,10 +45,15 @@ def main(queue):
                 'job_type': 'transcript',
                 'payload': payload
             }
-            send_message(queue_name, data, broker_url='amqp://guest:guest@rabbitmq-service:5672')
+            try:
+                send_message(queue_name, data, broker_url='amqp://guest:guest@rabbitmq-service:5672')
+            except Exception as e:
+                print(f"Error sending message: {e}")
+                continue
+            media_ids_send += [x['mediaFolderPath'] for x in payload]
 
         # Delete the rows from the table
-        for media_id in all_paths:
+        for media_id in media_ids_send:
             query = text("DELETE FROM entries_to_queue WHERE media_id = :media_id")
             DataAccessObject().execute_query(query, {"media_id": media_id})
 
