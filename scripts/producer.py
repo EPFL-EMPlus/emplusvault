@@ -57,8 +57,8 @@ def main(queue):
             query = text("DELETE FROM entries_to_queue WHERE media_id = :media_id")
             DataAccessObject().execute_query(query, {"media_id": media_id})
 
-        # sleep for 10 seconds
-        time.sleep(10)
+        # sleep for 5 seconds
+        time.sleep(5)
         
 
 if __name__ == "__main__":
