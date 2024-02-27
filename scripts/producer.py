@@ -19,7 +19,7 @@ def main(queue):
     df = emv.utils.dataframe_from_hdf5('/mnt/rts/archives/', 'rts_metadata')
     df['mediaFolderPath'] = df['mediaFolderPath'].apply(lambda x: x.split('/mnt/rts/')[-1])
 
-
+    DataAccessObject().set_user_id(1)
     while True:
         query = text("SELECT * FROM entries_to_queue LIMIT 100")
         results = DataAccessObject().fetch_all(query)
