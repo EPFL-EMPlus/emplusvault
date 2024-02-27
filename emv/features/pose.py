@@ -102,6 +102,11 @@ def get_torch_checkpoints_dir():
     return os.path.join(base_dir, 'checkpoints')
 
 
+def download_model():
+    openpifpaf.network.Factory(
+        checkpoint="shufflenetv2k16", download_progress=True).factory()
+
+
 class StandardProcessor(object):
     def __init__(self, name, args, category_id=None):
         self.name = name

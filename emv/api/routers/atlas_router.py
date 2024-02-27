@@ -6,7 +6,7 @@ from typing import Any, Dict, Optional
 # Local imports
 from emv.api.api_settings import Settings, get_settings
 from emv.utils import obj_from_json
-from emv.db.queries import get_atlas, create_atlas, get_atlases
+from emv.db.queries import get_atlas, create_atlas, get_atlases, get_atlases_by_projection_id_and_order
 from emv.settings import BUCKET_NAME
 from emv.storage.storage import get_storage_client
 from emv.api.models import Atlas
@@ -38,9 +38,10 @@ def get_image(req: Request, image_id: str, zoom: int, current_user: User = Depen
         5: 'original'
     }
     size = sizes.get(zoom, 'original')
-
+    
+    dir_name = image_id.split("-")[0]
     image = get_storage_client().get_bytes(
-        BUCKET_NAME, f'rts/images/{size}/{image_id}.jpg')
+        BUCKET_NAME, f'images/{dir_name}/{size}/{image_id}.jpg')
 
     return Response(content=image, media_type="image/jpeg")
 
@@ -52,6 +53,18 @@ async def get_atlas_by_id(atlas_id: int, current_user: User = Depends(get_curren
     if result is None:
         raise HTTPException(status_code=404, detail="Atlas not found")
     return result
+
+
+@atlas_router.get("/atlases/projection_id/{projection_id}/atlas_order/{atlas_order}")
+async def get_atlas_by_projection_id_and_order(projection_id: int, atlas_order: int, current_user: User = Depends(get_current_active_user)):
+    atlas_entry = get_atlases_by_projection_id_and_order(projection_id, atlas_order)[0]
+    if atlas_entry is None:
+        raise HTTPException(status_code=404, detail="Atlas not found")
+    
+    atlas = get_storage_client().get_bytes(
+        BUCKET_NAME, atlas_entry['atlas_path'])
+
+    return Response(content=atlas, media_type="image/png")
 
 
 @atlas_router.get("/atlases/{atlas_id}/texture/{texture_id}")
@@ -66,6 +79,15 @@ async def get_atlas_image(atlas_id: int, texture_id: int, current_user: User = D
 
     return Response(content=atlas, media_type="image/png")
 
+@atlas_router.get("/atlases/projection_id/{projection_id}/atlas_order/{atlas_order}")
+async def get_atlas_by_projection_id_and_order(projection_id: int, atlas_order: int, current_user: User = Depends(get_current_active_user)):
+    atlas_entry = get_atlases_by_projection_id_and_order(projection_id, atlas_order)[0]
+    if atlas_entry is None:
+        raise HTTPException(status_code=404, detail="Atlas not found")
+    
+    atlas = get_storage_client().get_bytes(
+        BUCKET_NAME, atlas_entry['atlas_path'])
+    return Response(content=atlas, media_type="image/png")
 
 @atlas_router.post("/atlas/")
 async def create(atlas: Atlas, current_user: User = Depends(get_current_active_user)):

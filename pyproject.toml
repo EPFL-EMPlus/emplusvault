@@ -44,14 +44,13 @@ python-jose = {extras = ["cryptography"], version = "^3.3.0"}
 whisperx = {git = "https://github.com/m-bain/whisperx.git"}
 faster-whisper = "^0.8.0"
 nltk = "^3.8.1"
-pyannote-audio = {git = "https://github.com/pyannote/pyannote-audio", rev = "11b56a137a578db9335efc00298f6ec1932e6317"}
+# pyannote-audio = {git = "https://github.com/pyannote/pyannote-audio", rev = "11b56a137a578db9335efc00298f6ec1932e6317"}
 # sox = "^1.4.1"
 opencv-python = "^4.8.1.78"
 ninja = "^1.11.1.1"
 seaborn = "^0.13.0"
 umap-learn = "^0.5.4"
 bokeh = "^3.3.0"
-openpifpaf-vita = "^0.14.1"
 faiss-gpu = "^1.7.2"
 
 [tool.poetry.dev-dependencies]
@@ -82,6 +81,8 @@ init-db = "python -m emv.cli db init-db"
 new-sample-project = "python -m emv.cli db new-sample-project"
 pull-cables = { "shell" = "cables -e 7DZVup -D -d public --skip-backups --no-index" }
 cli = "python -m emv.cli"
+download-pose-model = { script = "emv.features.pose:download_model" }
+
 
 [tool.pytest.ini_options]
 testpaths = [

@@ -12,7 +12,6 @@ import emv.utils
 LOG = emv.utils.get_logger()
 
 DATA_KEYS = [
-<<<<<<< HEAD:rts/preprocess/ioc.py
         'c_theme_en', # 404165 rows
         'f_action_en', # 160566 rows
         'f_mouvement_en', # 117245 rows
@@ -62,53 +61,6 @@ DATA_KEYS = [
         'c_cadrage_en',
         'f_team_en',
         'f_autre_decription_en',
-=======
-    'c_theme_en',  # 404165 rows
-    'f_action_en',  # 160566 rows
-    'f_mouvement_en',  # 117245 rows
-    'f_emotion_en',  # 22503 rows
-    'f_valeur_en',  # 1459 rows
-    'f_symbole_en',  # 1229 rows
-    'f_symbole_en_189',
-    'f_symbole_en_191',
-    'c_epreuve_en',  # None
-    'f_principe_en',  # None
-    'medaille_en',  # None
-    'medaille_en_133',
-    'medaille_en_135',
-    'c_personnalite_en',  # None
-    'olympien_en',  # None
-    'f_activite_autre_en',  # None
-    'f_activite_autre_en_111',
-    'f_activite_autre_en_112',
-    'f_activite_jeux_en',  # None
-    'f_lieux_ref_continent_en',  # None
-    'f_lieux_ref_continent_en_165',
-    'f_lieux_ref_pays_en',
-    'f_lieux_ref_pays_en_169',
-    'f_lieux_ref_site_olympique_en',
-    'f_lieux_ref_site_olympique_en_173',
-    'f_lieux_ref_site_olympique_en_175',
-    'f_lieux_ref_site_olympique_en_177',
-    'f_lieux_ref_ville_en',
-    'f_lieux_ref_ville_en_181',
-    'f_lieux_ref_site_en',
-    'f_lieux_ref_site_en_185',
-    'f_sport_ete_en',  # 29 rows
-    'f_sport_ete_en_119',
-    'f_sport_ete_en_198',
-    'f_sport_ete_en_199',
-    'f_sport_hiver_en',  # None
-    'f_sport_hiver_en_123',
-    'f_sport_hiver_en_202',
-    'f_sport_hiver_en_203',
-    'f_sport_autre_en',  # None
-    'f_sport_autre_en_127',
-    'f_sport_autre_en_206',
-    'f_sport_autre_en_207',
-    'f_athlete_fr',
-    'f_athlete_en',
->>>>>>> 71f61bb8137b32be2872716d9564dada3e72946e:emv/preprocess/ioc.py
 ]
 
 SPORT_MAP = {

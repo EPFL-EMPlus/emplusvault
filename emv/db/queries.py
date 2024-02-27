@@ -204,8 +204,7 @@ def get_all_media_by_library_id(library_id: int, last_seen_date: str = None, las
     if last_seen_date:
         params["last_seen_date"] = last_seen_date
     if last_seen_media_id:
-        params["last_seen_media_id"] = int(
-            last_seen_media_id)  # Ensure it's an integer
+        params["last_seen_media_id"] = last_seen_media_id
 
     return DataAccessObject().fetch_all(text(query), params)
 
@@ -352,7 +351,7 @@ def update_feature(feature_id: int, feature: Feature) -> dict:
         WHERE feature_id = :feature_id
         RETURNING *
     """)
-    result = DataAccessObject().fetch_one(
+    result = DataAccessObject().execute_query(
         query, {**feature_dict, "feature_id": feature_id})
     return result
 
@@ -375,6 +374,18 @@ def delete_feature_by_type(feature_type: str):
     """)
     result = DataAccessObject().fetch_one(
         query, {"feature_type": feature_type})
+    return result
+
+
+def get_nearest_to_vector(vector: list) -> dict:
+    query = text("""
+        SELECT media_id, 
+        (embedding_1024 <-> :vector) as distance 
+        FROM feature 
+        ORDER BY distance ASC
+        LIMIT 10
+    """)
+    result = DataAccessObject().fetch_all(query, {"vector": vector})
     return result
 
 
@@ -445,8 +456,8 @@ def read_map_projection_features():
 
 def get_projection_coordinates(projection_id: int):
     query = text("""
-        SELECT ST_X(map_projection_feature.coordinates) as x, ST_Y(map_projection_feature.coordinates) as y,
-            media.media_path
+        SELECT ST_X(map_projection_feature.coordinates) as x, ST_Y(map_projection_feature.coordinates) as y, ST_Z(map_projection_feature.coordinates) as z,
+            media.media_path, map_projection_feature.media_id, map_projection_feature.atlas_order, map_projection_feature.index_in_atlas
         FROM map_projection_feature
         LEFT JOIN media ON media.media_id = map_projection_feature.media_id
         WHERE map_projection_feature.projection_id = :projection_id
@@ -459,8 +470,8 @@ def get_projection_coordinates(projection_id: int):
 
 def get_projection_coordinates_by_atlas(projection_id: int, atlas_order: int):
     query = text("""
-        SELECT ST_X(map_projection_feature.coordinates) as x, ST_Y(map_projection_feature.coordinates) as y,
-            media.media_path
+        SELECT ST_X(map_projection_feature.coordinates) as x, ST_Y(map_projection_feature.coordinates) as y, ST_Z(map_projection_feature.coordinates) as z,
+            media.media_path, map_projection_feature.media_id, map_projection_feature.atlas_order, map_projection_feature.index_in_atlas
         FROM map_projection_feature
         LEFT JOIN media ON media.media_id = map_projection_feature.media_id
         WHERE map_projection_feature.projection_id = :projection_id
@@ -490,6 +501,26 @@ def get_atlas(atlas_id: int):
 def get_atlases():
     query = text("SELECT * FROM atlas")
     return DataAccessObject().fetch_all(query)
+
+
+def get_atlas_by_projection_id_and_order(projection_id, atlas_order):
+    query = text("""
+        SELECT * FROM atlas
+        WHERE projection_id = :projection_id AND atlas_order = :atlas_order
+    """)
+    result = DataAccessObject().fetch_all(
+        query, {"projection_id": projection_id, "atlas_order": atlas_order})
+    return result
+
+
+def get_atlases_by_projection_id_and_order(projection_id, atlas_order):
+    query = text("""
+        SELECT * FROM atlas
+        WHERE projection_id = :projection_id AND atlas_order = :atlas_order
+    """)
+    result = DataAccessObject().fetch_all(
+        query, {"projection_id": projection_id, "atlas_order": atlas_order})
+    return result
 
 
 def create_atlas(atlas: Atlas):
@@ -566,3 +597,10 @@ def check_access(current_user: User, media_id: str) -> bool:
     DataAccessObject().execute_query(
         query, {"user_id": current_user.user_id, "media_id": media_id})
     return True
+
+def get_feature_wout_embedding_1024(feature_type: str, limit: int = 100) -> dict:
+    query = text("""
+        SELECT * FROM feature WHERE feature_type=:feature_type AND embedding_1024 IS NULL LIMIT :limit
+    """)
+    result = DataAccessObject().fetch_all(query, {"feature_type": feature_type, "limit": limit})
+    return result

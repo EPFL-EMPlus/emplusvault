@@ -178,6 +178,7 @@ def ingest_ioc(data: str):
         return mp4_files
 
     mp4_files = find_mp4_files(os.path.join(IOC_ROOT_FOLDER, "videos/"))
+    mp4_files += find_mp4_files("/mnt/ioc/")
     file_map = {}
     for mp4 in mp4_files:
         file_map[mp4.split('/')[-1].split('.')[0]] = mp4

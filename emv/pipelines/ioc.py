@@ -14,6 +14,7 @@ from emv.api.models import Feature
 
 from emv.settings import IOC_ROOT_FOLDER
 from emv.features.pose import process_video, PifPafModel
+from emv.db.dao import DataAccessObject
 
 LOG = emv.utils.get_logger()
 
@@ -45,6 +46,7 @@ class PipelineIOC(Pipeline):
                 - category (str): category of the event
                 - round (str): round of the event
         """
+        DataAccessObject().set_user_id(1)
         self.inner_progress_bar = None
         for i, group in self.tqdm(df.groupby('guid'), position=0, leave=True, desc='IOC videos'):
             self.ingest_single_video(group, force, min_duration, max_duration)
@@ -65,7 +67,10 @@ class PipelineIOC(Pipeline):
             LOG.error(
                 f'No guid section found for the video with ID {df.guid.iloc[0]}. Skipping ingestion.')
             return False
-        df = self.preprocess(df)
+        try:
+            df = self.preprocess(df)
+        except ValueError:
+            return False
         LOG.info(f'Ingesting {len(df)} clips from {df.guid.iloc[0]}')
 
         # Setting up nested progress bar in an alternative way as the default leads to a bug with a lot of blank lines in jupyter notebooks
@@ -99,6 +104,7 @@ class PipelineIOC(Pipeline):
             original_path = row.path
             media_path = f"videos/{row.guid}/{row.seq_id}.mp4"
 
+            LOG.info(f"Trimming and uploading clip {original_path} {media_path}")
             media_info = self.trim_upload_media(
                 original_path, media_path, row.start_ts, row.end_ts)
             if not media_info:
@@ -107,7 +113,7 @@ class PipelineIOC(Pipeline):
 
             metadata = {
                 'sport': row.sport,
-                'description': row.description,
+                'description': str(row.description),
                 'event': row.event,
                 'category': row.category,
                 'round': row['round'],
@@ -159,6 +165,8 @@ class PipelineIOC(Pipeline):
 
     def process_poses(self, df: pd.DataFrame) -> bool:
         """ Process the poses of all clips in the dataframe. """
+        # we need a user id for RLS to work even while batch processing
+        DataAccessObject().set_user_id(1)
         for i, row in self.tqdm(df.iterrows(), leave=False, total=len(df), position=1, desc='Clips'):
             self.process_single_pose(row)
         return True
@@ -176,33 +184,38 @@ class PipelineIOC(Pipeline):
             result,
             skip_frame=10
         )
-
+        image_references = []
         # Upload to s3    
         for i, img in enumerate(images):
             img_path = f"images/{row.guid}/{row.seq_id}/pose_frame_{r[i]['frame']}.jpg"
             self.store.upload(self.library_name, img_path, img)
             
             media_id = f"ioc-{row.seq_id}-pose-{r[i]['frame']}"
+            image_references.append(media_id)
             r[i]['media_id'] = media_id
-            screenshot = Media(**{
+            media_dict = {
                 'media_id': media_id,
                 'original_path': img_path,
                 'original_id': row.guid,
                 'media_path': img_path,
                 'media_type': "image",
-                'media_info': {},
+                'media_info': {'type': 'image/jpeg'},
                 'sub_type': "screenshot/frame",
-                'size': -1,
-                'metadata': {},
-                'library_id': self.library_id,
+                'size': 0,
+                'metadata': {'pose': 'openpifpaf'},
+                'library_id': self.library_id if self.library_id else 2,
                 'hash': get_hash(img_path),
                 'parent_id': "ioc-" + row.seq_id,
-                'start_ts': -1,
-                'end_ts': -1,
-                'start_frame': r[i]['frame'],
-                'end_frame': r[i]['frame'],
-                'frame_rate': -1,
-            })
+                'start_ts': 0,
+                'end_ts': 0,
+                'start_frame': r[i]['frame'] if r[i]['frame'] else 0,
+                'end_frame': r[i]['frame'] if r[i]['frame'] else 0,
+                'frame_rate': 1,
+            }
+            LOG.debug(f'Creating media {media_id}')
+            LOG.debug(media_dict)
+
+            screenshot = Media(**media_dict)
             create_or_update_media(screenshot)
 
         clip_media_id = f"ioc-{row.seq_id}"
@@ -217,7 +230,7 @@ class PipelineIOC(Pipeline):
             model_params={
                 'PifPafModel': 'fast',
             },
-            data={"frames": r},
+            data={"frames": r, "images": image_references},
             media_id=clip_media_id,
         )
         try:
