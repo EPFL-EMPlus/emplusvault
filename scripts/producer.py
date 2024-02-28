@@ -15,13 +15,16 @@ import time
 def main(queue):
     message_length = 20
     queue_name = 'transcript'
+    broker_url = f'amqp://guest:guest@{RABBITMQ_SERVER}:5672'
+
+    print(f"Connecting to rabbitmq server at {broker_url}")
 
     df = emv.utils.dataframe_from_hdf5('/mnt/rts/archives/', 'rts_metadata')
     df['mediaFolderPath'] = df['mediaFolderPath'].apply(lambda x: x.split('/mnt/rts/')[-1])
 
     DataAccessObject().set_user_id(1)
     while True:
-        query = text("SELECT * FROM entries_to_queue LIMIT 100")
+        query = text("SELECT * FROM entries_to_queue LIMIT 500")
         results = DataAccessObject().fetch_all(query)
         all_paths = [x['media_id'] for x in results]
         if len(all_paths) < 100:
@@ -46,7 +49,7 @@ def main(queue):
                 'payload': payload
             }
             try:
-                send_message(queue_name, data, broker_url='amqp://guest:guest@{RABBITMQ_SERVER}:5672')
+                send_message(queue_name, data, broker_url=broker_url)
             except Exception as e:
                 print(f"Error sending message: {e}")
                 continue
