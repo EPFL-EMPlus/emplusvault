@@ -24,7 +24,7 @@ def main(queue):
 
     DataAccessObject().set_user_id(1)
     while True:
-        query = text("SELECT * FROM entries_to_queue LIMIT 500")
+        query = text("SELECT * FROM entries_to_queue ORDER BY RANDOM() LIMIT 500")
         results = DataAccessObject().fetch_all(query)
         all_paths = [x['media_id'] for x in results]
         if len(all_paths) < 100:
