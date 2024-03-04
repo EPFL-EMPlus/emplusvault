@@ -286,7 +286,7 @@ def drop_poses(pose_df: pd.DataFrame,
 
 
 def add_metadata_to_poses(pose_df: pd.DataFrame) -> pd.DataFrame:
-    data = dataframe_from_hdf5(DRIVE_PATH, "metadata")
+    data = dataframe_from_hdf5(DRIVE_PATH + "ioc/data/", "metadata")
     data["seq_id"] = data.seq_id.map(lambda x: f"ioc-{x}")
     pose_df = pd.merge(pose_df, data[["seq_id", "sport"]], left_on="media_id", right_on="seq_id")
     return pose_df

@@ -520,7 +520,7 @@ def load_poses(local_fp: str = "",
                filter_poses: dict = FILTER_POSES,
                drop_threshold: float = 0.1,
                merge_metadata: bool = True,
-               n_sample: int = -1) -> pd.DataFrame:
+               max_poses: int = None) -> pd.DataFrame:
     """
     Load all poses, either from a local file or from the DB.
 
@@ -529,7 +529,7 @@ def load_poses(local_fp: str = "",
     - drop_poses (dict): Poses to drop (like standing up or sitting)
     - drop_threshold (float): Threshold for dropping poses.
     - merge_metadata (bool): Whether to merge the metadata into the DataFrame.
-    - n_sample (int): Number of samples per sport to take from the DataFrame. Returns all samples by default.
+    - max_poses (int): Max number of poses to retrieve if not loading locally.
     """           
 
     if load_locally:
@@ -541,7 +541,7 @@ def load_poses(local_fp: str = "",
             return None
     else:
         print("Get poses from DB...")
-        poses = get_features(feature_type="pose", page_size=100, max_features=None)
+        poses = get_features(feature_type="pose", page_size=100, max_features=max_poses)
         pose_df = process_all_poses(poses)
 
     # Drop uninteresting poses
@@ -551,10 +551,15 @@ def load_poses(local_fp: str = "",
     # Merge with metadata
     if merge_metadata:
         pose_df = add_metadata_to_poses(pose_df)
-
         # Drop poses from non sport videos
         pose_df = pose_df[pose_df.sport != "Non-Sport"]
 
+    print(f"Loaded {len(pose_df)} poses.")
+
+    return pose_df
+
+
+def sample_from_sports(pose_df):
     # Get sample
     if n_sample > 0:
         if merge_metadata:
@@ -568,7 +573,3 @@ def load_poses(local_fp: str = "",
         else:
             n_sample = min(n_sample, len(pose_df))
             pose_df = pose_df.sample(n=n_sample)
-
-    print(f"Loaded {len(pose_df)} poses.")
-
-    return pose_df

@@ -47,7 +47,7 @@ API_MAX_CALLS = 100
 API_USERNAME = get_secret("API_USERNAME")
 API_PASSWORD = get_secret("API_PASSWORD")
 
-DRIVE_PATH = "/mnt/g/"
+DRIVE_PATH = "/media/data/"
 IOC_DRIVE_PATH = DRIVE_PATH + "ioc/"
 RTS_DRIVE_PATH = DRIVE_PATH + "rts/"
 

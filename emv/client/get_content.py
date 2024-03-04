@@ -107,8 +107,9 @@ def get_features(feature_type, page_size = 100, max_features = 100):
         if type(new_results) == dict and new_results.get("feature_id", None) is None:
             break
         results += new_results
+        print(f"Retrieved {len(results)} features so far...")
 
-    print(f"Retrieved {len(results)} poses")
+    print(f"Retrieved {len(results)} features")
 
     return results
     
