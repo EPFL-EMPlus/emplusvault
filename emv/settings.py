@@ -43,3 +43,5 @@ IOC_ROOT_FOLDER = get_secret("IOC_ROOT_FOLDER") or "/media/data/ioc/"
 MJF_ROOT_FOLDER = get_secret("MJF_ROOT_FOLDER") or "/media/data/mjf/"
 
 RABBITMQ_SERVER = get_secret("RABBITMQ_SERVER")
+
+LLM_ENDPOINT = get_secret("LLM_ENDPOINT")
