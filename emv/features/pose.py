@@ -549,7 +549,7 @@ def load_poses(local_fp: str = "",
         pose_df = drop_poses(pose_df, drop_poses=filter_poses, drop_threshold=drop_threshold)
 
     # Merge with metadata
-    if merge_metadata:
+    if load_locally == False and merge_metadata:
         pose_df = add_metadata_to_poses(pose_df)
         # Drop poses from non sport videos
         pose_df = pose_df[pose_df.sport != "Non-Sport"]
@@ -559,17 +559,13 @@ def load_poses(local_fp: str = "",
     return pose_df
 
 
-def sample_from_sports(pose_df):
-    # Get sample
-    if n_sample > 0:
-        if merge_metadata:
-            sampled_dfs = []
-            for sport, group in pose_df.groupby('sport'):
-                if len(group) >= n_sample:
-                    sampled_dfs.append(group.sample(n=n_sample))
-                else:
-                    sampled_dfs.append(group)
-            pose_df = pd.concat(sampled_dfs)
+def sample_from_sports(pose_df, n_per_sports = 100):
+    sampled_dfs = []
+    for sport, group in pose_df.groupby('sport'):
+        if len(group) >= n_per_sports:
+            sampled_dfs.append(group.sample(n=n_per_sports))
         else:
-            n_sample = min(n_sample, len(pose_df))
-            pose_df = pose_df.sample(n=n_sample)
+            sampled_dfs.append(group)
+    pose_df = pd.concat(sampled_dfs)
+    
+    return pose_df

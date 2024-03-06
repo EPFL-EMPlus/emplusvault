@@ -47,8 +47,11 @@ def download_video(media_id):
     response = requests.get(f"{API_BASE_URL}/download/{media_id}", headers=headers, verify=False)
     print(f"{API_BASE_URL}/download/{media_id}")
     if response.status_code != 200:
-        print("Download failed!")
-        return None
+        headers = authenticate() # Refresh token
+        response = requests.get(f"{API_BASE_URL}/download/{media_id}", headers=headers, verify=False)
+        if response.status_code == 200:
+            print("Download failed!")
+            return None
     
     
     with open(fn, "wb") as f:

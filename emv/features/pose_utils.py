@@ -257,7 +257,8 @@ def draw_pose(pose, ax = None, show_frame: bool = True, cut: bool=True, threshol
         ax.set_xlim(int(bbox[0]),int(bbox[0] + bbox[2]))
         ax.set_ylim(int(bbox[1] + bbox[3]), int(bbox[1]))
 
-    ax.axis("off")
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)
     ax.set_aspect('equal')
     plt.tight_layout()
 
