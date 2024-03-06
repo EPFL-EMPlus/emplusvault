@@ -48,6 +48,7 @@ nltk = "^3.8.1"
 # sox = "^1.4.1"
 opencv-python = "^4.8.1.78"
 sparqlwrapper = "^2.0.0"
+folium = "^0.16.0"
 
 [tool.poetry.dev-dependencies]
 poethepoet = "^0.19.0"
