@@ -49,4 +49,4 @@ API_MAX_CALLS = 100
 API_USERNAME = os.getenv("API_USERNAME")
 API_PASSWORD = os.getenv("API_PASSWORD")
 
-DRIVE_PATH = "/mnt/g/ioc/data/"
+DRIVE_PATH = "/media/data/"
