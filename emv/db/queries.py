@@ -288,13 +288,14 @@ def get_features_by_type(feature_type: str) -> dict:
     return result
 
 
-def get_features_by_type_paginated(feature_type: str, page_size: int = 20, last_seen_feature_id: int = -1) -> dict:
+def get_features_by_type_paginated(feature_type: str, page_size: int = 20, last_seen_feature_id: int = -1, short_clips_only: bool = False) -> dict:
     query = "SELECT * FROM feature WHERE feature_type = :feature_type"
 
     # Add conditions for the last_seen values
     if last_seen_feature_id:
         query += " AND feature_id > :last_seen_feature_id"
 
+    query += " AND media_id LIKE '%-%-%'" if short_clips_only else ""
     # Order by both created_at and media_id
     query += " ORDER BY feature_id LIMIT :page_size"
 
@@ -309,12 +310,13 @@ def get_features_by_type_paginated(feature_type: str, page_size: int = 20, last_
     return DataAccessObject().fetch_all(text(query), params)
 
 
-def count_features_by_type(feature_type: str) -> dict:
+def count_features_by_type(feature_type: str, short_clips_only: bool = False) -> int:
     query = text(
-        "SELECT COUNT(*) FROM feature WHERE feature_type = :feature_type")
+        "SELECT COUNT(*) FROM feature WHERE feature_type = :feature_type AND  \
+        media_id LIKE '%-%-%'" if short_clips_only else "")
     result = DataAccessObject().fetch_one(
         query, {"feature_type": feature_type})
-    return result
+    return result.get('count')
 
 
 def get_feature_data_by_media_id(media_id: str, feature_type: str) -> dict:
@@ -338,6 +340,11 @@ def get_all_features() -> list:
     result = DataAccessObject().fetch_all(query)
     return result
 
+
+def get_all_features_by_type(feature_type: str) -> list:
+    query = text("SELECT * FROM feature WHERE feature_type = :feature_type")
+    result = DataAccessObject().fetch_all(query, {"feature_type": feature_type})
+    return result
 
 def update_feature(feature_id: int, feature: Feature) -> dict:
     feature_dict = feature.dict()
@@ -493,7 +500,6 @@ def get_atlases():
 
 
 def create_atlas(atlas: Atlas):
-
     query = text("""
         INSERT INTO atlas (projection_id, atlas_order, atlas_path, atlas_size, tile_size, tile_count, rows, cols, tiles_per_atlas)
         VALUES (:projection_id, :atlas_order, :atlas_path, :atlas_size, :tile_size, :tile_count, :rows, :cols, :tiles_per_atlas)

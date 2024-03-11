@@ -29,9 +29,15 @@ DB_PORT = get_secret("DB_PORT")
 DB_NAME = get_secret("DB_NAME")
 DB_USER = get_secret("DB_USER")
 DB_PASSWORD = get_secret("DB_PASSWORD")
+LLM_DB_NAME = get_secret("LLM_DB_NAME")
+
 DATABASE_URL = get_secret("DATABASE_URL")
 if not DATABASE_URL:
     DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+
+LLM_DATABASE_URL = get_secret("LLM_DATABASE_URL")
+if not LLM_DATABASE_URL:
+    LLM_DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{LLM_DB_NAME}"
 
 BUCKET_NAME = get_secret("BUCKET_NAME")
 SUPERUSER_CLI_KEY = get_secret("SUPERUSER_CLI_KEY")

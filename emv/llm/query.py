@@ -7,9 +7,21 @@ import emv.settings
 # import litellm
 # import guidance
 # from guidance import models, gen, select, user, assistant, system
+import dspy
 
 LOG = emv.utils.get_logger()
 
+
+class QueryExpanderMoreContext(dspy.Signature):
+    """Expand a query by generating more context and information about the original query in French"""
+    query = dspy.InputField(desc="A query")
+    expanded = dspy.OutputField(desc="expanded query with at least 500 tokens")
+
+
+def expand_query(query: str) -> str:
+    chain = dspy.ChainOfThought(QueryExpanderMoreContext)
+    res = chain(query=query)
+    return res.expanded
 
 # class LLMWrapper:
 #     _instance = None

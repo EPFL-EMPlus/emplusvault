@@ -51,6 +51,12 @@ psycopg2-binary = "^2.9.9"
 asyncpg = "^0.29.0"
 litellm = "^1.26.6"
 dspy-ai = "^2.3.6"
+llama-index-core = "^0.10.18.post1"
+llama-index-readers-file = "^0.1.9"
+llama-index-llms-ollama = "^0.1.2"
+llama-index-embeddings-huggingface = "^0.1.4"
+llama-index-vector-stores-postgres = "^0.1.2"
+llama-index-embeddings-openai = "^0.1.6"
 
 [tool.poetry.dev-dependencies]
 poethepoet = "^0.19.0"
@@ -81,6 +87,7 @@ new-sample-project = "python -m emv.cli db new-sample-project"
 pull-cables = { "shell" = "cables -e 7DZVup -D -d public --skip-backups --no-index" }
 cli = "python -m emv.cli"
 download-pose-model = { script = "emv.features.pose:download_model" }
+postgres.shell = "docker exec -it $(docker ps | grep 'postgres' | awk '{print $1}') bash -c 'psql -U $POSTGRES_USER"
 
 
 [tool.pytest.ini_options]

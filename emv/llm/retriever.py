@@ -25,3 +25,9 @@ class DocumentRetriever:
         embeddings = self.embedder.encode(query)
         feats = emv.db.queries.get_topk_features_by_embedding(embeddings[0], limit, short_clips_only)
         return feats
+    
+
+def show_transcripts_from_results(results: List[Any]):
+    for i, res in enumerate(results):
+        if 'data' in res and 'transcript' in res['data']:
+            LOG.info(f'{i+1}. {res["data"]["transcript"]}')
