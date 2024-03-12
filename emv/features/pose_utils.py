@@ -213,7 +213,7 @@ def normalize_angles(angles: List[Optional[float]]) -> np.ndarray:
 
 # DRAW POSES
 
-def draw_pose(pose, ax = None, show_frame: bool = True, cut: bool=True, threshold: float=0.1, color: str = "black"):
+def draw_pose(pose, ax = None, show_frame: bool = True, cut: bool=True, threshold: float=0.1, color: str = "black", alpha: float = 1.0):
     """
     Draw extracted skeleton on frame.
 
@@ -229,7 +229,7 @@ def draw_pose(pose, ax = None, show_frame: bool = True, cut: bool=True, threshol
 
     keypoints = pose["keypoints"]
     if show_frame:
-        frame = get_frame(pose["media_id"], pose["frame_number"])
+        frame = get_frame(pose["guid"], pose["media_id"].replace("ioc-", ""), pose["frame_number"])
 
     if ax is None:
         fig, ax = plt.subplots(figsize=(6,6))
@@ -242,14 +242,14 @@ def draw_pose(pose, ax = None, show_frame: bool = True, cut: bool=True, threshol
         
     ax.scatter([k[0] for k in keypoints if k[2] > threshold], 
                [k[1] for k in keypoints if k[2] > threshold], 
-               s=10, color=color)
+               s=10, color=color, alpha = alpha)
     for c in CONNECTIONS:
         k1 = keypoints[KEYPOINTS_NAMES.index(c[0])]
         k2 = keypoints[KEYPOINTS_NAMES.index(c[1])]
         if k1[2] > threshold and k2[2] > threshold:
             ax.plot([k1[0], k2[0]], 
                     [k1[1], k2[1]], 
-                    linewidth=1, color=color)
+                    linewidth=1, color=color, alpha = alpha)
         
     # cut frame to bbox
     if cut:
@@ -289,7 +289,7 @@ def drop_poses(pose_df: pd.DataFrame,
 def add_metadata_to_poses(pose_df: pd.DataFrame) -> pd.DataFrame:
     data = dataframe_from_hdf5(DRIVE_PATH + "ioc/data/", "metadata")
     data["seq_id"] = data.seq_id.map(lambda x: f"ioc-{x}")
-    pose_df = pd.merge(pose_df, data[["seq_id", "sport"]], left_on="media_id", right_on="seq_id")
+    pose_df = pd.merge(pose_df, data[["guid", "seq_id", "sport"]], left_on="media_id", right_on="seq_id")
     return pose_df
 
 

@@ -4,9 +4,11 @@ import requests
 import numpy as np
 from getpass import getpass
 
+from emv.storage.storage import get_storage_client
 from emv.settings import API_BASE_URL, API_MAX_CALLS, API_USERNAME, API_PASSWORD
 
 headers = None
+storage_client = get_storage_client()
 
 def authenticate():
     print("Authenticating...")
@@ -59,17 +61,25 @@ def download_video(media_id):
 
     return fn
 
-def get_frame(media_id, frame_number):
-    video_path = download_video(media_id)
-    if video_path is None:
-        return None
-
-    cap = cv2.VideoCapture(video_path)
-    cap.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
-    ret, frame = cap.read()
-    if ret:
+def get_frame(video_id, media_id, frame_number):
+    # Check if frame is already in DB
+    frame_path = f'images/{video_id}/{media_id}/pose_frame_{frame_number}.jpg'
+    frame_bytes = storage_client.get_bytes("ioc", frame_path)
+    if type(frame_bytes) == bytes:
+        frame = cv2.imdecode(np.frombuffer(frame_bytes, np.uint8), -1)
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    cap.release()
+    else:
+        # Otherwise, download video and extract frame
+        video_path = download_video("ioc-" + media_id)
+        if video_path is None:
+            return None
+
+        cap = cv2.VideoCapture(video_path)
+        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
+        ret, frame = cap.read()
+        if ret:
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        cap.release()
     return frame
 
 
