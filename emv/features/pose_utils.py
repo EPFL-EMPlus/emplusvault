@@ -147,6 +147,23 @@ def compute_angle(p1: Tuple[float, float, float],
 
     return angle_deg, angle_score
 
+def calculate_angle(a, b, c):
+    """Calculate the angle at b given points a, b, and c, with enhanced stability checks."""
+    ba = a - b
+    bc = c - b
+    norm_ba = np.linalg.norm(ba)
+    norm_bc = np.linalg.norm(bc)
+
+    if norm_ba == 0 or norm_bc == 0:
+        return np.nan  # Avoid division by zero
+
+    cosine_angle = np.dot(ba, bc) / (norm_ba * norm_bc)
+    cosine_angle = np.clip(cosine_angle, -1, 1)  # Ensure within valid range
+    angle = np.arccos(cosine_angle)
+    return angle
+
+angles = []
+
 def compute_human_angles(keypoints: List[Tuple[float, float, float]], min_confidence: float = 0.5) -> List[Optional[float]]:
     """
     Compute meaningful angles for human pose based on keypoints.
@@ -189,6 +206,24 @@ def compute_human_angles(keypoints: List[Tuple[float, float, float]], min_confid
         angles.append(angle)
         angles_scores.append(angle_score)
 
+    return angles, angles_scores
+
+def compute_hips_angles(keypoints):
+    angles = []
+    angles_scores = []
+    
+    # Using indices for reference points to avoid direct numpy array comparison
+    # Indices of the reference points, should be left and right hip. They need to be always available for this to work
+    hips_indices = [7,8] #KEYPOINTS_NAMES.index("left_hip"), KEYPOINTS_NAMES.index("right_hip")  
+
+    # Calculate angles for each keypoint relative to the two reference points
+    for i, keypoint in enumerate(keypoints):
+        if i not in hips_indices:  # Check using indices
+            angle, score = compute_angle(np.array(keypoints[hips_indices[0]]), np.array(keypoint), np.array(keypoints[hips_indices[1]]))
+            angles.append(angle)
+            angles_scores.append(score)
+
+    # Convert angles list to a numpy array
     return angles, angles_scores
 
 def normalize_angles(angles: List[Optional[float]]) -> np.ndarray:
