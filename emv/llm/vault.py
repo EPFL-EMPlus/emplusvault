@@ -25,7 +25,8 @@ from llama_index.core.vector_stores import VectorStoreQuery, VectorStoreQueryRes
 from llama_index.core import QueryBundle
 from llama_index.core.retrievers import BaseRetriever
 from llama_index.core.schema import NodeWithScore
-
+from llama_index.core.query_engine import RetrieverQueryEngine
+from llama_index.core.postprocessor import SimilarityPostprocessor
 
 LOG = emv.utils.get_logger()
 

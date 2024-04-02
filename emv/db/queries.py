@@ -288,14 +288,19 @@ def get_features_by_type(feature_type: str) -> dict:
     return result
 
 
-def get_features_by_type_paginated(feature_type: str, page_size: int = 20, last_seen_feature_id: int = -1, short_clips_only: bool = False) -> dict:
+def get_features_by_type_paginated(feature_type: str, page_size: int = 20, last_seen_feature_id: int = -1, short_clips_only: bool = False, long_clips_only: bool = False) -> dict:
     query = "SELECT * FROM feature WHERE feature_type = :feature_type"
 
     # Add conditions for the last_seen values
     if last_seen_feature_id:
         query += " AND feature_id > :last_seen_feature_id"
 
-    query += " AND media_id LIKE '%-%-%'" if short_clips_only else ""
+    # Add conditions for clip length
+    if short_clips_only and not long_clips_only:
+        query += " AND media_id LIKE '%-%-%'"
+    elif long_clips_only and not short_clips_only:
+        query += " AND media_id NOT LIKE '%-%-%'"
+
     # Order by both created_at and media_id
     query += " ORDER BY feature_id LIMIT :page_size"
 
@@ -310,12 +315,15 @@ def get_features_by_type_paginated(feature_type: str, page_size: int = 20, last_
     return DataAccessObject().fetch_all(text(query), params)
 
 
-def count_features_by_type(feature_type: str, short_clips_only: bool = False) -> int:
-    query = text(
-        "SELECT COUNT(*) FROM feature WHERE feature_type = :feature_type AND  \
-        media_id LIKE '%-%-%'" if short_clips_only else "")
-    result = DataAccessObject().fetch_one(
-        query, {"feature_type": feature_type})
+def count_features_by_type(feature_type: str, short_clips_only: bool = False, long_clips_only: bool = False) -> int:
+    if short_clips_only:
+        query = text("SELECT COUNT(*) FROM feature WHERE feature_type = :feature_type AND media_id LIKE '%-%-%'")
+    elif long_clips_only:
+        query = text("SELECT COUNT(*) FROM feature WHERE feature_type = :feature_type AND media_id NOT LIKE '%-%-%'")
+    else:
+        query = text("SELECT COUNT(*) FROM feature WHERE feature_type = :feature_type")
+    
+    result = DataAccessObject().fetch_one(query, {"feature_type": feature_type})
     return result.get('count')
 
 
