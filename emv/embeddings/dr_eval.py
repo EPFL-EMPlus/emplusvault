@@ -1,9 +1,14 @@
 import os
 import random
+import textwrap as tw
 import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
+from umap import UMAP
+from umap.umap_ import nearest_neighbors
 
 # Metrics
 from sklearn.metrics import pairwise_distances
@@ -12,6 +17,90 @@ from coranking import coranking_matrix
 from coranking.metrics import trustworthiness, continuity, LCMC
 import mantel
 
+
+# Embeddings helper functions
+def normalize_embedding(points):
+    dimensions = points.shape[1]
+    
+    ranges = []
+    mins = []
+    for d in range(dimensions):
+        min_d = min(points[:,d])
+        max_d = max(points[:,d])
+        mins.append(min_d)
+        ranges.append(max_d - min_d)
+
+    normalized_points = []
+    for point in points:
+        normalized_point = []
+        for d in range(dimensions):
+            normalized_point.append((point[d] - mins[d]) / ranges[d])
+        normalized_points.append(normalized_point)
+
+    return np.array(normalized_points)
+
+def compute_embeddings(features, reducer, params, normalize = True):
+    embeddings = reducer(**params).fit_transform(features)
+    if normalize:
+        embeddings = normalize_embedding(embeddings)
+    pairwise_dist = pairwise_distances(embeddings, metric = "euclidean")
+    
+    return {
+        "reducer": reducer,
+        "reducer_params": params,
+        "embeddings": embeddings,
+        "pairwise_dist": pairwise_dist
+    }
+    
+def compute_umap_embeddings(features, n_neighbors, min_dist = 0.01, metric = "cosine"):
+    knn = nearest_neighbors(features, 
+                            n_neighbors=np.max(n_neighbors), 
+                            metric=metric,
+                            metric_kwds={},
+                            angular=False,
+                            random_state=None)
+    umap_embeddings = []
+    for n in n_neighbors:
+        embeddings_results = compute_embeddings(features, UMAP, {"n_neighbors": n, "min_dist": min_dist, "metric": metric, "precomputed_knn": knn})
+        umap_embeddings.append(embeddings_results)
+        
+    return umap_embeddings
+
+def format_params(params):
+    return ", ".join([f"{k}={v}" for k,v in params.items() if k != "precomputed_knn"])
+
+def plot_embeddings(embeddings_results, fig_title, d = 4):
+    n_plots = len(embeddings_results)
+    n_cols = 4
+    n_rows = int(np.ceil(n_plots / n_cols))
+    
+    fig, axs = plt.subplots(nrows=n_rows, ncols=n_cols, figsize=(n_cols * d, n_rows * d))
+    axs = axs.flatten()
+    for i, result in enumerate(embeddings_results):
+        coords = result["embeddings"]
+        reducer = result["reducer"]
+        params = result["reducer_params"]
+        axs[i].scatter(coords[:,0], coords[:,1], s=0.1)
+        axs[i].set_xticks([])
+        axs[i].set_yticks([])
+        title = f"{reducer.__name__} - params: {format_params(params)}"
+        axs[i].set_title(tw.fill(title, width = 40), fontsize=10)
+    [axs[i].axis("off") for i in range(n_plots, n_rows * n_cols)]
+    plt.suptitle(fig_title)
+    plt.tight_layout()
+    plt.show()
+
+def plot_embeddings_with_images(embeddings, thumbnails, zoom = 0.1):
+    plt.figure(figsize=(15, 15))  # Adjust the figure size if needed
+
+    ax = plt.gca()
+    for coords, img in zip(embeddings, thumbnails):
+        imagebox = OffsetImage(img, zoom=zoom)  # Adjust the zoom parameter to reduce the image size
+        ab = AnnotationBbox(imagebox, (coords[0], coords[1]), frameon=False)
+        ax.add_artist(ab)
+
+    plt.axis("off")
+    plt.show()
 
 # Co-Ranking Metrics
 def compute_coranking_metrics(data_high_dim, data_low_dim, ks):
