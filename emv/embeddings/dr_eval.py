@@ -43,13 +43,11 @@ def compute_embeddings(features, reducer, params, normalize = True):
     embeddings = reducer(**params).fit_transform(features)
     if normalize:
         embeddings = normalize_embedding(embeddings)
-    pairwise_dist = pairwise_distances(embeddings, metric = "euclidean")
     
     return {
         "reducer": reducer,
         "reducer_params": params,
-        "embeddings": embeddings,
-        "pairwise_dist": pairwise_dist
+        "embeddings": embeddings
     }
     
 def compute_umap_embeddings(features, n_neighbors, min_dist = 0.01, metric = "cosine"):
