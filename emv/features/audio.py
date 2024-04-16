@@ -128,7 +128,7 @@ def transcribe_media(audio_path: str, lang: str = 'fr', min_duration: float = 0,
     audio_file = str(audio_path)
     batch_size = 16  # reduce if low on GPU mem
     # change to "int8" if low on GPU mem (may reduce accuracy)
-    compute_type = "float16"
+    compute_type = "int8"
 
     if not _model['whisper_model']:
         LOG.debug(f'Load whisper model: large-v2')

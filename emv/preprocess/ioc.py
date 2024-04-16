@@ -4,6 +4,8 @@ import fnmatch
 from typing import Optional, List, Dict, Any
 from pathlib import Path
 from lxml import etree
+import numpy as np
+import pandas as pd
 
 import emv.utils
 

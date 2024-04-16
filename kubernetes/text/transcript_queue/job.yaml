@@ -1,19 +1,19 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: transcription-whisperx
+  name: transcription-queue
 spec:
   # activeDeadlineSeconds: 86400
-  backoffLimit: 112
-  completions: 500
-  parallelism: 8
+  backoffLimit: 100
+  completions: 1
+  parallelism: 1
   template:
     metadata:
-      name: transcription-whisperx
+      name: transcription-queue
     spec:
       containers:
       - name: c
-        image: 192.168.1.43:5000/transcription-whisperx
+        image: 192.168.1.43:5000/transcription-queue
         imagePullPolicy: Always
         env:
         - name: BROKER_URL

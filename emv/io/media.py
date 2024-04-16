@@ -100,6 +100,8 @@ def extract_audio(in_path: str, out_path: str = None) -> Optional[str]:
                     out_container.mux(packet)
         return out_path
     except av.AVError as e:
+        import traceback
+        LOG.error(traceback.format_exc())
         LOG.error(e)
         return None
 
@@ -177,7 +179,9 @@ def get_media_info(media_path: str) -> Dict:
                 del info['audio']
 
     except (FileNotFoundError, av.AVError) as e:
+        import traceback
         LOG.error(e)
+        LOG.error(traceback.format_exc())
         return None
     return info
 
@@ -221,7 +225,10 @@ def trim(input_path: Union[str, Path], output_path: Union[str, Path], start_ts: 
         else:
             return True, BytesIO()  # return an empty BytesIO object when output is not a pipe
     except ffmpeg.Error as e:
+        import traceback
+        LOG.error(traceback.format_exc())
         LOG.error(e.stderr.decode())
+        
 
     return False, BytesIO()  # return False and an empty BytesIO object when there's an error
 
@@ -550,6 +557,7 @@ def create_square_atlases(atlas_name: str,
                           keep_only_ids: bool = True,
                           format: str = 'jpg',
                           bg_color: Tuple[int, int, int, int] = (0, 0, 0, 0),
+                          bucket_name: str = BUCKET_NAME
                           ) -> Optional[Dict]:
     if not images:
         return None
@@ -571,8 +579,8 @@ def create_square_atlases(atlas_name: str,
         res_image.save(bytes_io, format='PNG')
         binary_image = bytes_io.getvalue()
 
-        get_storage_client().upload_binary(
-            BUCKET_NAME, f"atlas/{atlas_name}_{str(k)}.{format}", binary_image)
+        get_storage_client().upload(
+            bucket_name, f"atlas/{atlas_name}_{str(k)}.{format}", binary_image)
 
         atlas = Atlas(
             projection_id=projection_id,
