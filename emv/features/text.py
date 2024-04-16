@@ -1,7 +1,7 @@
 
 import pandas as pd
 
-from typing import List, Optional, Any, Dict, Tuple
+from typing import List, Optional, Any, Dict, Tuple, Union
 from pathlib import Path
 from collections import defaultdict
 from scenedetect.frame_timecode import FrameTimecode
@@ -250,30 +250,49 @@ def build_location_df(transcripts: Dict[str, Dict]) -> pd.DataFrame:
     return ts
 
 
-def create_embeddings(texts: List[str]) -> List:
-    import torch
-    from transformers import CamembertModel, CamembertTokenizer
-    tokenizer = CamembertTokenizer.from_pretrained('camembert/camembert-large')
-    model = CamembertModel.from_pretrained('camembert/camembert-large')
+class TextEmbedder:
+    _instance = None
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    # print(f"Using device: {device}")
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(TextEmbedder, cls).__new__(cls)
+            cls._instance._initialize_model()
+        return cls._instance
 
-    model = model.to(device)
+    def _initialize_model(self):
+        # Lazy loading of PyTorch and transformers
+        import torch
+        from transformers import CamembertModel, CamembertTokenizer
 
-    embeddings = []
-    for paragraph in texts:
-        inputs = tokenizer(paragraph, return_tensors="pt", padding=True, truncation=True, max_length=512)
+        self.tokenizer = CamembertTokenizer.from_pretrained('camembert/camembert-large')
+        self.model = CamembertModel.from_pretrained('camembert/camembert-large')
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model = self.model.to(self.device)
 
-        # Move inputs to the same device as the model
-        inputs = {k: v.to(device) for k, v in inputs.items()}
+    def encode(self, texts: List[str]) -> List:
+        return self.create_embeddings(texts)
 
-        with torch.no_grad():
-            outputs = model(**inputs)
-        last_hidden_states = outputs.last_hidden_state
+    def create_embeddings(self, texts: Union[str, List[str]]) -> List:
+        if isinstance(texts, str):
+            texts = [texts]
 
-        # Move the embeddings back to CPU for further processing or storage
-        emb = last_hidden_states.mean(dim=1).to('cpu')
-        embeddings.append(list(emb[0].numpy()))
+        embeddings = []
+        for paragraph in texts:
+            # Lazy import of torch within the method
+            import torch
+            inputs = self.tokenizer(paragraph, return_tensors="pt", padding=True, truncation=True, max_length=512)
+            inputs = {k: v.to(self.device) for k, v in inputs.items()}
+
+            with torch.no_grad():
+                outputs = self.model(**inputs)
+            last_hidden_states = outputs.last_hidden_state
+
+            emb = last_hidden_states.mean(dim=1).to('cpu')
+            embeddings.append(list(emb[0].numpy()))
+
+        return embeddings
     
-    return embeddings
+
+def create_embeddings(texts: Union[str, List[str]]) -> List:
+    embedder = TextEmbedder()
+    return embedder.create_embeddings(texts)

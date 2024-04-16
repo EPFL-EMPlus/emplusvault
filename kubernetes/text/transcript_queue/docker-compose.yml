@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  transcription-queue:
+    build:
+      context: .
+      args:
+        GITHUB_TOKEN: ${GITHUB_TOKEN}
+    image: transcription-queue
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    secrets:
+      - S3_ACCESS_KEY
+      - S3_SECRET_KEY
+      - DATABASE_URL
+      - S3_ENDPOINT
+      - RABBITMQ_SERVER
+
+secrets:
+  S3_ACCESS_KEY:
+    file: ./secrets/S3_ACCESS_KEY
+  S3_SECRET_KEY:
+    file: ./secrets/S3_SECRET_KEY
+  DATABASE_URL:
+    file: ./secrets/DATABASE_URL
+  S3_ENDPOINT:
+    file: ./secrets/S3_ENDPOINT
+  RABBITMQ_SERVER:
+    file: ./secrets/RABBITMQ_SERVER
