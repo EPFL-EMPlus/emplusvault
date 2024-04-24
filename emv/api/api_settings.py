@@ -13,8 +13,11 @@ origins = [
     "http://localhost",
     "https://localhost",
     "http://localhost:8080",
+    "http://localhost:9999",
+    "https://localhost:9999",
     "https://dev.cables.gl",
     "https://cables.gl",
+    "https://sandbox.cables.gl/",
     "https://emplusdemo.epfl.ch",
     "http://emplusdemo.epfl.ch"
     # "*" # all origins
