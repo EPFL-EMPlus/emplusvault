@@ -27,17 +27,14 @@ async def create(media: Media, current_user: User = Depends(get_current_active_u
 
 
 @media_router.get("/media/{media_id}", response_model=Media)
-async def get_media(media_id: int, current_user: User = Depends(get_current_active_user)):
+async def get_media(media_id: str, current_user: User = Depends(get_current_active_user)):
     return get_media_by_id(media_id)
 
 
 @media_router.get("/media/library/{library_id}")
-async def get_media_by_library(library_id: int, last_seen_date: str = None, last_seen_media_id: str = None, page_size: int = 20, current_user: User = Depends(get_current_active_user)):
-    try:
-        resp = get_all_media_by_library_id(
-            library_id, last_seen_date, last_seen_media_id, page_size)
-    except Exception as e:
-        raise HTTPException(status_code=401, detail="Not allowed")
+async def get_media_by_library(library_id: int, last_seen_date: str = None, last_seen_media_id: str = None, page_size: int = 20, media_type: str = None, sub_type: str = None, current_user: User = Depends(get_current_active_user)):
+    resp = get_all_media_by_library_id(
+            library_id, last_seen_date, last_seen_media_id, page_size, media_type, sub_type)
     return resp
 
 # @media_router.put("/media/{media_id}")

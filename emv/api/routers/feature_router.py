@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, File, UploadFile
+from fastapi.responses import JSONResponse
 from sqlalchemy.sql import text
 from typing import List
 from emv.api.models import Feature
@@ -6,6 +7,8 @@ from emv.db.dao import DataAccessObject
 from emv.db.queries import create_feature, get_feature_by_id, get_all_features, update_feature, delete_feature, get_features_by_type_paginated
 import json
 from emv.api.routers.auth_router import get_current_active_user, User
+from PIL import Image
+from io import BytesIO
 
 feature_router = APIRouter()
 
@@ -50,3 +53,23 @@ async def get_media_by_library(feature_type: str, page_size: int = 20, last_seen
 #     if result is None:
 #         raise HTTPException(status_code=404, detail="Feature not found")
 #     return result
+
+
+# get keypoints from uploaded image
+@feature_router.post("/feature/keypoints/")
+async def get_keypoints(file: UploadFile = File(...)):
+
+    if not file.content_type.startswith('image/'):
+        return JSONResponse(status_code=400, content={"message": "File is not an image"})
+
+    try:
+        image_data = await file.read()
+        image = Image.open(BytesIO(image_data))
+
+        # get keypoints from ml model
+        keypoints = []
+        pass
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"message": "Error processing image"})
+    
+    return keypoints
