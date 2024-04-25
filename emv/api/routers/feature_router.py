@@ -5,6 +5,7 @@ from typing import List
 from emv.api.models import Feature
 from emv.db.dao import DataAccessObject
 from emv.db.queries import create_feature, get_feature_by_id, get_all_features, update_feature, delete_feature, get_features_by_type_paginated
+from emv.features.pose import get_keypoints_from_image
 import json
 from emv.api.routers.auth_router import get_current_active_user, User
 from PIL import Image
@@ -65,9 +66,12 @@ async def get_keypoints(file: UploadFile = File(...)):
     try:
         image_data = await file.read()
         image = Image.open(BytesIO(image_data))
-
+        
+        # convert to PIL image
+        image_pil = Image.fromarray(image)
+        
         # get keypoints from ml model
-        keypoints = []
+        keypoints = get_keypoints_from_image(image_pil)
         pass
     except Exception as e:
         return JSONResponse(status_code=500, content={"message": "Error processing image"})
