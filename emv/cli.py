@@ -231,6 +231,28 @@ def export_db(path: str):
     click.echo(f"Database dump completed. Output written to {path}")
 
 
+@db.command()
+def migrate_db():
+    from alembic import context
+    from alembic.config import Config
+    from alembic import command
+    # Build the SQLAlchemy database URL
+    db_url = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    click.echo(f"Connecting to {DB_HOST}:{DB_PORT}/{DB_NAME}")
+    confirm = click.prompt(
+        'Are you sure you want to migrate the database? This will apply all migrations to the database [yes/no]', default='no')
+    
+    if confirm.lower() == 'yes':
+        click.echo('Migrating database...')
+        alembic_cfg = Config("alembic.ini")
+        alembic_cfg.set_main_option('sqlalchemy.url', db_url)
+
+        # Run Alembic Upgrade
+        command.upgrade(alembic_cfg, 'head')
+        click.echo('Database has been successfully migrated.')
+    else:
+        click.echo('Database migration has been canceled.')
+
 @ioc_archive.command()
 def build_video_metadata():
     click.echo('Building video metadata...')
