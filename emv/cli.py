@@ -49,37 +49,9 @@ def mjf_archive():
 def db():
     pass
 
-
-@rts_archive.command()
-@click.option('--continuous', is_flag=True, help='Merge continuous sentences from the same speaker')
-@click.option('--compute-transcript', is_flag=True, help='Compute transcript')
-@click.option('--compute-clips', is_flag=True, help='Create clips from transcript')
-@click.option('--force-media', is_flag=True, help='Force media remuxing')
-@click.option('--force-transcript', is_flag=True, help='Force transcription')
-@click.option('--force-clips', is_flag=True, help='Force clip extraction')
-def pipeline(continuous: bool,
-             compute_transcript: bool, compute_clips: bool, force_media: bool,
-             force_transcript: bool, force_clips: bool) -> None:
-
-    df = emv.pipelines.rts.get_sample_df()
-    # df = get_aivectors_df()
-
-    click.echo('Processing archive')
-    click.echo(
-        f'Compute transcript: {compute_transcript}, Compute clips: {compute_clips}, ')
-    emv.pipelines.rts.simple_process_archive(df, RTS_LOCAL_VIDEOS, continuous,
-                                             compute_transcript, compute_clips,
-                                             force_media, force_transcript, force_clips)
-
-
-# @rts.command()
-# def location() -> None:
-#     ts = rts.pipelines.rts.load_all_transcripts(RTS_LOCAL_VIDEOS)
-#     fts = rts.features.text.build_location_df(ts)
-
-#     sample_df = rts.pipelines.rts.get_sample_df()
-#     fts = rts.pipelines.rts.merge_location_df_with_metadata(sample_df, fts)
-
+@cli.group()
+def youtube():
+    pass
 
 @db.command()
 def init_db():
@@ -97,7 +69,7 @@ def init_db():
 @db.command()
 @click.option('--library-name', type=str, default='rts', help='Library name')
 @click.option('--version', type=str, default='0.0.1', help='Library version')
-@click.option('--prefix_path', type=str, default='/media/data/rts/archive/', help='Library prefix path')
+@click.option('--prefix-path', type=str, default='/media/data/rts/archive/', help='Library prefix path')
 @click.option('--data', type=str, default='{}', help='Library data')
 def new_library(library_name: str, version: str, prefix_path: str, data: str):
     click.echo(f"Connecting to {DB_HOST}:{DB_PORT}/{DB_NAME}")
@@ -161,38 +133,6 @@ def allow_library_access(user_id: int, library_id: int):
 
 
 @db.command()
-@click.option('--data', type=str, default='{}', help='csv dataframe')
-def ingest_ioc(data: str):
-    from emv.pipelines.ioc import PipelineIOC
-    df = pd.read_csv(data)
-
-    def find_mp4_files(root_folder):
-        import os
-        mp4_files = []
-
-        for foldername, _, filenames in os.walk(root_folder):
-            for filename in filenames:
-                if filename.endswith('.mp4'):
-                    mp4_files.append(os.path.join(foldername, filename))
-
-        return mp4_files
-
-    mp4_files = find_mp4_files(os.path.join(IOC_ROOT_FOLDER, "videos/"))
-    mp4_files += find_mp4_files("/mnt/ioc/")
-    file_map = {}
-    for mp4 in mp4_files:
-        file_map[mp4.split('/')[-1].split('.')[0]] = mp4
-
-    def get_path(guid):
-        return file_map[guid] if guid in file_map else None
-    df['path'] = df.guid.apply(get_path)
-
-    click.echo(f"Processing {len(df)} rows")
-    pipeline = PipelineIOC()
-    pipeline.ingest(df)
-
-
-@db.command()
 @click.option('--path', type=str, default='/media/data/dumps/', help='Path to exported file or path to export folder')
 def export_db(path: str):
     click.echo(f"Exporting {DB_HOST}:{DB_PORT}/{DB_NAME}")
@@ -253,6 +193,71 @@ def migrate_db():
     else:
         click.echo('Database migration has been canceled.')
 
+# RTS
+@rts_archive.command()
+@click.option('--continuous', is_flag=True, help='Merge continuous sentences from the same speaker')
+@click.option('--compute-transcript', is_flag=True, help='Compute transcript')
+@click.option('--compute-clips', is_flag=True, help='Create clips from transcript')
+@click.option('--force-media', is_flag=True, help='Force media remuxing')
+@click.option('--force-transcript', is_flag=True, help='Force transcription')
+@click.option('--force-clips', is_flag=True, help='Force clip extraction')
+def pipeline(continuous: bool,
+             compute_transcript: bool, compute_clips: bool, force_media: bool,
+             force_transcript: bool, force_clips: bool) -> None:
+
+    df = emv.pipelines.rts.get_sample_df()
+    # df = get_aivectors_df()
+
+    click.echo('Processing archive')
+    click.echo(
+        f'Compute transcript: {compute_transcript}, Compute clips: {compute_clips}, ')
+    emv.pipelines.rts.simple_process_archive(df, RTS_LOCAL_VIDEOS, continuous,
+                                             compute_transcript, compute_clips,
+                                             force_media, force_transcript, force_clips)
+
+
+# @rts_archive.command()
+# def location() -> None:
+#     ts = rts.pipelines.rts.load_all_transcripts(RTS_LOCAL_VIDEOS)
+#     fts = rts.features.text.build_location_df(ts)
+
+#     sample_df = rts.pipelines.rts.get_sample_df()
+#     fts = rts.pipelines.rts.merge_location_df_with_metadata(sample_df, fts)
+
+
+## IOC
+@ioc_archive.command()
+@click.option('--data', type=str, default='{}', help='csv dataframe')
+def ingest_ioc(data: str):
+    from emv.pipelines.ioc import PipelineIOC
+    df = pd.read_csv(data)
+
+    def find_mp4_files(root_folder):
+        import os
+        mp4_files = []
+
+        for foldername, _, filenames in os.walk(root_folder):
+            for filename in filenames:
+                if filename.endswith('.mp4'):
+                    mp4_files.append(os.path.join(foldername, filename))
+
+        return mp4_files
+
+    mp4_files = find_mp4_files(os.path.join(IOC_ROOT_FOLDER, "videos/"))
+    mp4_files += find_mp4_files("/mnt/ioc/")
+    file_map = {}
+    for mp4 in mp4_files:
+        file_map[mp4.split('/')[-1].split('.')[0]] = mp4
+
+    def get_path(guid):
+        return file_map[guid] if guid in file_map else None
+    df['path'] = df.guid.apply(get_path)
+
+    click.echo(f"Processing {len(df)} rows")
+    pipeline = PipelineIOC()
+    pipeline.ingest(df)
+
+
 @ioc_archive.command()
 def build_video_metadata():
     click.echo('Building video metadata...')
@@ -263,6 +268,31 @@ def build_video_metadata():
     df = emv.preprocess.ioc.get_sport_df(df)
     df = emv.preprocess.ioc.match_video_files(df, video_folder)
     emv.utils.dataframe_to_hdf5(outdir, 'ioc_consolidated', df)
+
+## YOUTUBE
+@youtube.command()
+@click.option('--playlist-id', type=str, help='YouTube playlist ID')
+@click.option('--video-ids', type=str, help='Comma-separated list of YouTube video IDs')
+@click.option('--from-file', type=click.Path(exists=True), help='Path to a file containing a list of YouTube video IDs or URLs')
+def ingest_youtube(playlist_id: str, video_ids: str, from_file: str) -> None:
+    import emv.pipelines.youtube as yt
+
+    if playlist_id:
+        df = yt.fetch_videos_from_playlist(playlist_id)
+    elif video_ids:
+        df = yt.fetch_videos_from_id_list(video_ids.split(','))
+    elif from_file:
+        with open(from_file, 'r', encoding='utf-8') as f:
+            video_list = [line.strip() for line in f.readlines()]
+        df = yt.fetch_videos_from_id_list(video_list)
+    else:
+        click.echo('Please provide either a playlist ID, a list of video IDs, or a path to a file containing video IDs or URLs')
+        return
+
+    print(df)
+    pipeline = yt.YoutubePipeline('yt-test')
+    pipeline.ingest(df)
+
 
 
 if __name__ == '__main__':
