@@ -4,6 +4,7 @@ from typing import Optional, Dict
 from emv.db.dao import DataAccessObject
 from emv.settings import DB_NAME
 from emv.utils import get_logger
+from sqlalchemy.sql import text
 
 LOG = get_logger()
 
@@ -22,5 +23,5 @@ def create_database(sql_file, output=False):
         if output:
             LOG.info(statement)
         if statement.strip() != "":
-            DataAccessObject().execute_query(statement)
+            DataAccessObject().execute_query(text(statement))
             # print("-- query executed --")

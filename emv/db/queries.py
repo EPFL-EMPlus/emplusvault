@@ -13,42 +13,42 @@ LOG = emv.utils.get_logger()
 
 
 def get_library_id_from_name(library_name: str) -> Optional[int]:
-    query = """
+    query = text("""
         SELECT library_id FROM library WHERE library_name=:library_name
-    """
-    library_id = DataAccessObject().fetch_one(text(query), {"library_name": library_name,})
+    """)
+    library_id = DataAccessObject().fetch_one(query, {"library_name": library_name,})
     return library_id['library_id'] if library_id else None
 
 
 def get_libraries() -> list:
-    query = """
+    query = text("""
         SELECT * FROM library
-    """
+    """)
     return DataAccessObject().fetch_all(query)
 
 
 # def remove_library(library_id: int) -> None:
 #     # Reimplement if needed, removing a library is very involved
-#     query = """
+#     query = text("""
 #         DELETE FROM library WHERE library_id=:library_id
-#     """
-#     DataAccessObject().execute_query(text(query), {"library_id": library_id})
+#     """)
+#     DataAccessObject().execute_query(query, {"library_id": library_id})
 
 
 def get_library_from_name(library_name: str) -> Optional[Dict]:
-    query = """
+    query = text("""
         SELECT * FROM library WHERE library_name=:library_name
-    """
-    library = DataAccessObject().fetch_one(text(query), {"library_name": library_name})
+    """)
+    library = DataAccessObject().fetch_one(query, {"library_name": library_name})
     return library if library else None
 
 
 def create_library(library: LibraryBase) -> dict:
-    query = """
+    query = text("""
         INSERT INTO library (library_name, prefix_path, version, data)
         VALUES (:library_name, :prefix_path, :version, :data)
         RETURNING library_id
-    """
+    """)
     vals = library.dict()
     vals['data'] = json.dumps(vals['data'])
     library_id = DataAccessObject().execute_query(query, vals)
@@ -56,9 +56,9 @@ def create_library(library: LibraryBase) -> dict:
 
 
 def update_library_prefix_path(library_id: int, prefix_path: str) -> None:
-    query = """
+    query = text("""
         UPDATE library SET prefix_path=:prefix_path WHERE library_id=:library_id
-    """
+    """)
     DataAccessObject().execute_query(query, {"library_id": library_id, "prefix_path": prefix_path})
 
 
@@ -461,10 +461,10 @@ def create_map_projection_feature(map_projection_feature: MapProjectionFeatureCr
 
 
 def read_map_projection_features():
-    query = """
+    query = text("""
     SELECT map_projection_feature_id, projection_id, feature_id, media_id, atlas_order, ST_AsText(coordinates) as coordinates
     FROM map_projection_feature
-    """
+    """)
     result = DataAccessObject().fetch_all(query)
     return result
 
@@ -575,8 +575,7 @@ def create_new_user(user: User) -> dict:
 
 
 def allow_user_to_access_library(user_id: int, library_id: int) -> bool:
-    query = text(
-        """
+    query = text("""
         INSERT INTO 
             user_library_access (user_id, library_id) 
             VALUES (:user_id, :library_id)

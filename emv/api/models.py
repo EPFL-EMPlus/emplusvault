@@ -1,3 +1,4 @@
+import pydantic
 from pydantic import BaseModel, Field, Json
 from datetime import datetime
 from typing import Dict, Optional, List, Tuple, Union
@@ -20,6 +21,9 @@ class Library(LibraryBase):
 
 
 class Projection(BaseModel):
+    class Config:
+        protected_namespaces = ()
+
     projection_id: Optional[int] = Field(None, alias="projection_id")
     version: str = Field(..., alias="version", max_length=20)
     library_id: int = Field(..., alias="library_id")
@@ -35,6 +39,8 @@ class Projection(BaseModel):
     atlas_count: int = Field(..., alias="atlas_count")
     total_tiles: int = Field(..., alias="total_tiles")
     tiles_per_atlas: int = Field(..., alias="tiles_per_atlas")
+
+
 
 
 class Media(BaseModel):
@@ -60,6 +66,8 @@ class Media(BaseModel):
 
 
 class Feature(BaseModel):
+    class Config:
+        protected_namespaces = ()
     feature_id: Optional[int]
     feature_type: str
     version: str
@@ -91,9 +99,11 @@ class MapProjectionFeatureCreate(MapProjectionFeatureBase):
 
 class MapProjectionFeature(MapProjectionFeatureBase):
     map_projection_feature_id: int
-
     class Config:
-        orm_mode = True
+        if pydantic.__version__.startswith('1'):
+            orm_mode = True
+        else:
+            from_attributes = True
 
 
 class Atlas(BaseModel):

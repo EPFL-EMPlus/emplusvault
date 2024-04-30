@@ -1,6 +1,10 @@
 from pathlib import Path
 from functools import lru_cache
-from pydantic import BaseSettings
+try:
+    from pydantic import BaseSettings
+except ImportError:
+    from pydantic_settings import BaseSettings
+
 from typing import Any, List, Optional
 
 from fastapi import FastAPI
@@ -36,7 +40,7 @@ class Settings(BaseSettings):
     data_folder: str = "/media/data/rts/"
     library_name: str = 'default'
     app_prefix: str = ''
-    mode: str = ''
+    app_mode: str = ''
     host: str = ''
     app_port: str = '9999'
 
@@ -56,13 +60,13 @@ class Settings(BaseSettings):
 
 
 class DevSettings(Settings):
-    mode = 'dev'
-    host = 'localhost'
+    app_mode: str = 'dev'
+    host: str = 'localhost'
 
 
 class ProductionSettings(Settings):
-    mode = 'production'
-    host = 'emplusdemo.epfl.ch'
+    app_mode: str = 'production'
+    host: str = 'emplusdemo.epfl.ch'
 
 
 settings = DevSettings()
