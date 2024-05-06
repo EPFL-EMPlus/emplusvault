@@ -66,13 +66,10 @@ async def get_keypoints(file: UploadFile = File(...)):
     try:
         image_data = await file.read()
         image = Image.open(BytesIO(image_data))
-        
-        # convert to PIL image
-        image_pil = Image.fromarray(image)
-        
+
         # get keypoints from ml model
-        keypoints = get_keypoints_from_image(image_pil)
-        pass
+        keypoints = get_keypoints_from_image(image)
+
     except Exception as e:
         return JSONResponse(status_code=500, content={"message": "Error processing image"})
     
