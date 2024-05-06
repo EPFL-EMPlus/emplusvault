@@ -32,15 +32,6 @@ class Projection(BaseModel):
     model_params: Dict = Field(..., alias="model_params")
     data: Dict = Field(..., alias="data")
     dimension: int = Field(..., alias="dimension")
-    atlas_folder_path: str = Field(...,
-                                   alias="atlas_folder_path", max_length=500)
-    atlas_width: int = Field(..., alias="atlas_width")
-    tile_size: int = Field(..., alias="tile_size")
-    atlas_count: int = Field(..., alias="atlas_count")
-    total_tiles: int = Field(..., alias="total_tiles")
-    tiles_per_atlas: int = Field(..., alias="tiles_per_atlas")
-
-
 
 
 class Media(BaseModel):

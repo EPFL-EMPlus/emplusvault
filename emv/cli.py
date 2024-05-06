@@ -49,10 +49,6 @@ def mjf_archive():
 def db():
     pass
 
-@cli.group()
-def youtube():
-    pass
-
 @db.command()
 def init_db():
     click.echo(f"Connecting to {DB_HOST}:{DB_PORT}/{DB_NAME}")
@@ -268,31 +264,6 @@ def build_video_metadata():
     df = emv.preprocess.ioc.get_sport_df(df)
     df = emv.preprocess.ioc.match_video_files(df, video_folder)
     emv.utils.dataframe_to_hdf5(outdir, 'ioc_consolidated', df)
-
-## YOUTUBE
-@youtube.command()
-@click.option('--playlist-id', type=str, help='YouTube playlist ID')
-@click.option('--video-ids', type=str, help='Comma-separated list of YouTube video IDs')
-@click.option('--from-file', type=click.Path(exists=True), help='Path to a file containing a list of YouTube video IDs or URLs')
-def ingest_youtube(playlist_id: str, video_ids: str, from_file: str) -> None:
-    import emv.pipelines.youtube as yt
-
-    if playlist_id:
-        df = yt.fetch_videos_from_playlist(playlist_id)
-    elif video_ids:
-        df = yt.fetch_videos_from_id_list(video_ids.split(','))
-    elif from_file:
-        with open(from_file, 'r', encoding='utf-8') as f:
-            video_list = [line.strip() for line in f.readlines()]
-        df = yt.fetch_videos_from_id_list(video_list)
-    else:
-        click.echo('Please provide either a playlist ID, a list of video IDs, or a path to a file containing video IDs or URLs')
-        return
-
-    print(df)
-    pipeline = yt.YoutubePipeline('yt-test')
-    pipeline.ingest(df)
-
 
 
 if __name__ == '__main__':
