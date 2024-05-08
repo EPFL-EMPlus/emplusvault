@@ -7,6 +7,7 @@ from emv.db.dao import DataAccessObject
 from emv.db.queries import create_feature, get_feature_by_id, get_all_features, update_feature, delete_feature, get_features_by_type_paginated
 from emv.features.pose import get_keypoints_from_image
 import json
+from datetime import datetime
 from emv.api.routers.auth_router import get_current_active_user, User
 from PIL import Image
 from io import BytesIO
@@ -16,6 +17,8 @@ feature_router = APIRouter()
 
 @feature_router.post("/feature/")
 async def create(feature: Feature, current_user: User = Depends(get_current_active_user)):
+    if feature.created_at is None:
+        feature.created_at = datetime.now()
     return create_feature(feature)
 
 

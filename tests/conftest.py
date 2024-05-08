@@ -21,7 +21,7 @@ TEST_DB_USER = "testdb"
 TEST_DB_PASSWORD = "testpassword"
 
 TEST_DATABASE_URL = f"postgresql://{TEST_DB_USER}:{TEST_DB_PASSWORD}@{TEST_DB_HOST}:{TEST_DB_PORT}/{TEST_DB_NAME}"
-print(TEST_DATABASE_URL)
+# print("Testing...", TEST_DATABASE_URL)
 
 
 media_data = {
@@ -57,31 +57,48 @@ def pytest_configure(config):
 
 def reset_database():
     dao = DataAccessObject(user_id=1, db_url=TEST_DATABASE_URL)
-    dao.execute_query("""
-        DROP POLICY IF EXISTS user_media_access_policy ON media;
-        ALTER TABLE media DISABLE ROW LEVEL SECURITY;
 
-        DROP POLICY IF EXISTS user_feature_access_policy ON feature;
-        ALTER TABLE feature DISABLE ROW LEVEL SECURITY;
-    """)
+    dao.execute_query(text("""
+        DROP SCHEMA public CASCADE;
+        CREATE SCHEMA public;
+        DO $$
+        BEGIN
+            IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'media') THEN
+                DROP POLICY IF EXISTS user_media_access_policy ON media;
+                ALTER TABLE media DISABLE ROW LEVEL SECURITY;
 
-    dao.execute_query("DROP table IF EXISTS alembic_version;")
-    dao.execute_query("DROP table IF EXISTS user_library_access;")
+                DROP POLICY IF EXISTS user_feature_access_policy ON feature;
+                ALTER TABLE feature DISABLE ROW LEVEL SECURITY;
+            END IF;
+        END$$;
+    """))
+
+    dao.execute_query(text("DROP table IF EXISTS alembic_version;"))
+    dao.execute_query(text("DROP table IF EXISTS user_library_access;"))
+    dao.execute_query(text("DROP table IF EXISTS entries_to_queue;"))
+    dao.execute_query(text("CREATE EXTENSION IF NOT EXISTS postgis;"))
     create_database("db/tables.sql")
     alembic_cfg = Config("alembic_test.ini")
     command.upgrade(alembic_cfg, "head")
 
     # create_new_user
-    test_user = {
+    test_users = [{
         "username": "testuser",
         "full_name": "testuser",
         "email": "testuser@example.com",
         "password": "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW"
-    }
+    },
+    {
+        "username": "testuser2",
+        "full_name": "testuser2",
+        "email": "testuser2@example.com",
+        "password": "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW"
+    }]
 
     query = text(
         "INSERT INTO users (username, full_name, email, password) VALUES (:username, :full_name, :email, :password) RETURNING user_id")
-    result = dao.execute_query(query, test_user)
+    result = dao.execute_query(query, test_users[0])
+    result = dao.execute_query(query, test_users[1])
     user_id = result.fetchone()[0]
 
     # create new library for general access for the user

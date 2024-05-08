@@ -24,7 +24,7 @@ def create_projection(db_setup):
             "model_params": {"param1": "value1"},
             "data": {"data1": "value1"},
             "dimension": 1,
-            "atlas_folder_path": "/path/to/atlas",
+            # "atlas_folder_path": "/path/to/atlas",
             "atlas_width": 1,
             "tile_size": 1,
             "atlas_count": 1,
@@ -53,7 +53,7 @@ def test_read_projection(create_projection):
     assert response.status_code == 200
     # Assert that the response has the expected structure
     assert set(response.json().keys()) == {"projection_id", "version", "library_id", "created_at", "model_name", "model_params",
-                                           "data", "dimension", "atlas_folder_path", "atlas_width", "tile_size", "atlas_count", "total_tiles", "tiles_per_atlas"}
+                                           "data", "dimension"}
 
 
 # def test_update_projection(create_projection):

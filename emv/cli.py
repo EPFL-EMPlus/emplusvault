@@ -183,9 +183,11 @@ def migrate_db():
         alembic_cfg = Config("alembic.ini")
         alembic_cfg.set_main_option('sqlalchemy.url', db_url)
 
+        click.echo(f'Revision before migration: {command.current(alembic_cfg)}')
         # Run Alembic Upgrade
         command.upgrade(alembic_cfg, 'head')
         click.echo('Database has been successfully migrated.')
+        click.echo(f'Current Revision: {command.current(alembic_cfg)}')
     else:
         click.echo('Database migration has been canceled.')
 

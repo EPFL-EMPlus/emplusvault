@@ -59,18 +59,18 @@ class Media(BaseModel):
 class Feature(BaseModel):
     class Config:
         protected_namespaces = ()
-    feature_id: Optional[int]
+    feature_id: Optional[int] = None
     feature_type: str
     version: str
-    created_at: Optional[datetime]
+    created_at: Optional[datetime] = Field(default_factory=datetime.now)
     model_name: str
     model_params: Dict
     data: Dict
 
-    embedding_size: Optional[int]
-    embedding_1024: Optional[List[float]]
-    embedding_1536: Optional[List[float]]
-    embedding_2048: Optional[List[float]]
+    embedding_size: Optional[int] = 0
+    embedding_1024: Optional[List[float]] = None
+    embedding_1536: Optional[List[float]] = None
+    embedding_2048: Optional[List[float]] = None
 
     media_id: str
 

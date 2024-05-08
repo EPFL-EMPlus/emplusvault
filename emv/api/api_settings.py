@@ -43,6 +43,17 @@ class Settings(BaseSettings):
     app_mode: str = ''
     host: str = ''
     app_port: str = '9999'
+    bucket_name: str = ''
+    s3_access_key: str = ''
+    s3_secret_key: str = ''
+    s3_endpoint: str = ''
+    superuser_cli_key: str = ''
+    db_host: str = ''
+    db_port: str = ''
+    db_name: str = ''
+    db_user: str = ''
+    db_password: str = ''
+    secret_key: str = ''
 
     class Config:
         env_prefix = "rts_"
