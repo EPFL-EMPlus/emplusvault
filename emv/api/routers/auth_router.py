@@ -69,7 +69,7 @@ def get_password_hash(password):
 def get_user(username: str):
 
     user_dict = DataAccessObject().fetch_one(
-        "SELECT * FROM users WHERE username = %s", (username,))
+        text("SELECT * FROM users WHERE username = :username"), {"username": username})
     if user_dict:
         return UserInDB(**user_dict)
 

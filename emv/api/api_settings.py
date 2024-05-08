@@ -1,6 +1,10 @@
 from pathlib import Path
 from functools import lru_cache
-from pydantic import BaseSettings
+try:
+    from pydantic import BaseSettings
+except ImportError:
+    from pydantic_settings import BaseSettings
+
 from typing import Any, List, Optional
 
 from fastapi import FastAPI
@@ -13,8 +17,11 @@ origins = [
     "http://localhost",
     "https://localhost",
     "http://localhost:8080",
+    "http://localhost:9999",
+    "https://localhost:9999",
     "https://dev.cables.gl",
     "https://cables.gl",
+    "https://sandbox.cables.gl",
     "https://emplusdemo.epfl.ch",
     "http://emplusdemo.epfl.ch"
     # "*" # all origins
@@ -33,9 +40,20 @@ class Settings(BaseSettings):
     data_folder: str = "/media/data/rts/"
     library_name: str = 'default'
     app_prefix: str = ''
-    mode: str = ''
+    app_mode: str = ''
     host: str = ''
     app_port: str = '9999'
+    bucket_name: str = ''
+    s3_access_key: str = ''
+    s3_secret_key: str = ''
+    s3_endpoint: str = ''
+    superuser_cli_key: str = ''
+    db_host: str = ''
+    db_port: str = ''
+    db_name: str = ''
+    db_user: str = ''
+    db_password: str = ''
+    secret_key: str = ''
 
     class Config:
         env_prefix = "rts_"
@@ -53,13 +71,13 @@ class Settings(BaseSettings):
 
 
 class DevSettings(Settings):
-    mode = 'dev'
-    host = 'localhost'
+    app_mode: str = 'dev'
+    host: str = 'localhost'
 
 
 class ProductionSettings(Settings):
-    mode = 'production'
-    host = 'emplusdemo.epfl.ch'
+    app_mode: str = 'production'
+    host: str = 'emplusdemo.epfl.ch'
 
 
 settings = DevSettings()

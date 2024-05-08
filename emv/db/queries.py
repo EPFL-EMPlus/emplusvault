@@ -13,71 +13,69 @@ LOG = emv.utils.get_logger()
 
 
 def get_library_id_from_name(library_name: str) -> Optional[int]:
-    query = """
+    query = text("""
         SELECT library_id FROM library WHERE library_name=:library_name
-    """
-    library_id = DataAccessObject().fetch_one(text(query), {"library_name": library_name,})
+    """)
+    library_id = DataAccessObject().fetch_one(query, {"library_name": library_name,})
     return library_id['library_id'] if library_id else None
 
 
 def get_libraries() -> list:
-    query = """
+    query = text("""
         SELECT * FROM library
-    """
+    """)
     return DataAccessObject().fetch_all(query)
 
 
 # def remove_library(library_id: int) -> None:
 #     # Reimplement if needed, removing a library is very involved
-#     query = """
+#     query = text("""
 #         DELETE FROM library WHERE library_id=:library_id
-#     """
-#     DataAccessObject().execute_query(text(query), {"library_id": library_id})
+#     """)
+#     DataAccessObject().execute_query(query, {"library_id": library_id})
 
 
 def get_library_from_name(library_name: str) -> Optional[Dict]:
-    query = """
+    query = text("""
         SELECT * FROM library WHERE library_name=:library_name
-    """
-    library = DataAccessObject().fetch_one(text(query), {"library_name": library_name})
+    """)
+    library = DataAccessObject().fetch_one(query, {"library_name": library_name})
     return library if library else None
 
 
 def create_library(library: LibraryBase) -> dict:
-    query = """
+    query = text("""
         INSERT INTO library (library_name, prefix_path, version, data)
         VALUES (:library_name, :prefix_path, :version, :data)
         RETURNING library_id
-    """
-    vals = library.dict()
+    """)
+    vals = library.model_dump()
     vals['data'] = json.dumps(vals['data'])
     library_id = DataAccessObject().execute_query(query, vals)
-    return {**library.dict(), "library_id": library_id.fetchone()[0]}
+    return {**library.model_dump(), "library_id": library_id.fetchone()[0]}
 
 
 def update_library_prefix_path(library_id: int, prefix_path: str) -> None:
-    query = """
+    query = text("""
         UPDATE library SET prefix_path=:prefix_path WHERE library_id=:library_id
-    """
+    """)
     DataAccessObject().execute_query(query, {"library_id": library_id, "prefix_path": prefix_path})
 
 
 def create_projection(projection: Projection) -> dict:
-    projection_data = projection.dict()
+    projection_data = projection.model_dump()
     projection_data['model_params'] = json.dumps(
         projection_data['model_params'])
     projection_data['data'] = json.dumps(projection_data['data'])
 
     query = text("""
         INSERT INTO projection 
-            (version, library_id, model_name, model_params, data, dimension, atlas_folder_path, atlas_width, 
-            tile_size, atlas_count, total_tiles, tiles_per_atlas) 
-        VALUES (:version, :library_id, :model_name, :model_params, :data, :dimension, :atlas_folder_path, 
-            :atlas_width, :tile_size, :atlas_count, :total_tiles, :tiles_per_atlas)
+            (version, library_id, model_name, model_params, data, dimension) 
+        VALUES (:version, :library_id, :model_name, :model_params, :data, :dimension)
         RETURNING projection_id
     """)
     projection_id = DataAccessObject().execute_query(query, projection_data)
-    return {**projection.dict(), "projection_id": projection_id.fetchone()[0]}
+    return {**projection.model_dump(), "projection_id": projection_id.fetchone()[0]}
 
 
 def get_projection_by_id(projection_id: int) -> Optional[dict]:
@@ -93,7 +91,7 @@ def get_all_projections() -> list:
 
 
 def update_projection(projection_id: int, projection: Projection) -> None:
-    projection_data = projection.dict()
+    projection_data = projection.model_dump()
     projection_data['model_params'] = json.dumps(
         projection_data['model_params'])
     projection_data['data'] = json.dumps(projection_data['data'])
@@ -112,7 +110,7 @@ def delete_projection(projection_id: int) -> None:
 
 
 def create_media(media: Media) -> dict:
-    media_data = media.dict()
+    media_data = media.model_dump()
     media_data['metadata'] = json.dumps(
         media_data['metadata'], check_circular=False) if media_data['metadata'] else None
     media_data['media_info'] = json.dumps(
@@ -128,7 +126,7 @@ def create_media(media: Media) -> dict:
 
 
 def create_or_update_media(media: Media) -> dict:
-    media_data = media.dict()
+    media_data = media.model_dump()
     media_data['metadata'] = json.dumps(
         media_data['metadata'], check_circular=False) if media_data['metadata'] else None
     media_data['media_info'] = json.dumps(
@@ -231,7 +229,7 @@ def get_media_by_feature_value(key: str, value: Any) -> dict:
 
 
 def update_media(media_id: int, media: Media) -> dict:
-    media_data = media.dict()
+    media_data = media.model_dump()
     media_data['metadata'] = json.dumps(media_data['metadata'])
 
     query = text("""
@@ -258,7 +256,7 @@ def create_feature(feature: Feature) -> dict:
         :embedding_size, :embedding_1024, :embedding_1536, :embedding_2048, :media_id)
         RETURNING feature_id
     """)
-    feature_dict = feature.dict()
+    feature_dict = feature.model_dump()
     feature_dict["model_params"] = json.dumps(feature_dict["model_params"])
     feature_dict["data"] = json.dumps(feature_dict["data"])
     result = DataAccessObject().execute_query(query, feature_dict)
@@ -354,7 +352,7 @@ def get_all_features_by_type(feature_type: str) -> list:
     return result
 
 def update_feature(feature_id: int, feature: Feature) -> dict:
-    feature_dict = feature.dict()
+    feature_dict = feature.model_dump()
     feature_dict["model_params"] = json.dumps(feature_dict["model_params"])
     feature_dict["data"] = json.dumps(feature_dict["data"])
     query = text("""
@@ -450,7 +448,7 @@ def create_map_projection_feature(map_projection_feature: MapProjectionFeatureCr
         VALUES (:projection_id, :feature_id, :media_id, :atlas_order, ST_MakePoint(:x, :y, :z), :index_in_atlas)
         RETURNING map_projection_feature_id, projection_id, feature_id, media_id, atlas_order, ST_AsText(coordinates) as coordinates, index_in_atlas
     """)
-    params = map_projection_feature.dict()
+    params = map_projection_feature.model_dump()
     try:
         params["x"], params["y"], params["z"] = map_projection_feature.coordinates
     except ValueError:
@@ -461,10 +459,10 @@ def create_map_projection_feature(map_projection_feature: MapProjectionFeatureCr
 
 
 def read_map_projection_features():
-    query = """
+    query = text("""
     SELECT map_projection_feature_id, projection_id, feature_id, media_id, atlas_order, ST_AsText(coordinates) as coordinates
     FROM map_projection_feature
-    """
+    """)
     result = DataAccessObject().fetch_all(query)
     return result
 
@@ -544,7 +542,7 @@ def create_atlas(atlas: Atlas):
         VALUES (:projection_id, :atlas_order, :atlas_path, :atlas_size, :tile_size, :tile_count, :rows, :cols, :tiles_per_atlas)
         RETURNING atlas_id
         """)
-    atlas_dict = atlas.dict()
+    atlas_dict = atlas.model_dump()
     result = DataAccessObject().execute_query(query, atlas_dict)
     return {**atlas_dict, "atlas_id": result.fetchone()[0]}
 
@@ -558,7 +556,7 @@ def create_new_user(user: User) -> dict:
             RETURNING user_id
     """)
 
-    user_dict = user.dict()
+    user_dict = user.model_dump()
     user_dict["password"] = get_password_hash(
         user_dict["password"])
 
@@ -575,8 +573,7 @@ def create_new_user(user: User) -> dict:
 
 
 def allow_user_to_access_library(user_id: int, library_id: int) -> bool:
-    query = text(
-        """
+    query = text("""
         INSERT INTO 
             user_library_access (user_id, library_id) 
             VALUES (:user_id, :library_id)

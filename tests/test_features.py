@@ -41,6 +41,10 @@ def create_test_feature(create_media):
     response = create_media
     response = client.post(
         "/feature/", json={**feature_data, "media_id": create_media.json()["media_id"]})
+    if response.status_code != 200:
+        print("Error creating feature")
+        print(response.status_code)
+        print(response.json())
     return response
 
 
@@ -57,8 +61,9 @@ def test_read_feature(create_test_feature):
     assert_media_response(response.json(), feature_data)
 
 
-def test_read_features(create_test_feature):
-    response = client.get("/features/")
-    assert response.status_code == 200
-    for row in response.json():
-        assert_media_response(row, feature_data)
+# The route has been deactivated as querying for all the features at once is not efficient
+# def test_read_features(create_test_feature):
+#     response = client.get("/features/")
+#     assert response.status_code == 200
+#     for row in response.json():
+#         assert_media_response(row, feature_data)
