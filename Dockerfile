@@ -1,12 +1,17 @@
 # Define the base image for building the environment
 FROM python:3.9-slim as builder
 
+RUN pip install poetry
+
 # Set the working directory
 WORKDIR /app
 
-# Install dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY pyproject.toml poetry.lock* ./
+# Configure Poetry:
+# - Disable virtual environments creation
+# - Install dependencies only (no dev-dependencies)
+RUN poetry config virtualenvs.create false \
+    && poetry install --no-dev --no-interaction --no-ansi
 
 # Define the final image
 FROM python:3.9-slim as runner
@@ -20,4 +25,4 @@ COPY --from=builder /usr/local /usr/local
 COPY . .
 
 # Run the tests
-CMD ["pytest", "-v"]
+CMD ["poetry", "run", "pytest", "-v"]
