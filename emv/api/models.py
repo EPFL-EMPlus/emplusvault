@@ -1,3 +1,4 @@
+import pydantic
 from pydantic import BaseModel, Field, Json
 from datetime import datetime
 from typing import Dict, Optional, List, Tuple, Union
@@ -20,6 +21,9 @@ class Library(LibraryBase):
 
 
 class Projection(BaseModel):
+    class Config:
+        protected_namespaces = ()
+
     projection_id: Optional[int] = Field(None, alias="projection_id")
     version: str = Field(..., alias="version", max_length=20)
     library_id: int = Field(..., alias="library_id")
@@ -28,13 +32,6 @@ class Projection(BaseModel):
     model_params: Dict = Field(..., alias="model_params")
     data: Dict = Field(..., alias="data")
     dimension: int = Field(..., alias="dimension")
-    atlas_folder_path: str = Field(...,
-                                   alias="atlas_folder_path", max_length=500)
-    atlas_width: int = Field(..., alias="atlas_width")
-    tile_size: int = Field(..., alias="tile_size")
-    atlas_count: int = Field(..., alias="atlas_count")
-    total_tiles: int = Field(..., alias="total_tiles")
-    tiles_per_atlas: int = Field(..., alias="tiles_per_atlas")
 
 
 class Media(BaseModel):
@@ -60,18 +57,20 @@ class Media(BaseModel):
 
 
 class Feature(BaseModel):
-    feature_id: Optional[int]
+    class Config:
+        protected_namespaces = ()
+    feature_id: Optional[int] = None
     feature_type: str
     version: str
-    created_at: Optional[datetime]
+    created_at: Optional[datetime] = Field(default_factory=datetime.now)
     model_name: str
     model_params: Dict
     data: Dict
 
-    embedding_size: Optional[int]
-    embedding_1024: Optional[List[float]]
-    embedding_1536: Optional[List[float]]
-    embedding_2048: Optional[List[float]]
+    embedding_size: Optional[int] = 0
+    embedding_1024: Optional[List[float]] = None
+    embedding_1536: Optional[List[float]] = None
+    embedding_2048: Optional[List[float]] = None
 
     media_id: str
 
@@ -91,9 +90,11 @@ class MapProjectionFeatureCreate(MapProjectionFeatureBase):
 
 class MapProjectionFeature(MapProjectionFeatureBase):
     map_projection_feature_id: int
-
     class Config:
-        orm_mode = True
+        if pydantic.__version__.startswith('1'):
+            orm_mode = True
+        else:
+            from_attributes = True
 
 
 class Atlas(BaseModel):

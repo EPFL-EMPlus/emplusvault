@@ -5,8 +5,8 @@ metadata:
 spec:
   # activeDeadlineSeconds: 86400
   backoffLimit: 100
-  completions: 1
-  parallelism: 1
+  completions: 10
+  parallelism: 2
   template:
     metadata:
       name: transcription-queue

@@ -40,7 +40,7 @@ def mount_routers(app, settings: Settings) -> None:
     app.include_router(stream_router, tags=["stream"])
     app.include_router(auth_router, tags=["auth"])
 
-    if settings.mode == 'prod':
+    if settings.app_mode == 'prod':
         mount_point = settings.app_prefix if settings.app_prefix else ''
         # print("MOUNT POINT: ", mount_point)
         app.mount(mount_point + "/",

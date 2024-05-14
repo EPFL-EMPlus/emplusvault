@@ -54,19 +54,6 @@ async def get_atlas_by_id(atlas_id: int, current_user: User = Depends(get_curren
         raise HTTPException(status_code=404, detail="Atlas not found")
     return result
 
-
-@atlas_router.get("/atlases/projection_id/{projection_id}/atlas_order/{atlas_order}")
-async def get_atlas_by_projection_id_and_order(projection_id: int, atlas_order: int, current_user: User = Depends(get_current_active_user)):
-    atlas_entry = get_atlases_by_projection_id_and_order(projection_id, atlas_order)[0]
-    if atlas_entry is None:
-        raise HTTPException(status_code=404, detail="Atlas not found")
-    
-    atlas = get_storage_client().get_bytes(
-        BUCKET_NAME, atlas_entry['atlas_path'])
-
-    return Response(content=atlas, media_type="image/png")
-
-
 @atlas_router.get("/atlases/{atlas_id}/texture/{texture_id}")
 async def get_atlas_image(atlas_id: int, texture_id: int, current_user: User = Depends(get_current_active_user)):
 

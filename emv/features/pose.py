@@ -411,6 +411,15 @@ def check_if_valid_annotations(annot_path: Path) -> bool:
     return False
 
 
+def get_keypoints_from_image(image_pil: PIL.Image) -> Dict:
+    PIFPAF_FACTORY = PifPafFactory()
+    processor = PIFPAF_FACTORY.build_model(PifPafModel.fast)
+    processor.reset()
+
+    results = processor.process_pil_image(image_pil)
+    return results
+
+
 @timeit
 def process_video(model_name: str, video_bytes: bytes, skip_frame: int = 0, options=None):
     """Process and run pose detection algorithm

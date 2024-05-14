@@ -1,4 +1,4 @@
-version: '3.3'
+version: '3.8'
 
 services:
   postgres_prod9:
@@ -13,6 +13,8 @@ services:
       - "5435:5432"
     volumes:
       - ${PGVECTOR_VOLUME_LOCATION}:/var/lib/postgresql/data
+    user: "root"
+    
   minio9:
     restart: always
     image: minio/minio

@@ -47,6 +47,7 @@ HF_TOKEN = get_secret("HF_TOKEN")
 RTS_ROOT_FOLDER = get_secret("RTS_ROOT_FOLDER") or "/media/data/rts/"
 IOC_ROOT_FOLDER = get_secret("IOC_ROOT_FOLDER") or "/media/data/ioc/"
 MJF_ROOT_FOLDER = get_secret("MJF_ROOT_FOLDER") or "/media/data/mjf/"
+VIDEO_ROOT_FOLDER = get_secret("VIDEO_ROOT_FOLDER") or "/media/data/videos/"
 
 API_BASE_URL = get_secret("API_BASE_URL")
 API_MAX_CALLS = 100

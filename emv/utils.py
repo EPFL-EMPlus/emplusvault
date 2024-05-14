@@ -16,7 +16,7 @@ from threading import Thread
 import tempfile
 
 
-LOG = logging.getLogger('RTS')
+LOG = logging.getLogger('EMV')
 LOG.setLevel(logging.INFO)
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
