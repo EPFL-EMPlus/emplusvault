@@ -248,7 +248,7 @@ def normalize_angles(angles: List[Optional[float]]) -> np.ndarray:
 
 # DRAW POSES
 
-def draw_pose(pose, ax = None, show_frame: bool = True, cut: bool=True, threshold: float=0.1, color: str = "black", alpha: float = 1.0):
+def draw_pose(pose, ax = None, show_frame: bool = True, cut: bool=True, threshold: float=0.1, color: str = "black", alpha: float = 1.0, linewidth: float = 1):
     """
     Draw extracted skeleton on frame.
 
@@ -284,7 +284,7 @@ def draw_pose(pose, ax = None, show_frame: bool = True, cut: bool=True, threshol
         if k1[2] > threshold and k2[2] > threshold:
             ax.plot([k1[0], k2[0]], 
                     [k1[1], k2[1]], 
-                    linewidth=1, color=color, alpha = alpha)
+                    linewidth=linewidth, color=color, alpha = alpha)
         
     # cut frame to bbox
     if cut:
@@ -292,10 +292,11 @@ def draw_pose(pose, ax = None, show_frame: bool = True, cut: bool=True, threshol
         ax.set_xlim(int(bbox[0]),int(bbox[0] + bbox[2]))
         ax.set_ylim(int(bbox[1] + bbox[3]), int(bbox[1]))
 
-    ax.get_xaxis().set_visible(False)
-    ax.get_yaxis().set_visible(False)
-    ax.set_aspect('equal')
-    plt.tight_layout()
+    if show_frame:
+        ax.get_xaxis().set_visible(False)
+        ax.get_yaxis().set_visible(False)
+        ax.set_aspect('equal')
+        plt.tight_layout()
 
     return ax
 

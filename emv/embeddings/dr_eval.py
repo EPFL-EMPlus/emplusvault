@@ -88,8 +88,8 @@ def plot_embeddings(embeddings_results, fig_title, d = 4):
     plt.tight_layout()
     plt.show()
 
-def plot_embeddings_with_images(embeddings, thumbnails, zoom = 0.1):
-    plt.figure(figsize=(15, 15))  # Adjust the figure size if needed
+def plot_embeddings_with_images(embeddings, thumbnails, zoom = 0.1, figsize = 15):
+    plt.figure(figsize=(figsize, figsize))  # Adjust the figure size if needed
 
     ax = plt.gca()
     for coords, img in zip(embeddings, thumbnails):
