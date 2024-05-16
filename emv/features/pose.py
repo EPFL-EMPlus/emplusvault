@@ -679,3 +679,38 @@ def extract_frame_data(jsonl_file_path: Union[str, Path], min_confidence: float 
                 frame_data[frame_number] = d
 
     return frame_data
+
+
+def get_angle_feature_vector(keypoints):
+    def calculate_angle(a, b, c):
+        """Calculate the angle at b given points a, b, and c, with enhanced stability checks."""
+        ba = a - b
+        bc = c - b
+        norm_ba = np.linalg.norm(ba)
+        norm_bc = np.linalg.norm(bc)
+
+        if norm_ba == 0 or norm_bc == 0:
+            return np.nan  # Avoid division by zero
+
+        cosine_angle = np.dot(ba, bc) / (norm_ba * norm_bc)
+        cosine_angle = np.clip(cosine_angle, -1, 1)  # Ensure within valid range
+        angle = np.arccos(cosine_angle)
+        return angle
+
+    if len(keypoints[0]) == 3:
+        keypoints = [kp[:2] for kp in keypoints]
+
+    angles = []
+
+    # Using indices for reference points, these should be the two hips.
+    ref_indices = [7, 8]  # Indices of the reference points
+
+    # Calculate angles for each keypoint relative to the two reference points
+    for i, keypoint in enumerate(keypoints):
+        if i not in ref_indices:
+            angle1 = calculate_angle(np.array(keypoints[ref_indices[0]]), np.array(keypoint), np.array(keypoints[ref_indices[1]]))
+            angle2 = calculate_angle(np.array(keypoints[ref_indices[1]]), np.array(keypoint), np.array(keypoints[ref_indices[0]]))
+            angles.extend([angle1, angle2])
+
+    feature_vector = np.array(angles)
+    return feature_vector
