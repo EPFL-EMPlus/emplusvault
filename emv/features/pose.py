@@ -681,21 +681,29 @@ def extract_frame_data(jsonl_file_path: Union[str, Path], min_confidence: float 
     return frame_data
 
 
-def get_angle_feature_vector(keypoints):
-    def calculate_angle(a, b, c):
-        """Calculate the angle at b given points a, b, and c, with enhanced stability checks."""
-        ba = a - b
-        bc = c - b
-        norm_ba = np.linalg.norm(ba)
-        norm_bc = np.linalg.norm(bc)
-
-        if norm_ba == 0 or norm_bc == 0:
-            return np.nan  # Avoid division by zero
-
-        cosine_angle = np.dot(ba, bc) / (norm_ba * norm_bc)
-        cosine_angle = np.clip(cosine_angle, -1, 1)  # Ensure within valid range
-        angle = np.arccos(cosine_angle)
-        return angle
+def get_angle_feature_vector(keypoints: List[List[float]]):
+    def calculate_angle(points: List):
+        def angle_between(v1, v2):
+            dot_prod = np.dot(v1, v2)
+            mag1 = np.linalg.norm(v1)
+            mag2 = np.linalg.norm(v2)
+            cos_theta = dot_prod / (mag1 * mag2)
+            angle_radians = np.arccos(cos_theta)
+            return np.degrees(angle_radians)
+        
+        hip1, hip2, ref = np.array(points)
+        
+        # Calculate vectors
+        hip2_hip1 = hip1 - hip2
+        hip1_ref = ref - hip1
+        hip1_hip2 = hip2 - hip1
+        hip2_ref = ref - hip2
+        
+        # Calculate angles
+        angle_hip2_hip1_ref = angle_between(hip2_hip1, hip1_ref)
+        angle_hip1_hip2_ref = angle_between(hip1_hip2, hip2_ref)
+        
+        return angle_hip2_hip1_ref, angle_hip1_hip2_ref
 
     if len(keypoints[0]) == 3:
         keypoints = [kp[:2] for kp in keypoints]
@@ -708,9 +716,7 @@ def get_angle_feature_vector(keypoints):
     # Calculate angles for each keypoint relative to the two reference points
     for i, keypoint in enumerate(keypoints):
         if i not in ref_indices:
-            angle1 = calculate_angle(np.array(keypoints[ref_indices[0]]), np.array(keypoint), np.array(keypoints[ref_indices[1]]))
-            angle2 = calculate_angle(np.array(keypoints[ref_indices[1]]), np.array(keypoint), np.array(keypoints[ref_indices[0]]))
-            angles.extend([angle1, angle2])
+            angles.extend(calculate_angle([keypoints[ref_indices[0]], keypoint, keypoints[ref_indices[1]]]))
 
     feature_vector = np.array(angles)
-    return feature_vector
+    return feature_vector / 180.0
