@@ -683,18 +683,29 @@ def extract_frame_data(jsonl_file_path: Union[str, Path], min_confidence: float 
 
 def get_angle_feature_vector(keypoints):
     def calculate_angle(points):
+        assert len(
+            points) == 3, "Three points are required to calculate the angles"
+
         hip1, hip2, ref = np.array(points)
-        
+
+        if (hip1[0] == ref[0] and hip1[1] == ref[1]) or \
+                (hip2[0] == ref[0] and hip2[1] == ref[1]) or \
+                (hip1[0] == hip2[0] and hip1[1] == hip2[1]):
+            raise ValueError("Points cannot be the same")
+
         # Calculate the lengths of the sides of the triangle
         a = np.linalg.norm(hip2 - ref)
         b = np.linalg.norm(hip1 - ref)
         c = np.linalg.norm(hip1 - hip2)
-        
+
         # Law of cosines to find the angles
-        angle_hip2_hip1_ref = np.degrees(np.arccos((b**2 + c**2 - a**2) / (2 * b * c)))
-        angle_hip1_hip2_ref = np.degrees(np.arccos((a**2 + c**2 - b**2) / (2 * a * c)))
-        angle_hip1_ref_hip2 = np.degrees(np.arccos((a**2 + b**2 - c**2) / (2 * a * b)))
-        
+        angle_hip2_hip1_ref = np.degrees(
+            np.arccos((b**2 + c**2 - a**2) / (2 * b * c)))
+        angle_hip1_hip2_ref = np.degrees(
+            np.arccos((a**2 + c**2 - b**2) / (2 * a * c)))
+        angle_hip1_ref_hip2 = np.degrees(
+            np.arccos((a**2 + b**2 - c**2) / (2 * a * b)))
+
         return angle_hip2_hip1_ref, angle_hip1_hip2_ref, angle_hip1_ref_hip2
 
     angles = []
@@ -705,7 +716,10 @@ def get_angle_feature_vector(keypoints):
     # Calculate angles for each keypoint relative to the two reference points
     for i, keypoint in enumerate(keypoints):
         if i not in ref_indices:
-            angles.extend(calculate_angle([keypoints[ref_indices[0]], keypoint, keypoints[ref_indices[1]]]))
+            # print(i, [keypoints[ref_indices[0]],
+            #       keypoint, keypoints[ref_indices[1]]])
+            angles.extend(calculate_angle(
+                [keypoints[ref_indices[0]], keypoint, keypoints[ref_indices[1]]]))
 
     feature_vector = np.array(angles)
     return feature_vector / 180.0
