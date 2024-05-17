@@ -681,32 +681,21 @@ def extract_frame_data(jsonl_file_path: Union[str, Path], min_confidence: float 
     return frame_data
 
 
-def get_angle_feature_vector(keypoints: List[List[float]]):
-    def calculate_angle(points: List):
-        def angle_between(v1, v2):
-            dot_prod = np.dot(v1, v2)
-            mag1 = np.linalg.norm(v1)
-            mag2 = np.linalg.norm(v2)
-            cos_theta = dot_prod / (mag1 * mag2)
-            angle_radians = np.arccos(cos_theta)
-            return np.degrees(angle_radians)
-        
+def get_angle_feature_vector(keypoints):
+    def calculate_angle(points):
         hip1, hip2, ref = np.array(points)
         
-        # Calculate vectors
-        hip2_hip1 = hip1 - hip2
-        hip1_ref = ref - hip1
-        hip1_hip2 = hip2 - hip1
-        hip2_ref = ref - hip2
+        # Calculate the lengths of the sides of the triangle
+        a = np.linalg.norm(hip2 - ref)
+        b = np.linalg.norm(hip1 - ref)
+        c = np.linalg.norm(hip1 - hip2)
         
-        # Calculate angles
-        angle_hip2_hip1_ref = angle_between(hip2_hip1, hip1_ref)
-        angle_hip1_hip2_ref = angle_between(hip1_hip2, hip2_ref)
+        # Law of cosines to find the angles
+        angle_hip2_hip1_ref = np.degrees(np.arccos((b**2 + c**2 - a**2) / (2 * b * c)))
+        angle_hip1_hip2_ref = np.degrees(np.arccos((a**2 + c**2 - b**2) / (2 * a * c)))
+        angle_hip1_ref_hip2 = np.degrees(np.arccos((a**2 + b**2 - c**2) / (2 * a * b)))
         
-        return angle_hip2_hip1_ref, angle_hip1_hip2_ref
-
-    if len(keypoints[0]) == 3:
-        keypoints = [kp[:2] for kp in keypoints]
+        return angle_hip2_hip1_ref, angle_hip1_hip2_ref, angle_hip1_ref_hip2
 
     angles = []
 
