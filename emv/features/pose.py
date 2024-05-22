@@ -5,6 +5,8 @@ import base64
 import io
 import re
 import numpy as np
+import pandas as pd
+from sklearn.neighbors import KDTree
 import cv2
 import PIL
 import torch
@@ -679,3 +681,74 @@ def extract_frame_data(jsonl_file_path: Union[str, Path], min_confidence: float 
                 frame_data[frame_number] = d
 
     return frame_data
+
+
+def get_angle_feature_vector(keypoints: List[List[float]]):
+    def calculate_angle(points):
+        assert len(
+            points) == 3, "Three points are required to calculate the angles"
+
+        hip1, hip2, ref = np.array(points)
+
+        if (hip1[0] == ref[0] and hip1[1] == ref[1]) or \
+                (hip2[0] == ref[0] and hip2[1] == ref[1]) or \
+                (hip1[0] == hip2[0] and hip1[1] == hip2[1]):
+            raise ValueError("Points cannot be the same")
+
+        # Calculate the lengths of the sides of the triangle
+        a = np.linalg.norm(hip2 - ref)
+        b = np.linalg.norm(hip1 - ref)
+        c = np.linalg.norm(hip1 - hip2)
+
+        # Law of cosines to find the angles
+        angle_hip2_hip1_ref = np.degrees(
+            np.arccos((b**2 + c**2 - a**2) / (2 * b * c)))
+        angle_hip1_hip2_ref = np.degrees(
+            np.arccos((a**2 + c**2 - b**2) / (2 * a * c)))
+        angle_hip1_ref_hip2 = np.degrees(
+            np.arccos((a**2 + b**2 - c**2) / (2 * a * b)))
+
+        return angle_hip2_hip1_ref, angle_hip1_hip2_ref, angle_hip1_ref_hip2
+
+    angles = []
+
+    # Using indices for reference points, these should be the two hips.
+    ref_indices = [7, 8]  # Indices of the reference points
+
+    # Calculate angles for each keypoint relative to the two reference points
+    for i, keypoint in enumerate(keypoints):
+        if i not in ref_indices:
+            angles.extend(calculate_angle(
+                [keypoints[ref_indices[0]], keypoint, keypoints[ref_indices[1]]]))
+
+    feature_vector = np.array(angles)
+    return feature_vector / 180.0
+
+
+def filter_poses(df: pd.DataFrame, threshold: float = 0.2) -> pd.DataFrame:
+    """
+    Filter poses based distance to other poses. We want to keep poses that are as unique as possible.
+    """
+    X = np.array(df.angle_vec.tolist())
+
+    # fill in nan values with the averages of the columns
+    X = np.nan_to_num(X, nan=np.nanmean(X, axis=0))
+
+    # create a KDTree
+    tree = KDTree(X)
+    distances, indices = tree.query(X, k=2)
+
+    to_keep = np.ones(len(X), dtype=bool)
+    for i in range(len(X)):
+        if not to_keep[i]:
+            continue  # Skip points that have already been marked for removal
+
+        # Find neighbors within the threshold
+        indices = tree.query_radius([X[i]], r=threshold)[0]
+
+        # Mark the neighbors (except the current point itself) for removal
+        for index in indices:
+            if index != i:
+                to_keep[index] = False
+
+    return df[to_keep]
