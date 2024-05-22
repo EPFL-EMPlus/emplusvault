@@ -1,6 +1,7 @@
 import pytest
-from emv.features.pose import get_angle_feature_vector
+from emv.features.pose import get_angle_feature_vector, filter_poses
 import numpy as np
+import pandas as pd
 
 
 def assert_almost_equal(arr1, arr2, tol=1e-6):
@@ -52,3 +53,13 @@ def test_invalid_keypoints():
 
     with pytest.raises(ValueError):
         get_angle_feature_vector(keypoints)
+
+
+def test_filter_poses():
+    df = pd.DataFrame({
+        'angle_vec': np.array([[0.9, 1], [1, 1], [1.1, 1.1], [1, 2], [1, 3], [1, 4], [1, 4.1]]).tolist(),
+        'id': [0, 1, 2, 3, 4, 5, 6]
+    })
+
+    result = filter_poses(df, threshold=1)
+    assert set([0, 3, 5]) == set(result.id.tolist())

@@ -9,7 +9,6 @@ import pandas as pd
 from sklearn.neighbors import KDTree
 import cv2
 import PIL
-from soupsieve import closest
 import torch
 import orjson
 
@@ -738,7 +737,6 @@ def filter_poses(df: pd.DataFrame, threshold: float = 0.2) -> pd.DataFrame:
     # create a KDTree
     tree = KDTree(X)
     distances, indices = tree.query(X, k=2)
-    # closest_distances = distances[:, 1]
 
     to_keep = np.ones(len(X), dtype=bool)
     for i in range(len(X)):
