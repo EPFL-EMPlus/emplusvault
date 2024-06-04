@@ -2,6 +2,7 @@ import os
 import numpy as np
 import pandas as pd
 import ast
+from sklearn.neighbors import KDTree
 
 import matplotlib.pyplot as plt
 
@@ -146,23 +147,6 @@ def compute_angle(p1: Tuple[float, float, float],
     angle_score = np.mean([p1[2], p2[2], p3[2]])
 
     return angle_deg, angle_score
-
-def calculate_angle(a, b, c):
-    """Calculate the angle at b given points a, b, and c, with enhanced stability checks."""
-    ba = a - b
-    bc = c - b
-    norm_ba = np.linalg.norm(ba)
-    norm_bc = np.linalg.norm(bc)
-
-    if norm_ba == 0 or norm_bc == 0:
-        return np.nan  # Avoid division by zero
-
-    cosine_angle = np.dot(ba, bc) / (norm_ba * norm_bc)
-    cosine_angle = np.clip(cosine_angle, -1, 1)  # Ensure within valid range
-    angle = np.arccos(cosine_angle)
-    return angle
-
-angles = []
 
 def compute_human_angles(keypoints: List[Tuple[float, float, float]], min_confidence: float = 0.5) -> List[Optional[float]]:
     """
@@ -426,3 +410,32 @@ def process_all_poses(results: list) -> pd.DataFrame:
         print(f"All {len(poses_flat)} poses were flattened correctly")
 
     return pd.DataFrame(poses_flat) 
+
+
+def filter_poses(df: pd.DataFrame, threshold: float = 0.2) -> pd.DataFrame:
+    """
+    Filter poses based distance to other poses. We want to keep poses that are as unique as possible.
+    """
+    X = np.array(df.angle_vec.tolist())
+
+    # fill in nan values with the averages of the columns
+    X = np.nan_to_num(X, nan=np.nanmean(X, axis=0))
+
+    # create a KDTree
+    tree = KDTree(X)
+    distances, indices = tree.query(X, k=2)
+
+    to_keep = np.ones(len(X), dtype=bool)
+    for i in range(len(X)):
+        if not to_keep[i]:
+            continue  # Skip points that have already been marked for removal
+
+        # Find neighbors within the threshold
+        indices = tree.query_radius([X[i]], r=threshold)[0]
+
+        # Mark the neighbors (except the current point itself) for removal
+        for index in indices:
+            if index != i:
+                to_keep[index] = False
+
+    return df[to_keep]

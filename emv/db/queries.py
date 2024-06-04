@@ -285,8 +285,8 @@ def get_features_by_type(feature_type: str) -> dict:
     return result
 
 
-def get_features_by_type_paginated(feature_type: str, page_size: int = 20, last_seen_feature_id: int = -1, short_clips_only: bool = False, long_clips_only: bool = False) -> dict:
-    query = "SELECT * FROM feature WHERE feature_type = :feature_type"
+def get_features_by_type_paginated(feature_type: str, fields: str = "*", page_size: int = 20, last_seen_feature_id: int = -1, short_clips_only: bool = False, long_clips_only: bool = False) -> dict:
+    query = f"SELECT {fields} FROM feature WHERE feature_type = :feature_type"
 
     # Add conditions for the last_seen values
     if last_seen_feature_id:

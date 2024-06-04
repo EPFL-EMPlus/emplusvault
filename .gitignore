@@ -143,8 +143,8 @@ cython_debug/
 activate.sh
 
 
-/outputs
+outputs/
 /sample_library/*
 /results
 /library
-/data
+data/
