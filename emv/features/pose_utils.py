@@ -55,36 +55,37 @@ ANGLES_ASSOCIATIONS = {
 }
 
 FILTER_POSES = {
-    "standing_still_angle" : {
+    "standing_still_angle": {
         "left_elbow": 0.9,
         "right_elbow": 0.9,
         "left_shoulder": 0.15,
         "right_shoulder": 0.15,
         "left_hip": 0.95,
         "right_hip": 0.95,
-        "left_knee":0.95,
-        "right_knee":0.95,
-        "neck":0.5
+        "left_knee": 0.95,
+        "right_knee": 0.95,
+        "neck": 0.5
     },
-    "sitting_pose_angle" : {
+    "sitting_pose_angle": {
         "left_elbow": 0.6,
         "right_elbow": 0.6,
         "left_shoulder": 0.15,
         "right_shoulder": 0.15,
         "left_hip": 0.5,
         "right_hip": 0.5,
-        "left_knee":0.5,
-        "right_knee":0.5,
-        "neck":0.5
+        "left_knee": 0.5,
+        "right_knee": 0.5,
+        "neck": 0.5
     }
 }
+
 
 def keypoint_name_to_id(keypoint):
     return KEYPOINTS_NAMES.index(keypoint)
 
-def format_keypoints_to_read(keypoints):
-    return {k:v for k,v in zip(KEYPOINTS_NAMES, keypoints)}
 
+def format_keypoints_to_read(keypoints):
+    return {k: v for k, v in zip(KEYPOINTS_NAMES, keypoints)}
 
 
 # PROCESS KEYPOINTS TO ANGLES
@@ -100,9 +101,12 @@ def reshape_keypoints(keypoints: List[float]) -> List[Tuple[float, float, float]
     Returns:
     - List[Tuple[float, float, float]]: The reshaped keypoints.
     """
-    keypoints = [(keypoints[i], keypoints[i+1], keypoints[i+2]) for i in range(0, len(keypoints), 3)]
-    keypoints = keypoints[:1] + keypoints[5:] # Drop unused keypoints from the face
+    keypoints = [(keypoints[i], keypoints[i+1], keypoints[i+2])
+                 for i in range(0, len(keypoints), 3)]
+    # Drop unused keypoints from the face
+    keypoints = keypoints[:1] + keypoints[5:]
     return keypoints
+
 
 def compute_angle(p1: Tuple[float, float, float],
                   p2: Tuple[float, float, float],
@@ -128,10 +132,10 @@ def compute_angle(p1: Tuple[float, float, float],
     # Check for zero magnitudes or low confidence
     if mag1 == 0 or mag2 == 0:
         return 0.0, 0.0  # Angle is undefined, return 0
-    
+
     if p1[2] < min_confidence or p2[2] < min_confidence or p3[2] < min_confidence:
         return 0.0, 0.0  # Low confidence, return 0
-    
+
     dot_product = np.dot(vec1, vec2)
     cos_theta = dot_product / (mag1 * mag2)
 
@@ -148,6 +152,7 @@ def compute_angle(p1: Tuple[float, float, float],
 
     return angle_deg, angle_score
 
+
 def compute_human_angles(keypoints: List[Tuple[float, float, float]], min_confidence: float = 0.5) -> List[Optional[float]]:
     """
     Compute meaningful angles for human pose based on keypoints.
@@ -160,7 +165,8 @@ def compute_human_angles(keypoints: List[Tuple[float, float, float]], min_confid
     - List[Optional[float]]: List of computed angles in degrees. Missing or undefined angles are set to None.
     """
     # Define the associations to compute angles
-    associations = [[keypoint_name_to_id(k) for k in assoc] for angle,assoc in ANGLES_ASSOCIATIONS.items()]
+    associations = [[keypoint_name_to_id(k) for k in assoc]
+                    for angle, assoc in ANGLES_ASSOCIATIONS.items()]
 
     angles = []
     angles_scores = []
@@ -192,23 +198,27 @@ def compute_human_angles(keypoints: List[Tuple[float, float, float]], min_confid
 
     return angles, angles_scores
 
+
 def compute_hips_angles(keypoints):
     angles = []
     angles_scores = []
-    
+
     # Using indices for reference points to avoid direct numpy array comparison
     # Indices of the reference points, should be left and right hip. They need to be always available for this to work
-    hips_indices = [7,8] #KEYPOINTS_NAMES.index("left_hip"), KEYPOINTS_NAMES.index("right_hip")  
+    # KEYPOINTS_NAMES.index("left_hip"), KEYPOINTS_NAMES.index("right_hip")
+    hips_indices = [7, 8]
 
     # Calculate angles for each keypoint relative to the two reference points
     for i, keypoint in enumerate(keypoints):
         if i not in hips_indices:  # Check using indices
-            angle, score = compute_angle(np.array(keypoints[hips_indices[0]]), np.array(keypoint), np.array(keypoints[hips_indices[1]]))
+            angle, score = compute_angle(np.array(keypoints[hips_indices[0]]), np.array(
+                keypoint), np.array(keypoints[hips_indices[1]]))
             angles.append(angle)
             angles_scores.append(score)
 
     # Convert angles list to a numpy array
     return angles, angles_scores
+
 
 def normalize_angles(angles: List[Optional[float]]) -> np.ndarray:
     """
@@ -232,7 +242,7 @@ def normalize_angles(angles: List[Optional[float]]) -> np.ndarray:
 
 # DRAW POSES
 
-def draw_pose(pose, ax = None, show_frame: bool = True, cut: bool=True, threshold: float=0.1, color: str = "black", alpha: float = 1.0, linewidth: float = 1):
+def draw_pose(pose, ax=None, show_frame: bool = True, cut: bool = True, threshold: float = 0.1, color: str = "black", alpha: float = 1.0, linewidth: float = 1):
     """
     Draw extracted skeleton on frame.
 
@@ -248,32 +258,33 @@ def draw_pose(pose, ax = None, show_frame: bool = True, cut: bool=True, threshol
 
     keypoints = pose["keypoints"]
     if show_frame:
-        frame = get_frame(pose["guid"], pose["media_id"].replace("ioc-", ""), pose["frame_number"])
+        frame = get_frame(pose["guid"], pose["media_id"].replace(
+            "ioc-", ""), pose["frame_number"])
 
     if ax is None:
-        fig, ax = plt.subplots(figsize=(6,6))
+        fig, ax = plt.subplots(figsize=(6, 6))
 
     if show_frame and frame is None:
         return ax
 
-    if show_frame:    
+    if show_frame:
         ax.imshow(frame)
-        
-    ax.scatter([k[0] for k in keypoints if k[2] > threshold], 
-               [k[1] for k in keypoints if k[2] > threshold], 
-               s=10, color=color, alpha = alpha)
+
+    ax.scatter([k[0] for k in keypoints if k[2] > threshold],
+               [k[1] for k in keypoints if k[2] > threshold],
+               s=10, color=color, alpha=alpha)
     for c in CONNECTIONS:
         k1 = keypoints[KEYPOINTS_NAMES.index(c[0])]
         k2 = keypoints[KEYPOINTS_NAMES.index(c[1])]
         if k1[2] > threshold and k2[2] > threshold:
-            ax.plot([k1[0], k2[0]], 
-                    [k1[1], k2[1]], 
-                    linewidth=linewidth, color=color, alpha = alpha)
-        
+            ax.plot([k1[0], k2[0]],
+                    [k1[1], k2[1]],
+                    linewidth=linewidth, color=color, alpha=alpha)
+
     # cut frame to bbox
     if cut:
         bbox = pose["bbox"]
-        ax.set_xlim(int(bbox[0]),int(bbox[0] + bbox[2]))
+        ax.set_xlim(int(bbox[0]), int(bbox[0] + bbox[2]))
         ax.set_ylim(int(bbox[1] + bbox[3]), int(bbox[1]))
 
     if show_frame:
@@ -287,31 +298,33 @@ def draw_pose(pose, ax = None, show_frame: bool = True, cut: bool=True, threshol
 
 # LOAD AND PROCESS POSES DATA
 
-def compare_pose(input_pose, filter_pose_angles, drop_threshold = 0.1):
+def compare_pose(input_pose, filter_pose_angles, drop_threshold=0.1):
     """
     Drop pose unless at least one angle is different from the filter pose angles
     """
     input_angle = input_pose["angle_vec"]
     input_angle_scores = input_pose["angle_score"]
-    angles_diff = [np.abs(input_angle[i] - filter_pose_angles[k]) for i,k in enumerate(filter_pose_angles.keys()) if input_angle_scores[i] > 0.1]
+    angles_diff = [np.abs(input_angle[i] - filter_pose_angles[k])
+                   for i, k in enumerate(filter_pose_angles.keys()) if input_angle_scores[i] > 0.1]
     return sum([a > drop_threshold for a in angles_diff]) < 1
+
 
 def drop_poses(pose_df: pd.DataFrame,
                drop_poses: dict = FILTER_POSES,
                drop_threshold: float = 0.1) -> pd.DataFrame:
-     for name,filter_pose in drop_poses.items():
+    for name, filter_pose in drop_poses.items():
         print(f"Drop {name} poses")
-        pose_df = pose_df[pose_df.apply(lambda x: not compare_pose(x, filter_pose_angles=filter_pose, drop_threshold=drop_threshold), axis=1)]
-     return pose_df
-
+        pose_df = pose_df[pose_df.apply(lambda x: not compare_pose(
+            x, filter_pose_angles=filter_pose, drop_threshold=drop_threshold), axis=1)]
+    return pose_df
 
 
 def add_metadata_to_poses(pose_df: pd.DataFrame) -> pd.DataFrame:
     data = dataframe_from_hdf5(DRIVE_PATH + "ioc/data/", "metadata")
     data["seq_id"] = data.seq_id.map(lambda x: f"ioc-{x}")
-    pose_df = pd.merge(pose_df, data[["guid", "seq_id", "sport"]], left_on="media_id", right_on="seq_id")
+    pose_df = pd.merge(
+        pose_df, data[["guid", "seq_id", "sport"]], left_on="media_id", right_on="seq_id")
     return pose_df
-
 
 
 def load_local_poses(fp: str) -> pd.DataFrame:
@@ -322,15 +335,15 @@ def load_local_poses(fp: str) -> pd.DataFrame:
             # Handle cases where the string cannot be parsed as a list
             return []
 
-    df = pd.read_csv(fp, converters={"angle_vec": parse_list_string, "angle_score": parse_list_string, "keypoints": parse_list_string, "bbox": parse_list_string})
+    df = pd.read_csv(fp, converters={"angle_vec": parse_list_string, "angle_score": parse_list_string,
+                     "keypoints": parse_list_string, "bbox": parse_list_string})
     return df
 
 
-
-def process_frame_data(frame_data: dict, 
-                       min_confidence: float = 0.5, 
-                       min_valid_keypoints: int = 10, 
-                       min_valid_angles: int = 5 ):
+def process_frame_data(frame_data: dict,
+                       min_confidence: float = 0.5,
+                       min_valid_keypoints: int = 10,
+                       min_valid_angles: int = 5):
     frame_width, frame_height = frame_data['data']['width_height']
     frame_number = frame_data['frame']
     media_id = frame_data['media_id']
@@ -338,48 +351,51 @@ def process_frame_data(frame_data: dict,
     d = {
         'media_id': media_id,
         'frame_number': frame_number,
-        'angles': [], # To store angles
+        'angles': [],  # To store angles
         'angle_vec': [],  # To store normalized angle vectors
-        'angle_scores': [], # To store angle confidence scores
-        'hips_angles': [], # To store hip angles
-        'hips_angle_vec': [], # To store normalized hip angle vectors
-        'hips_angle_scores': [], # To store hip angle confidence scores
+        'angle_scores': [],  # To store angle confidence scores
+        'hips_angles': [],  # To store hip angles
+        'hips_angle_vec': [],  # To store normalized hip angle vectors
+        'hips_angle_scores': [],  # To store hip angle confidence scores
         'keypoints': [],
         'bbox': [],
         'frame_width': frame_width,
         'frame_height': frame_height,
         'num_subjects': 0  # Initialize to 0; will increment for each valid person
     }
-    
+
     annotations = frame_data['data']['annotations']
     if not annotations:
         return d
-    
+
     for person in annotations:
         keypoints = person['keypoints']
         bbox = person['bbox']
         reshaped_keypoints = reshape_keypoints(keypoints)
-        
+
         # Count valid keypoints
-        valid_keypoints = sum(1 for x, y, c in reshaped_keypoints if c >= min_confidence)
-        
+        valid_keypoints = sum(
+            1 for x, y, c in reshaped_keypoints if c >= min_confidence)
+
         if valid_keypoints < min_valid_keypoints:
             continue  # Skip this person
-        
-        angles_adjusted, angle_scores = compute_human_angles(reshaped_keypoints, min_confidence)
+
+        angles_adjusted, angle_scores = compute_human_angles(
+            reshaped_keypoints, min_confidence)
         hips_angles, hips_scores = compute_hips_angles(reshaped_keypoints)
 
         # Count valid angles
         valid_angles = sum(1 for angle in angles_adjusted if angle != 0.0)
-        
+
         if valid_angles < min_valid_angles:
             continue  # Skip this person
-        
+
         normalized_angles = normalize_angles(angles_adjusted)
         normalized_hips_angles = normalize_angles(hips_angles)
-        
+
         d['angles'].append(angles_adjusted)
-        d['angle_vec'].append(normalized_angles.tolist())  # Store normalized angle vector
+        # Store normalized angle vector
+        d['angle_vec'].append(normalized_angles.tolist())
         d['angle_scores'].append(angle_scores)
         d['hips_angles'].append(hips_angles)
         d['hips_angle_vec'].append(normalized_hips_angles.tolist())
@@ -390,36 +406,38 @@ def process_frame_data(frame_data: dict,
 
     return d
 
+
 def process_all_poses(results: list) -> pd.DataFrame:
     """
     Process results from the DB and return a DataFrame with all poses.
     """
 
     poses = [(p["data"]["frames"], p["media_id"]) for p in results]
-    [[p.update({"media_id":data[1]}) for p in data[0]][0] for data in poses]
+    [[p.update({"media_id": data[1]}) for p in data[0]][0] for data in poses]
     poses = [p[0] for p in poses]
-    poses = [process_frame_data(pose) for poses_list in poses for pose in poses_list]
+    poses = [process_frame_data(pose)
+             for poses_list in poses for pose in poses_list]
 
     poses_flat = []
     for pose in poses:
         pose_exp = [{
-                        "media_id":pose["media_id"], 
-                        "frame_number":pose["frame_number"], 
-                        "angle_vec":angle, 
-                        "angle_score":score,
-                        "hips_angle_vec":hips_angle, 
-                        "hips_angle_score":hips_score,
-                        "keypoints":keypoint, 
-                        "bbox":bbox
-                    } 
-                    for angle, score, hips_angle, hips_score, keypoint, bbox 
-                    in zip(pose["angle_vec"], pose["angle_scores"], pose["hips_angle_vec"], pose["hips_angle_scores"], pose["keypoints"], pose["bbox"])]
+            "media_id": pose["media_id"],
+            "frame_number": pose["frame_number"],
+            "angle_vec": angle,
+            "angle_score": score,
+            "hips_angle_vec": hips_angle,
+            "hips_angle_score": hips_score,
+            "keypoints": keypoint,
+            "bbox": bbox
+        }
+            for angle, score, hips_angle, hips_score, keypoint, bbox
+            in zip(pose["angle_vec"], pose["angle_scores"], pose["hips_angle_vec"], pose["hips_angle_scores"], pose["keypoints"], pose["bbox"])]
         poses_flat.extend(pose_exp)
 
     if np.sum([len(pose["angle_vec"]) for pose in poses]) == len(poses_flat):
         print(f"All {len(poses_flat)} poses were flattened correctly")
 
-    return pd.DataFrame(poses_flat) 
+    return pd.DataFrame(poses_flat)
 
 
 def filter_poses(df: pd.DataFrame, threshold: float = 0.2) -> pd.DataFrame:

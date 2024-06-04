@@ -264,9 +264,12 @@ class TextEmbedder:
         import torch
         from transformers import CamembertModel, CamembertTokenizer
 
-        self.tokenizer = CamembertTokenizer.from_pretrained('camembert/camembert-large')
-        self.model = CamembertModel.from_pretrained('camembert/camembert-large')
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.tokenizer = CamembertTokenizer.from_pretrained(
+            'camembert/camembert-large')
+        self.model = CamembertModel.from_pretrained(
+            'camembert/camembert-large')
+        self.device = torch.device(
+            "cuda" if torch.cuda.is_available() else "cpu")
         self.model = self.model.to(self.device)
 
     def encode(self, texts: List[str]) -> List:
@@ -280,7 +283,8 @@ class TextEmbedder:
         for paragraph in texts:
             # Lazy import of torch within the method
             import torch
-            inputs = self.tokenizer(paragraph, return_tensors="pt", padding=True, truncation=True, max_length=512)
+            inputs = self.tokenizer(
+                paragraph, return_tensors="pt", padding=True, truncation=True, max_length=512)
             inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
             with torch.no_grad():
@@ -291,7 +295,7 @@ class TextEmbedder:
             embeddings.append(list(emb[0].numpy()))
 
         return embeddings
-    
+
 
 def create_embeddings(texts: Union[str, List[str]]) -> List:
     embedder = TextEmbedder()

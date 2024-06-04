@@ -7,7 +7,7 @@ import re
 import numpy as np
 import pandas as pd
 import cv2
-import PIL  
+import PIL
 import ast
 import torch
 import orjson
@@ -31,7 +31,6 @@ from emv.features.pose_utils import process_frame_data, load_local_poses, proces
 from emv.features.pose_utils import FILTER_POSES
 
 LOG = emv.utils.get_logger()
-
 
 
 class ExtendedEnum(str, Enum):
@@ -491,11 +490,9 @@ def get_current_device_name():
     return get_gpu_props(gpu_id).name
 
 
-
-
-def extract_frame_data(jsonl_file_path: Union[str, Path], 
-                       min_confidence: float = 0.5, 
-                       min_valid_keypoints: int = 10, 
+def extract_frame_data(jsonl_file_path: Union[str, Path],
+                       min_confidence: float = 0.5,
+                       min_valid_keypoints: int = 10,
                        min_valid_angles: int = 5) -> Dict[int, Dict[str, Union[List[Dict[str, float]], List[List[float]], Dict[str, int]]]]:
     """
     Extract and compute angles, keypoints, bounding boxes, and frame dimensions for each frame from a JSONLines file.
@@ -514,8 +511,9 @@ def extract_frame_data(jsonl_file_path: Union[str, Path],
         for line in f:
             obj = orjson.loads(line)
             frame_number = obj['frame']
-            
-            d = process_frame_data(obj, min_confidence, min_valid_keypoints, min_valid_angles)
+
+            d = process_frame_data(obj, min_confidence,
+                                   min_valid_keypoints, min_valid_angles)
             if d['num_subjects'] > 0:
                 frame_data[frame_number] = d
 
@@ -525,11 +523,13 @@ def extract_frame_data(jsonl_file_path: Union[str, Path],
 def check_filter_poses():
     return FILTER_POSES
 
+
 ACCESS_POINTS = [
     "LOCAL",
     "DB",
     "API"
 ]
+
 
 def load_poses(access_point: str = "DB",
                local_fp: str = "",
@@ -547,7 +547,7 @@ def load_poses(access_point: str = "DB",
     - drop_threshold (float): Threshold for dropping poses.
     - merge_metadata (bool): Whether to merge the metadata into the DataFrame.
     - max_poses (int): Max number of poses to retrieve if not loading locally.
-    """           
+    """
 
     if access_point not in ACCESS_POINTS:
         print("Invalid access point. Choose from 'LOCAL', 'DB', or 'API'.")
@@ -562,20 +562,24 @@ def load_poses(access_point: str = "DB",
             return None
     elif access_point == "API":
         print("Get poses through the API...")
-        poses = get_features(feature_type="pose", page_size=100, max_features=max_poses)
+        poses = get_features(feature_type="pose",
+                             page_size=100, max_features=max_poses)
         pose_df = process_all_poses(poses)
     elif access_point == "DB":
         print("Loading poses from the DB...")
         poses = []
         n_poses_in_db = count_features_by_type('pose')
-        max_poses = np.clip(max_poses, 0, n_poses_in_db) if max_poses is not None else n_poses_in_db
+        max_poses = np.clip(
+            max_poses, 0, n_poses_in_db) if max_poses is not None else n_poses_in_db
         for i in range(0, max_poses, 100):
-            poses += get_features_by_type_paginated('pose', page_size=100, last_seen_feature_id=i)
+            poses += get_features_by_type_paginated(
+                'pose', page_size=100, last_seen_feature_id=i)
         pose_df = process_all_poses(poses)
 
     # Drop uninteresting poses
     if len(filter_poses) > 0:
-        pose_df = drop_poses(pose_df, drop_poses=filter_poses, drop_threshold=drop_threshold)
+        pose_df = drop_poses(pose_df, drop_poses=filter_poses,
+                             drop_threshold=drop_threshold)
 
     # Merge with metadata
     if access_point != "LOCAL" and merge_metadata:
@@ -588,7 +592,7 @@ def load_poses(access_point: str = "DB",
     return pose_df
 
 
-def sample_from_sports(pose_df, n_per_sports = 100):
+def sample_from_sports(pose_df, n_per_sports=100):
     sampled_dfs = []
     for sport, group in pose_df.groupby('sport'):
         if len(group) >= n_per_sports:
@@ -596,5 +600,5 @@ def sample_from_sports(pose_df, n_per_sports = 100):
         else:
             sampled_dfs.append(group)
     pose_df = pd.concat(sampled_dfs)
-    
+
     return pose_df

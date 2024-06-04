@@ -10,6 +10,7 @@ from emv.settings import API_BASE_URL, API_MAX_CALLS, API_USERNAME, API_PASSWORD
 headers = None
 storage_client = get_storage_client()
 
+
 def authenticate():
     print("Authenticating...")
     data = {
@@ -19,7 +20,8 @@ def authenticate():
     }
 
     # Authenticate
-    response = requests.post(f"{API_BASE_URL}/gettoken", data=data, verify=False)
+    response = requests.post(
+        f"{API_BASE_URL}/gettoken", data=data, verify=False)
 
     if response.status_code != 200:
         print("Authentication failed!")
@@ -36,7 +38,6 @@ def authenticate():
     return headers
 
 
-
 def download_video(media_id):
     fn = f"data/videos/{media_id}.mp4"
     if os.path.exists(fn):
@@ -46,20 +47,22 @@ def download_video(media_id):
     if headers is None:
         headers = authenticate()
 
-    response = requests.get(f"{API_BASE_URL}/download/{media_id}", headers=headers, verify=False)
+    response = requests.get(
+        f"{API_BASE_URL}/download/{media_id}", headers=headers, verify=False)
     print(f"{API_BASE_URL}/download/{media_id}")
     if response.status_code != 200:
-        headers = authenticate() # Refresh token
-        response = requests.get(f"{API_BASE_URL}/download/{media_id}", headers=headers, verify=False)
+        headers = authenticate()  # Refresh token
+        response = requests.get(
+            f"{API_BASE_URL}/download/{media_id}", headers=headers, verify=False)
         if response.status_code == 200:
             print("Download failed!")
             return None
-    
-    
+
     with open(fn, "wb") as f:
         f.write(response.content)
 
     return fn
+
 
 def get_frame(video_id, media_id, frame_number):
     # Check if frame is already in DB
@@ -83,21 +86,21 @@ def get_frame(video_id, media_id, frame_number):
     return frame
 
 
-
-def get_features(feature_type, page_size = 100, max_features = 100):
+def get_features(feature_type, page_size=100, max_features=100):
     global headers
     if headers is None:
         headers = authenticate()
 
     if page_size > API_MAX_CALLS:
-        print(f"Page size cannot be larger than {API_MAX_CALLS}. Setting page size to {API_MAX_CALLS}")
+        print(
+            f"Page size cannot be larger than {API_MAX_CALLS}. Setting page size to {API_MAX_CALLS}")
         page_size = API_MAX_CALLS
 
-    response = requests.get(f"{API_BASE_URL}/features/{feature_type}", 
-                            params = {
+    response = requests.get(f"{API_BASE_URL}/features/{feature_type}",
+                            params={
                                 "page_size": page_size
-                            }, 
-                            headers=headers, 
+                            },
+                            headers=headers,
                             verify=False)
     results = response.json()
 
@@ -109,12 +112,12 @@ def get_features(feature_type, page_size = 100, max_features = 100):
         except:
             print(response.json())
             break
-        response = requests.get(f"{API_BASE_URL}/features/{feature_type}", 
-                                params = {
-                                    "page_size": page_size, 
+        response = requests.get(f"{API_BASE_URL}/features/{feature_type}",
+                                params={
+                                    "page_size": page_size,
                                     "last_seen_feature_id": last_seen_feature_id
-                                }, 
-                                headers=headers, 
+                                },
+                                headers=headers,
                                 verify=False)
         new_results = response.json()
         if type(new_results) == dict and new_results.get("feature_id", None) is None:
@@ -125,4 +128,3 @@ def get_features(feature_type, page_size = 100, max_features = 100):
     print(f"Retrieved {len(results)} features")
 
     return results
-    
