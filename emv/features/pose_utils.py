@@ -338,9 +338,12 @@ def process_frame_data(frame_data: dict,
     d = {
         'media_id': media_id,
         'frame_number': frame_number,
-        'angles': [],
+        'angles': [], # To store angles
         'angle_vec': [],  # To store normalized angle vectors
         'angle_scores': [], # To store angle confidence scores
+        'hips_angles': [], # To store hip angles
+        'hips_angle_vec': [], # To store normalized hip angle vectors
+        'hips_angle_scores': [], # To store hip angle confidence scores
         'keypoints': [],
         'bbox': [],
         'frame_width': frame_width,
@@ -364,6 +367,7 @@ def process_frame_data(frame_data: dict,
             continue  # Skip this person
         
         angles_adjusted, angle_scores = compute_human_angles(reshaped_keypoints, min_confidence)
+        hips_angles, hips_scores = compute_hips_angles(reshaped_keypoints)
 
         # Count valid angles
         valid_angles = sum(1 for angle in angles_adjusted if angle != 0.0)
@@ -372,10 +376,14 @@ def process_frame_data(frame_data: dict,
             continue  # Skip this person
         
         normalized_angles = normalize_angles(angles_adjusted)
+        normalized_hips_angles = normalize_angles(hips_angles)
         
         d['angles'].append(angles_adjusted)
         d['angle_vec'].append(normalized_angles.tolist())  # Store normalized angle vector
         d['angle_scores'].append(angle_scores)
+        d['hips_angles'].append(hips_angles)
+        d['hips_angle_vec'].append(normalized_hips_angles.tolist())
+        d['hips_angle_scores'].append(hips_scores)
         d['keypoints'].append(reshaped_keypoints)
         d['bbox'].append(bbox)
         d['num_subjects'] += 1  # Increment for each valid person
@@ -398,12 +406,14 @@ def process_all_poses(results: list) -> pd.DataFrame:
                         "media_id":pose["media_id"], 
                         "frame_number":pose["frame_number"], 
                         "angle_vec":angle, 
-                        "angle_score":score, 
+                        "angle_score":score,
+                        "hips_angle_vec":hips_angle, 
+                        "hips_angle_score":hips_score,
                         "keypoints":keypoint, 
                         "bbox":bbox
                     } 
-                    for angle, score, keypoint, bbox 
-                    in zip(pose["angle_vec"], pose["angle_scores"], pose["keypoints"], pose["bbox"])]
+                    for angle, score, hips_angle, hips_score, keypoint, bbox 
+                    in zip(pose["angle_vec"], pose["angle_scores"], pose["hips_angle_vec"], pose["hips_angle_scores"], pose["keypoints"], pose["bbox"])]
         poses_flat.extend(pose_exp)
 
     if np.sum([len(pose["angle_vec"]) for pose in poses]) == len(poses_flat):

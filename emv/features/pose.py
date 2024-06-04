@@ -25,6 +25,7 @@ from typing import List, Dict, Tuple, Union, Optional
 
 from emv.utils import FileVideoStream, timeit, dataframe_from_hdf5
 from emv.client.get_content import get_frame, get_features
+from emv.db.queries import get_features_by_type_paginated, count_features_by_type
 
 from emv.features.pose_utils import process_frame_data, load_local_poses, process_all_poses, drop_poses, add_metadata_to_poses
 from emv.features.pose_utils import FILTER_POSES
@@ -524,8 +525,14 @@ def extract_frame_data(jsonl_file_path: Union[str, Path],
 def check_filter_poses():
     return FILTER_POSES
 
-def load_poses(local_fp: str = "",
-               load_locally: bool = True,
+ACCESS_POINTS = [
+    "LOCAL",
+    "DB",
+    "API"
+]
+
+def load_poses(access_point: str = "DB",
+               local_fp: str = "",
                filter_poses: dict = FILTER_POSES,
                drop_threshold: float = 0.1,
                merge_metadata: bool = True,
@@ -534,23 +541,36 @@ def load_poses(local_fp: str = "",
     Load all poses, either from a local file or from the DB.
 
     Parameters:
-    - load_locally (bool): Whether to load the poses from a local file or from the DB.
+    - access point (str): Where to load the poses from. Options are "LOCAL", "DB", or "API".
+    - local_fp (str): File path to the local poses file.
     - drop_poses (dict): Poses to drop (like standing up or sitting)
     - drop_threshold (float): Threshold for dropping poses.
     - merge_metadata (bool): Whether to merge the metadata into the DataFrame.
     - max_poses (int): Max number of poses to retrieve if not loading locally.
     """           
 
-    if load_locally:
+    if access_point not in ACCESS_POINTS:
+        print("Invalid access point. Choose from 'LOCAL', 'DB', or 'API'.")
+        return None
+
+    if access_point == "LOCAL":
+        print("Loading poses from local file...")
         if os.path.isfile(local_fp):
-            print("Loading poses from local file...")
             pose_df = load_local_poses(local_fp)
         else:
             print("File not found")
             return None
-    else:
-        print("Get poses from DB...")
+    elif access_point == "API":
+        print("Get poses through the API...")
         poses = get_features(feature_type="pose", page_size=100, max_features=max_poses)
+        pose_df = process_all_poses(poses)
+    elif access_point == "DB":
+        print("Loading poses from the DB...")
+        poses = []
+        n_poses_in_db = count_features_by_type('pose')
+        max_poses = np.clip(max_poses, 0, n_poses_in_db) if max_poses is not None else n_poses_in_db
+        for i in range(0, max_poses, 100):
+            poses += get_features_by_type_paginated('pose', page_size=100, last_seen_feature_id=i)
         pose_df = process_all_poses(poses)
 
     # Drop uninteresting poses
@@ -558,7 +578,7 @@ def load_poses(local_fp: str = "",
         pose_df = drop_poses(pose_df, drop_poses=filter_poses, drop_threshold=drop_threshold)
 
     # Merge with metadata
-    if load_locally == False and merge_metadata:
+    if access_point != "LOCAL" and merge_metadata:
         pose_df = add_metadata_to_poses(pose_df)
         # Drop poses from non sport videos
         pose_df = pose_df[pose_df.sport != "Non-Sport"]
