@@ -88,7 +88,10 @@ def format_keypoints_to_read(keypoints):
     return {k: v for k, v in zip(KEYPOINTS_NAMES, keypoints)}
 
 
+####################################################################################################
 # PROCESS KEYPOINTS TO ANGLES
+####################################################################################################
+
 
 def reshape_keypoints(keypoints: List[float]) -> List[Tuple[float, float, float]]:
     """
@@ -120,37 +123,23 @@ def compute_angle(p1: Tuple[float, float, float],
     - min_confidence (float): The minimum confidence level for a keypoint to be considered.
 
     Returns:
-    - float: The computed angle in degrees.
+    - float: The computed angle in degrees, normalized between 0 and 1.
     - float: The computed angle confidence scores (as the mean score of the 3 keypoints)
     """
-    vec1 = np.array([p1[0] - p2[0], p1[1] - p2[1]])
-    vec2 = np.array([p3[0] - p2[0], p3[1] - p2[1]])
-
-    mag1 = np.linalg.norm(vec1)
-    mag2 = np.linalg.norm(vec2)
-
-    # Check for zero magnitudes or low confidence
-    if mag1 == 0 or mag2 == 0:
-        return 0.0, 0.0  # Angle is undefined, return 0
-
-    if p1[2] < min_confidence or p2[2] < min_confidence or p3[2] < min_confidence:
-        return 0.0, 0.0  # Low confidence, return 0
-
-    dot_product = np.dot(vec1, vec2)
-    cos_theta = dot_product / (mag1 * mag2)
-
-    # Clip value to be in the range [-1, 1] to avoid invalid values due to numerical errors
-    cos_theta = np.clip(cos_theta, -1.0, 1.0)
-
-    angle_rad = np.arccos(cos_theta)
-    angle_deg = np.degrees(angle_rad)
-
-    if angle_deg < 1:
-        angle_deg = 0.0
+    if (p1[0] == p2[0] and p1[1] == p2[1]) or \
+       (p1[0] == p3[0] and p1[1] == p3[1]) or \
+       (p2[0] == p3[0] and p2[1] == p3[1]):
+        raise ValueError("Points cannot be the same")
 
     angle_score = np.mean([p1[2], p2[2], p3[2]])
 
-    return angle_deg, angle_score
+    v1 = np.array(p1[:2]) - np.array(p2[:2])
+    v2 = np.array(p3[:2]) - np.array(p2[:2])
+    angle = np.arccos(
+        np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))
+    angle = np.degrees(angle) / 180.0
+
+    return angle, angle_score
 
 
 def compute_human_angles(keypoints: List[Tuple[float, float, float]], min_confidence: float = 0.5) -> List[Optional[float]]:
@@ -173,7 +162,7 @@ def compute_human_angles(keypoints: List[Tuple[float, float, float]], min_confid
     for p1_i, p2_i, p3_i in associations:
         # Check that all required keypoints exist
         if p1_i >= len(keypoints) or p2_i >= len(keypoints) or p3_i >= len(keypoints):
-            angles.append(None)
+            angles.append(np.nan)
             angles_scores.append(0.0)
             continue
 
@@ -181,13 +170,13 @@ def compute_human_angles(keypoints: List[Tuple[float, float, float]], min_confid
 
         # Check for incomplete keypoints
         if p1 is None or p2 is None or p3 is None:
-            angles.append(None)
+            angles.append(np.nan)
             angles_scores.append(0.0)
             continue
 
         # Check for confidence threshold
         if p1[2] < min_confidence or p2[2] < min_confidence or p3[2] < min_confidence:
-            angles.append(None)
+            angles.append(np.nan)
             angles_scores.append(0.0)
             continue
 
@@ -199,7 +188,17 @@ def compute_human_angles(keypoints: List[Tuple[float, float, float]], min_confid
     return angles, angles_scores
 
 
-def compute_hips_angles(keypoints):
+def compute_hips_angles(keypoints: List[Tuple[float, float, float]], min_confidence: float = 0.5) -> List[Optional[float]]:
+    """
+    Compute angles with the hips as references from the keypoints.
+
+    Parameters:
+    - keypoints (List[Tuple[float, float, float]]): List of keypoints (x, y, confidence).
+    - min_confidence (float): Minimum confidence level to consider a keypoint valid.
+
+    Returns:
+    - List[Optional[float]]: List of computed angles in degrees. Missing or undefined angles are set to None.
+    """
     angles = []
     angles_scores = []
 
@@ -210,93 +209,47 @@ def compute_hips_angles(keypoints):
 
     # Calculate angles for each keypoint relative to the two reference points
     for i, keypoint in enumerate(keypoints):
-        if i not in hips_indices:  # Check using indices
-            angle, score = compute_angle(np.array(keypoints[hips_indices[0]]), np.array(
-                keypoint), np.array(keypoints[hips_indices[1]]))
-            angles.append(angle)
-            angles_scores.append(score)
+        if i in hips_indices:
+            continue
+
+        # Check for incomplete keypoints
+        if keypoint is None:
+            angles.append(np.nan)
+            angles_scores.append(0.0)
+            continue
+
+        # Check for confidence threshold
+        if keypoint[2] < min_confidence:
+            angles.append(np.nan)
+            angles_scores.append(0.0)
+            continue
+
+        # Compute the three angles defined by the hips
+        hip1 = np.array(keypoints[hips_indices[0]])
+        hip2 = np.array(keypoints[hips_indices[1]])
+        ref = np.array(keypoint)
+
+        # (ref, hip1, hip2) angle
+        angle, score = compute_angle(ref, hip1, hip2)
+        angles.append(angle)
+        angles_scores.append(score)
+        # (hip1, ref, hip2) angle
+        angle, score = compute_angle(hip1, ref, hip2)
+        angles.append(angle)
+        angles_scores.append(score)
+        # (hip1, hip2, ref) angle
+        angle, score = compute_angle(hip1, hip2, ref)
+        angles.append(angle)
+        angles_scores.append(score)
 
     # Convert angles list to a numpy array
     return angles, angles_scores
 
 
-def normalize_angles(angles: List[Optional[float]]) -> np.ndarray:
-    """
-    Normalize angles to the range [0, 1].
-
-    Parameters:
-    - angles (List[Optional[float]]): List of angles in degrees.
-
-    Returns:
-    - np.ndarray: NumPy array of normalized angles.
-    """
-    # Replace None values with 0 and convert to NumPy array
-    angles_clean = np.array(
-        [angle if angle is not None else 0 for angle in angles])
-
-    # Normalize angles to [0, 1]
-    normalized_angles = angles_clean / 180.0
-
-    return normalized_angles
-
-
-# DRAW POSES
-
-def draw_pose(pose, ax=None, show_frame: bool = True, cut: bool = True, threshold: float = 0.1, color: str = "black", alpha: float = 1.0, linewidth: float = 1):
-    """
-    Draw extracted skeleton on frame.
-
-    Parameters:
-    - pose (Dict[str, Any]): The pose data.
-    - ax (matplotlib.axes.Axes): The axes to draw on.
-    - cut (bool): Whether to cut the frame to the bounding box.
-    - threshold (float): The confidence threshold for keypoints. Keypoints with confidence below this value will not be drawn.
-
-    Returns:
-    - matplotlib.axes.Axes: The axes with the drawn pose.
-    """
-
-    keypoints = pose["keypoints"]
-    if show_frame:
-        frame = get_frame(pose["guid"], pose["media_id"].replace(
-            "ioc-", ""), pose["frame_number"])
-
-    if ax is None:
-        fig, ax = plt.subplots(figsize=(6, 6))
-
-    if show_frame and frame is None:
-        return ax
-
-    if show_frame:
-        ax.imshow(frame)
-
-    ax.scatter([k[0] for k in keypoints if k[2] > threshold],
-               [k[1] for k in keypoints if k[2] > threshold],
-               s=10, color=color, alpha=alpha)
-    for c in CONNECTIONS:
-        k1 = keypoints[KEYPOINTS_NAMES.index(c[0])]
-        k2 = keypoints[KEYPOINTS_NAMES.index(c[1])]
-        if k1[2] > threshold and k2[2] > threshold:
-            ax.plot([k1[0], k2[0]],
-                    [k1[1], k2[1]],
-                    linewidth=linewidth, color=color, alpha=alpha)
-
-    # cut frame to bbox
-    if cut:
-        bbox = pose["bbox"]
-        ax.set_xlim(int(bbox[0]), int(bbox[0] + bbox[2]))
-        ax.set_ylim(int(bbox[1] + bbox[3]), int(bbox[1]))
-
-    if show_frame:
-        ax.get_xaxis().set_visible(False)
-        ax.get_yaxis().set_visible(False)
-        ax.set_aspect('equal')
-        plt.tight_layout()
-
-    return ax
-
-
+####################################################################################################
 # LOAD AND PROCESS POSES DATA
+####################################################################################################
+
 
 def compare_pose(input_pose, filter_pose_angles, drop_threshold=0.1):
     """
@@ -342,8 +295,7 @@ def load_local_poses(fp: str) -> pd.DataFrame:
 
 def process_frame_data(frame_data: dict,
                        min_confidence: float = 0.5,
-                       min_valid_keypoints: int = 10,
-                       min_valid_angles: int = 5):
+                       min_valid_keypoints: int = 10):
     frame_width, frame_height = frame_data['data']['width_height']
     frame_number = frame_data['frame']
     media_id = frame_data['media_id']
@@ -351,10 +303,8 @@ def process_frame_data(frame_data: dict,
     d = {
         'media_id': media_id,
         'frame_number': frame_number,
-        'angles': [],  # To store angles
         'angle_vec': [],  # To store normalized angle vectors
         'angle_scores': [],  # To store angle confidence scores
-        'hips_angles': [],  # To store hip angles
         'hips_angle_vec': [],  # To store normalized hip angle vectors
         'hips_angle_scores': [],  # To store hip angle confidence scores
         'keypoints': [],
@@ -369,38 +319,27 @@ def process_frame_data(frame_data: dict,
         return d
 
     for person in annotations:
-        keypoints = person['keypoints']
+        keypoints = reshape_keypoints(person['keypoints'])
         bbox = person['bbox']
-        reshaped_keypoints = reshape_keypoints(keypoints)
 
         # Count valid keypoints
         valid_keypoints = sum(
-            1 for x, y, c in reshaped_keypoints if c >= min_confidence)
-
+            1 for x, y, c in keypoints if c >= min_confidence)
         if valid_keypoints < min_valid_keypoints:
             continue  # Skip this person
 
-        angles_adjusted, angle_scores = compute_human_angles(
-            reshaped_keypoints, min_confidence)
-        hips_angles, hips_scores = compute_hips_angles(reshaped_keypoints)
+        human_angles, human_angle_scores = compute_human_angles(
+            keypoints, min_confidence)
+        hips_angles, hips_angles_scores = compute_hips_angles(
+            keypoints, min_confidence)
 
-        # Count valid angles
-        valid_angles = sum(1 for angle in angles_adjusted if angle != 0.0)
+        d['angle_vec'].append(human_angles)
+        d['angle_scores'].append(human_angle_scores)
 
-        if valid_angles < min_valid_angles:
-            continue  # Skip this person
+        d['hips_angle_vec'].append(hips_angles)
+        d['hips_angle_scores'].append(hips_angles_scores)
 
-        normalized_angles = normalize_angles(angles_adjusted)
-        normalized_hips_angles = normalize_angles(hips_angles)
-
-        d['angles'].append(angles_adjusted)
-        # Store normalized angle vector
-        d['angle_vec'].append(normalized_angles.tolist())
-        d['angle_scores'].append(angle_scores)
-        d['hips_angles'].append(hips_angles)
-        d['hips_angle_vec'].append(normalized_hips_angles.tolist())
-        d['hips_angle_scores'].append(hips_scores)
-        d['keypoints'].append(reshaped_keypoints)
+        d['keypoints'].append(keypoints)
         d['bbox'].append(bbox)
         d['num_subjects'] += 1  # Increment for each valid person
 
@@ -467,3 +406,62 @@ def filter_poses(df: pd.DataFrame, threshold: float = 0.2) -> pd.DataFrame:
                 to_keep[index] = False
 
     return df[to_keep]
+
+
+####################################################################################################
+# DRAW POSES
+####################################################################################################
+
+
+def draw_pose(pose, ax=None, show_frame: bool = True, cut: bool = True, threshold: float = 0.1, color: str = "black", alpha: float = 1.0, linewidth: float = 1):
+    """
+    Draw extracted skeleton on frame.
+
+    Parameters:
+    - pose (Dict[str, Any]): The pose data.
+    - ax (matplotlib.axes.Axes): The axes to draw on.
+    - cut (bool): Whether to cut the frame to the bounding box.
+    - threshold (float): The confidence threshold for keypoints. Keypoints with confidence below this value will not be drawn.
+
+    Returns:
+    - matplotlib.axes.Axes: The axes with the drawn pose.
+    """
+
+    keypoints = pose["keypoints"]
+    if show_frame:
+        frame = get_frame(pose["guid"], pose["media_id"].replace(
+            "ioc-", ""), pose["frame_number"])
+
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(6, 6))
+
+    if show_frame and frame is None:
+        return ax
+
+    if show_frame:
+        ax.imshow(frame)
+
+    ax.scatter([k[0] for k in keypoints if k[2] > threshold],
+               [k[1] for k in keypoints if k[2] > threshold],
+               s=10, color=color, alpha=alpha)
+    for c in CONNECTIONS:
+        k1 = keypoints[KEYPOINTS_NAMES.index(c[0])]
+        k2 = keypoints[KEYPOINTS_NAMES.index(c[1])]
+        if k1[2] > threshold and k2[2] > threshold:
+            ax.plot([k1[0], k2[0]],
+                    [k1[1], k2[1]],
+                    linewidth=linewidth, color=color, alpha=alpha)
+
+    # cut frame to bbox
+    if cut:
+        bbox = pose["bbox"]
+        ax.set_xlim(int(bbox[0]), int(bbox[0] + bbox[2]))
+        ax.set_ylim(int(bbox[1] + bbox[3]), int(bbox[1]))
+
+    if show_frame:
+        ax.get_xaxis().set_visible(False)
+        ax.get_yaxis().set_visible(False)
+        ax.set_aspect('equal')
+        plt.tight_layout()
+
+    return ax

@@ -1,5 +1,5 @@
 import pytest
-from emv.features.pose import get_angle_feature_vector, filter_poses
+from emv.features.pose_utils import compute_hips_angles, filter_poses
 import numpy as np
 import pandas as pd
 
@@ -16,6 +16,8 @@ def test_basic_pose():
         [1, 1], [3, 1],  # idx 7, 8 are the hips and therefore the reference keypoints
         [2, 2], [2, 2], [100, 2], [2, 100]
     ]
+    keypoints = [k + [1] for k in keypoints] # Add confidence score to each keypoint
+
     expected = [
         0.50, 0.25, 0.25,
         0.25, 0.25, 0.50,
@@ -29,18 +31,20 @@ def test_basic_pose():
         0.00, 0.00, 1.00,
         0.50, 0.01, 0.50,
     ]
-    result_1 = get_angle_feature_vector(keypoints)
+    angles, angles_scores = compute_hips_angles(keypoints)
     # round result_1 to .2f
-    result_1 = np.round(result_1, 2)
-    assert_almost_equal(result_1, np.array(expected))
+    angles = np.round(angles, 2)
+    assert_almost_equal(angles, np.array(expected))
 
 
 def test_missing_values():
     keypoints = [
         [1, 3], [3, 3], [1, 0], [3, 0], [5, 2], [0, 2], [2, 2]
     ]
+    keypoints = [k + [1] for k in keypoints] # Add confidence score to each keypoint
+
     with pytest.raises(IndexError):
-        get_angle_feature_vector(keypoints)
+        compute_hips_angles(keypoints)
 
 
 def test_invalid_keypoints():
@@ -50,9 +54,10 @@ def test_invalid_keypoints():
         [1, 1], [3, 1],  # idx 7, 8 are the hips and therefore the reference keypoints
         [2, 2], [2, 2], [100, 2], [2, 100]
     ]
+    keypoints = [k + [1] for k in keypoints] # Add confidence score to each keypoint
 
     with pytest.raises(ValueError):
-        get_angle_feature_vector(keypoints)
+        compute_hips_angles(keypoints)
 
 
 def test_filter_poses():
