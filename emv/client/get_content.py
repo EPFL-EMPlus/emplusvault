@@ -3,6 +3,7 @@ import cv2
 import requests
 import numpy as np
 from getpass import getpass
+from typing import List, Dict, Tuple, Union, Optional
 
 from emv.storage.storage import get_storage_client
 from emv.settings import API_BASE_URL, API_MAX_CALLS, API_USERNAME, API_PASSWORD
@@ -11,7 +12,7 @@ headers = None
 storage_client = get_storage_client()
 
 
-def authenticate():
+def authenticate() -> dict[str, str]:
     print("Authenticating...")
     data = {
         "grant_type": "password",
@@ -38,7 +39,7 @@ def authenticate():
     return headers
 
 
-def download_video(media_id):
+def download_video(media_id: str) -> str:
     fn = f"data/videos/{media_id}.mp4"
     if os.path.exists(fn):
         return fn
@@ -64,7 +65,7 @@ def download_video(media_id):
     return fn
 
 
-def get_frame(video_id, media_id, frame_number):
+def get_frame(video_id: str, media_id: str, frame_number: int) -> np.ndarray:
     # Check if frame is already in DB
     frame_path = f'images/{video_id}/{media_id}/pose_frame_{frame_number}.jpg'
     frame_bytes = storage_client.get_bytes("ioc", frame_path)
@@ -86,7 +87,7 @@ def get_frame(video_id, media_id, frame_number):
     return frame
 
 
-def get_features(feature_type, page_size=100, max_features=100):
+def get_features(feature_type: str, page_size: int = 100, max_features: int = 100) -> List[dict]:
     global headers
     if headers is None:
         headers = authenticate()
