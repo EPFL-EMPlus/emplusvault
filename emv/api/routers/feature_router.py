@@ -75,5 +75,18 @@ async def get_keypoints(file: UploadFile = File(...)):
 
     except Exception as e:
         return JSONResponse(status_code=500, content={"message": "Error processing image"})
-    
+
     return keypoints
+
+
+@feature_router.post("/feature/similar/{feature_id}")
+async def get_similar_features(feature_id: int, keywords: str, current_user: User = Depends(get_current_active_user)):
+    try:
+        feature = get_feature_by_id(feature_id)
+        if feature is None:
+            raise HTTPException(status_code=404, detail="Feature not found")
+
+        # filter by feature type
+
+    except Exception as e:
+        raise HTTPException(status_code=401, detail="Not allowed")
