@@ -16,7 +16,8 @@ def get_library_id_from_name(library_name: str) -> Optional[int]:
     query = text("""
         SELECT library_id FROM library WHERE library_name=:library_name
     """)
-    library_id = DataAccessObject().fetch_one(query, {"library_name": library_name,})
+    library_id = DataAccessObject().fetch_one(
+        query, {"library_name": library_name, })
     return library_id['library_id'] if library_id else None
 
 
@@ -39,7 +40,8 @@ def get_library_from_name(library_name: str) -> Optional[Dict]:
     query = text("""
         SELECT * FROM library WHERE library_name=:library_name
     """)
-    library = DataAccessObject().fetch_one(query, {"library_name": library_name})
+    library = DataAccessObject().fetch_one(
+        query, {"library_name": library_name})
     return library if library else None
 
 
@@ -59,7 +61,8 @@ def update_library_prefix_path(library_id: int, prefix_path: str) -> None:
     query = text("""
         UPDATE library SET prefix_path=:prefix_path WHERE library_id=:library_id
     """)
-    DataAccessObject().execute_query(query, {"library_id": library_id, "prefix_path": prefix_path})
+    DataAccessObject().execute_query(
+        query, {"library_id": library_id, "prefix_path": prefix_path})
 
 
 def create_projection(projection: Projection) -> dict:
@@ -314,13 +317,17 @@ def get_features_by_type_paginated(feature_type: str, fields: str = "*", page_si
 
 def count_features_by_type(feature_type: str, short_clips_only: bool = False, long_clips_only: bool = False) -> int:
     if short_clips_only:
-        query = text("SELECT COUNT(*) FROM feature WHERE feature_type = :feature_type AND media_id LIKE '%-%-%'")
+        query = text(
+            "SELECT COUNT(*) FROM feature WHERE feature_type = :feature_type AND media_id LIKE '%-%-%'")
     elif long_clips_only:
-        query = text("SELECT COUNT(*) FROM feature WHERE feature_type = :feature_type AND media_id NOT LIKE '%-%-%'")
+        query = text(
+            "SELECT COUNT(*) FROM feature WHERE feature_type = :feature_type AND media_id NOT LIKE '%-%-%'")
     else:
-        query = text("SELECT COUNT(*) FROM feature WHERE feature_type = :feature_type")
-    
-    result = DataAccessObject().fetch_one(query, {"feature_type": feature_type})
+        query = text(
+            "SELECT COUNT(*) FROM feature WHERE feature_type = :feature_type")
+
+    result = DataAccessObject().fetch_one(
+        query, {"feature_type": feature_type})
     return result.get('count')
 
 
@@ -348,8 +355,10 @@ def get_all_features() -> list:
 
 def get_all_features_by_type(feature_type: str) -> list:
     query = text("SELECT * FROM feature WHERE feature_type = :feature_type")
-    result = DataAccessObject().fetch_all(query, {"feature_type": feature_type})
+    result = DataAccessObject().fetch_all(
+        query, {"feature_type": feature_type})
     return result
+
 
 def update_feature(feature_id: int, feature: Feature) -> dict:
     feature_dict = feature.model_dump()
@@ -614,7 +623,8 @@ def get_feature_wout_embedding_1024(feature_type: str, limit: int = 100) -> dict
     query = text("""
         SELECT * FROM feature WHERE feature_type=:feature_type AND embedding_1024 IS NULL LIMIT :limit
     """)
-    result = DataAccessObject().fetch_all(query, {"feature_type": feature_type, "limit": limit})
+    result = DataAccessObject().fetch_all(
+        query, {"feature_type": feature_type, "limit": limit})
     return result
 
 

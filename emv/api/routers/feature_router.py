@@ -4,7 +4,7 @@ from sqlalchemy.sql import text
 from typing import List
 from emv.api.models import Feature
 from emv.db.dao import DataAccessObject
-from emv.db.queries import create_feature, get_feature_by_id, get_all_features, update_feature, delete_feature, get_features_by_type_paginated
+from emv.db.queries import create_feature, get_feature_by_id, get_all_features, update_feature, delete_feature, get_features_by_type_paginated, get_nearest_neighbors
 from emv.features.pose import get_keypoints_from_image
 import json
 from datetime import datetime
@@ -86,7 +86,10 @@ async def get_similar_features(feature_id: int, keywords: str, current_user: Use
         if feature is None:
             raise HTTPException(status_code=404, detail="Feature not found")
 
-        # filter by feature type
+        resp = get_nearest_neighbors(
+            feature.media_id, feature.feature_type, feature.model_name)
+
+        return resp
 
     except Exception as e:
         raise HTTPException(status_code=401, detail="Not allowed")
