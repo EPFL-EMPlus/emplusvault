@@ -79,17 +79,17 @@ async def get_keypoints(file: UploadFile = File(...)):
     return keypoints
 
 
-@feature_router.post("/feature/similar/{feature_id}")
-async def get_similar_features(feature_id: int, keywords: str, current_user: User = Depends(get_current_active_user)):
+@feature_router.get("/feature/similar/{feature_id}/k/{k_neighbors}")
+async def get_similar_features(feature_id: str, k_neighbors: int, current_user: User = Depends(get_current_active_user)):
     try:
         feature = get_feature_by_id(feature_id)
         if feature is None:
+            print("Feature not found")
             raise HTTPException(status_code=404, detail="Feature not found")
-
         resp = get_nearest_neighbors(
-            feature.media_id, feature.feature_type, feature.model_name)
-
+            feature.media_id, feature.feature_type, feature.model_name, version="0.01", k=k_neighbors)
         return resp
 
     except Exception as e:
+        print(e)
         raise HTTPException(status_code=401, detail="Not allowed")

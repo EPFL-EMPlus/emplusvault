@@ -254,9 +254,9 @@ def delete_media(media_id: int) -> dict:
 def create_feature(feature: Feature) -> dict:
     query = text("""
         INSERT INTO feature (feature_type, version, model_name, model_params, data, 
-        embedding_size, embedding_1024, embedding_1536, embedding_2048, media_id)
+        embedding_size, embedding_33, embedding_1024, embedding_1536, embedding_2048, media_id)
         VALUES (:feature_type, :version, :model_name, :model_params, :data, 
-        :embedding_size, :embedding_1024, :embedding_1536, :embedding_2048, :media_id)
+        :embedding_size, :embedding_33, :embedding_1024, :embedding_1536, :embedding_2048, :media_id)
         RETURNING feature_id
     """)
     feature_dict = feature.model_dump()
@@ -417,6 +417,7 @@ def get_nearest_neighbors(media_id: int, feature_type: str, model_name: str, ver
         SELECT
             media_id,
             CASE
+                WHEN embedding_size = 33 THEN embedding_33
                 WHEN embedding_size = 1024 THEN embedding_1024
                 WHEN embedding_size = 2048 THEN embedding_2048
                 ELSE NULL
@@ -431,6 +432,7 @@ def get_nearest_neighbors(media_id: int, feature_type: str, model_name: str, ver
         f.media_id,
         (target.embedding_vector <-> 
             CASE
+            WHEN f.embedding_size = 33 THEN f.embedding_33
             WHEN f.embedding_size = 1024 THEN f.embedding_1024
             WHEN f.embedding_size = 2048 THEN f.embedding_2048
             ELSE NULL
