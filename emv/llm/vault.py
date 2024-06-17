@@ -1,7 +1,20 @@
+from llama_index.core.postprocessor import SimilarityPostprocessor
+from llama_index.core.query_engine import RetrieverQueryEngine
+from llama_index.core.schema import NodeWithScore
+from llama_index.core.retrievers import BaseRetriever
+from llama_index.core import QueryBundle
+from llama_index.core.vector_stores import VectorStoreQuery, VectorStoreQueryResult
+from llama_index.llms.ollama import Ollama
+from llama_index.core import Settings
+from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+from llama_index.vector_stores.postgres import PGVectorStore
+from llama_index.core import VectorStoreIndex
+from llama_index.core import SimpleDirectoryReader, StorageContext
+from llama_index.core.schema import TextNode, NodeRelationship, RelatedNodeInfo
 import random
 import textwrap
 import orjson
-from typing import List, Generator, Any, Optional 
+from typing import List, Generator, Any, Optional
 
 import emv.utils
 import emv.io.media
@@ -14,19 +27,6 @@ from emv.settings import LLM_DB_NAME, DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, LL
 from emv.db.dao import DataAccessObject
 DataAccessObject().set_user_id(3)
 
-from llama_index.core.schema import TextNode, NodeRelationship, RelatedNodeInfo
-from llama_index.core import SimpleDirectoryReader, StorageContext
-from llama_index.core import VectorStoreIndex
-from llama_index.vector_stores.postgres import PGVectorStore
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
-from llama_index.core import Settings
-from llama_index.llms.ollama import Ollama
-from llama_index.core.vector_stores import VectorStoreQuery, VectorStoreQueryResult
-from llama_index.core import QueryBundle
-from llama_index.core.retrievers import BaseRetriever
-from llama_index.core.schema import NodeWithScore
-from llama_index.core.query_engine import RetrieverQueryEngine
-from llama_index.core.postprocessor import SimilarityPostprocessor
 
 LOG = emv.utils.get_logger()
 
@@ -65,7 +65,8 @@ def process_small_transcripts(feature_type: str = 'transcript+ner', page_size: i
     num_pages = (total // page_size) + 1
     for page in range(1, num_pages + 1):
         offset = (page - 1) * page_size
-        docs = emv.db.queries.get_features_by_type_paginated(feature_type, page_size, offset, True)
+        docs = emv.db.queries.get_features_by_type_paginated(
+            feature_type, "*", page_size, offset, True)
         nodes = transform_small_transcripts_to_text_nodes(docs)
         yield nodes
 
@@ -81,19 +82,20 @@ class Indexer():
             table_name="camembert-large",
             embed_dim=1024
         )
-        self.storage_context = StorageContext.from_defaults(vector_store=self.vector_store)
+        self.storage_context = StorageContext.from_defaults(
+            vector_store=self.vector_store)
         self.query_engine = None
 
     def index_transcripts(self) -> None:
         for docs in process_small_transcripts():
             # if not embedding, add
-            self.vector_store.add(docs)  
+            self.vector_store.add(docs)
 
     # def load_index(self):
     #     index = VectorStoreIndex.from_vector_store(vector_store=self.vector_store)
     #     self.query_engine = index.as_query_engine()
     #     return self.query_engine
-            
+
 
 class VaultRetriever(BaseRetriever):
     def __init__(
@@ -128,14 +130,17 @@ class VaultRetriever(BaseRetriever):
             nodes_with_scores.append(NodeWithScore(node=node, score=score))
 
         return nodes_with_scores
-    
+
 
 class VaultLLM:
     def __init__(self):
-        Settings.embed_model = HuggingFaceEmbedding(model_name="camembert/camembert-large")
-        Settings.llm = Ollama(base_url=LLM_ENDPOINT, model="ollama/mixtral:8x7b-instruct-v0.1-fp16", request_timeout=30.0)
+        Settings.embed_model = HuggingFaceEmbedding(
+            model_name="camembert/camembert-large")
+        Settings.llm = Ollama(
+            base_url=LLM_ENDPOINT, model="ollama/mixtral:8x7b-instruct-v0.1-fp16", request_timeout=30.0)
         self.indexer = Indexer()
-        self.retriever = VaultRetriever(self.indexer.vector_store, Settings.embed_model)
+        self.retriever = VaultRetriever(
+            self.indexer.vector_store, Settings.embed_model)
         self.llm = Settings.llm
         # self.query_engine = self.indexer.load_index()
 
