@@ -34,7 +34,7 @@ async def read_feature(feature_id: int, current_user: User = Depends(get_current
 # async def read_features(current_user: User = Depends(get_current_active_user)):
 #     return get_all_features()
 
-@feature_router.get("/features/{feature_type}")
+@feature_router.get("/features/type/{feature_type}")
 async def get_media_by_library(feature_type: str, page_size: int = 20, last_seen_feature_id: int = -1, current_user: User = Depends(get_current_active_user)):
     try:
         resp = get_features_by_type_paginated(
