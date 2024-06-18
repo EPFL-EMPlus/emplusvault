@@ -24,6 +24,8 @@ class Pipeline(ABC):
     def __init__(self, library_name: str = None, run_notebook: bool = False):
         if library_name is None:
             library_name = self.library_name
+        else:
+            self.library_name = library_name
         self.library = get_library_from_name(self.library_name)
 
         if not self.library:
