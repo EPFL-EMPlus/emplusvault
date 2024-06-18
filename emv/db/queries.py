@@ -411,6 +411,40 @@ def get_nearest_to_vector(vector: list) -> dict:
     return result
 
 
+# def get_nearest_neighbors_by_feature(feature_id: int, feature_type: str, embedding_size: int, k: int = 10) -> dict:
+#     query = text("""
+#         SELECT
+#             media_id,
+#             feature_id,
+#             (SELECT :embedding_size FROM feature WHERE feature_id = ':feature_id'
+#                 AND feature_type = :feature_type
+#             ) <-> :embedding_size AS distance
+#         FROM feature
+#         WHERE feature_id != ':feature_id' AND feature_type = :feature_type
+#         ORDER BY distance;
+#     """)
+#     result = DataAccessObject().fetch_all(
+#         query, {"feature_id": feature_id, "feature_type": feature_type, "embedding_size": f"embedding_{embedding_size}", "k": k})
+
+def get_nearest_neighbors_by_feature(feature_id: int, feature_type: str, embedding_size: int, k: int = 10) -> dict:
+    embedding_column = f"embedding_{embedding_size}"
+    query = text(f"""
+        SELECT 
+            media_id, 
+            feature_id,
+            (SELECT {embedding_column} FROM feature WHERE feature_id = :feature_id
+                AND feature_type = :feature_type
+            ) <-> {embedding_column} AS distance
+        FROM feature
+        WHERE feature_id != :feature_id AND feature_type = :feature_type
+        ORDER BY distance
+        LIMIT :k;
+    """)
+    result = DataAccessObject().fetch_all(
+        query, {"feature_id": feature_id, "feature_type": feature_type, "k": k})
+    return result
+
+
 def get_nearest_neighbors(media_id: int, feature_type: str, model_name: str, version: str, k: int = 10) -> dict:
     _query = """
         WITH target_embedding AS (
