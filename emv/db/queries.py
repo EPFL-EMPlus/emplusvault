@@ -515,7 +515,7 @@ def read_map_projection_features():
 def get_projection_coordinates(projection_id: int):
     query = text("""
         SELECT ST_X(map_projection_feature.coordinates) as x, ST_Y(map_projection_feature.coordinates) as y, ST_Z(map_projection_feature.coordinates) as z,
-            media.media_path, map_projection_feature.media_id, map_projection_feature.atlas_order, map_projection_feature.index_in_atlas
+            media.media_path, map_projection_feature.media_id, map_projection_feature.atlas_order, map_projection_feature.index_in_atlas, map_projection_feature.feature_id
         FROM map_projection_feature
         LEFT JOIN media ON media.media_id = map_projection_feature.media_id
         WHERE map_projection_feature.projection_id = :projection_id
@@ -529,7 +529,7 @@ def get_projection_coordinates(projection_id: int):
 def get_projection_coordinates_by_atlas(projection_id: int, atlas_order: int):
     query = text("""
         SELECT ST_X(map_projection_feature.coordinates) as x, ST_Y(map_projection_feature.coordinates) as y, ST_Z(map_projection_feature.coordinates) as z,
-            media.media_path, map_projection_feature.media_id, map_projection_feature.atlas_order, map_projection_feature.index_in_atlas
+            media.media_path, map_projection_feature.media_id, map_projection_feature.atlas_order, map_projection_feature.index_in_atlas, map_projection_feature.feature_id
         FROM map_projection_feature
         LEFT JOIN media ON media.media_id = map_projection_feature.media_id
         WHERE map_projection_feature.projection_id = :projection_id
