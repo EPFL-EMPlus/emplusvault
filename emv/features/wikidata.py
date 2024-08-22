@@ -4,11 +4,12 @@ from SPARQLWrapper import SPARQLWrapper, JSON
 import json
 import numpy as np
 
-def get_wikidata_id(entity, top_n=1, language='fr', sleep_time=0.1):
+
+def get_wikidata_id(entity, top_n=1, language='fr', delay=0.1):
     if entity is None or entity == '':
         return None
 
-    time.sleep(sleep_time)
+    time.sleep(delay)
     url = 'https://www.wikidata.org/w/api.php'
     params = {
         'action': 'wbsearchentities',
@@ -23,7 +24,8 @@ def get_wikidata_id(entity, top_n=1, language='fr', sleep_time=0.1):
     data = r.json()
     return data['search']
 
-def get_wikidata_label(qid):
+
+def get_wikidata_label(qid, delay=0.1):
     # Define the API endpoint URL and parameters
     url = 'https://www.wikidata.org/w/api.php'
     params = {
@@ -37,18 +39,24 @@ def get_wikidata_label(qid):
     # Send the API request and parse the response
     response = requests.get(url, params=params).json()
     entities = response.get('entities', {})
+
+    time.sleep(delay)
+
     if qid in entities:
         return entities[qid]["labels"]
     else:
         return []
 
-def get_property(qids, property_id):
+
+def get_property(qids, property_id, delay=0.1):
     sparql = SPARQLWrapper("https://query.wikidata.org/sparql")
 
     # Construct a comma-separated list of Qids for the SPARQL query
+    if type(qids) == str:
+        qids = [qids]
     qids_str = " ".join([f"wd:{qid}" for qid in qids])
 
-    # Define the SPARQL query to retrieve the location property for the given Qids
+    # Define the SPARQL query to retrieve the desired property for the given Qids
     query = f"""SELECT ?entity ?property
                 WHERE {{
                     VALUES ?entity {{ {qids_str} }}
@@ -63,18 +71,20 @@ def get_property(qids, property_id):
     results = sparql.query().convert()
 
     # Extract the property from the query results
-    properties = {}
+    properties = []
     if results['results']['bindings']:
         for binding in results['results']['bindings']:
-            qid = binding['entity']['value'].split('/')[-1]
-            prop = binding['property']['value']
-            #if prop.startswith("http://www.wikidata.org/entity/"):
+            prop = binding['property']['value'].split('/')[-1]
+            # if prop.startswith("http://www.wikidata.org/entity/"):
             #    prop = get_wikidata_label(prop)
-            properties[qid] = prop
+            properties.append(prop)
+
+    time.sleep(delay)
 
     return properties
 
-def process_batch(wiki_ids, property, BATCH_SIZE = 100):
+
+def process_batch(wiki_ids, property, BATCH_SIZE=100):
     prop_results = {}
     for i in range(0, len(wiki_ids), BATCH_SIZE):
         time.sleep(1)
