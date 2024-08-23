@@ -16,7 +16,8 @@ def get_library_id_from_name(library_name: str) -> Optional[int]:
     query = text("""
         SELECT library_id FROM library WHERE library_name=:library_name
     """)
-    library_id = DataAccessObject().fetch_one(query, {"library_name": library_name,})
+    library_id = DataAccessObject().fetch_one(
+        query, {"library_name": library_name, })
     return library_id['library_id'] if library_id else None
 
 
@@ -39,7 +40,8 @@ def get_library_from_name(library_name: str) -> Optional[Dict]:
     query = text("""
         SELECT * FROM library WHERE library_name=:library_name
     """)
-    library = DataAccessObject().fetch_one(query, {"library_name": library_name})
+    library = DataAccessObject().fetch_one(
+        query, {"library_name": library_name})
     return library if library else None
 
 
@@ -59,7 +61,8 @@ def update_library_prefix_path(library_id: int, prefix_path: str) -> None:
     query = text("""
         UPDATE library SET prefix_path=:prefix_path WHERE library_id=:library_id
     """)
-    DataAccessObject().execute_query(query, {"library_id": library_id, "prefix_path": prefix_path})
+    DataAccessObject().execute_query(
+        query, {"library_id": library_id, "prefix_path": prefix_path})
 
 
 def create_projection(projection: Projection) -> dict:
@@ -251,9 +254,9 @@ def delete_media(media_id: int) -> dict:
 def create_feature(feature: Feature) -> dict:
     query = text("""
         INSERT INTO feature (feature_type, version, model_name, model_params, data, 
-        embedding_size, embedding_1024, embedding_1536, embedding_2048, media_id)
+        embedding_size, embedding_33, embedding_1024, embedding_1536, embedding_2048, media_id)
         VALUES (:feature_type, :version, :model_name, :model_params, :data, 
-        :embedding_size, :embedding_1024, :embedding_1536, :embedding_2048, :media_id)
+        :embedding_size, :embedding_33, :embedding_1024, :embedding_1536, :embedding_2048, :media_id)
         RETURNING feature_id
     """)
     feature_dict = feature.model_dump()
@@ -314,13 +317,17 @@ def get_features_by_type_paginated(feature_type: str, fields: str = "*", page_si
 
 def count_features_by_type(feature_type: str, short_clips_only: bool = False, long_clips_only: bool = False) -> int:
     if short_clips_only:
-        query = text("SELECT COUNT(*) FROM feature WHERE feature_type = :feature_type AND media_id LIKE '%-%-%'")
+        query = text(
+            "SELECT COUNT(*) FROM feature WHERE feature_type = :feature_type AND media_id LIKE '%-%-%'")
     elif long_clips_only:
-        query = text("SELECT COUNT(*) FROM feature WHERE feature_type = :feature_type AND media_id NOT LIKE '%-%-%'")
+        query = text(
+            "SELECT COUNT(*) FROM feature WHERE feature_type = :feature_type AND media_id NOT LIKE '%-%-%'")
     else:
-        query = text("SELECT COUNT(*) FROM feature WHERE feature_type = :feature_type")
-    
-    result = DataAccessObject().fetch_one(query, {"feature_type": feature_type})
+        query = text(
+            "SELECT COUNT(*) FROM feature WHERE feature_type = :feature_type")
+
+    result = DataAccessObject().fetch_one(
+        query, {"feature_type": feature_type})
     return result.get('count')
 
 
@@ -348,8 +355,10 @@ def get_all_features() -> list:
 
 def get_all_features_by_type(feature_type: str) -> list:
     query = text("SELECT * FROM feature WHERE feature_type = :feature_type")
-    result = DataAccessObject().fetch_all(query, {"feature_type": feature_type})
+    result = DataAccessObject().fetch_all(
+        query, {"feature_type": feature_type})
     return result
+
 
 def update_feature(feature_id: int, feature: Feature) -> dict:
     feature_dict = feature.model_dump()
@@ -402,12 +411,47 @@ def get_nearest_to_vector(vector: list) -> dict:
     return result
 
 
+# def get_nearest_neighbors_by_feature(feature_id: int, feature_type: str, embedding_size: int, k: int = 10) -> dict:
+#     query = text("""
+#         SELECT
+#             media_id,
+#             feature_id,
+#             (SELECT :embedding_size FROM feature WHERE feature_id = ':feature_id'
+#                 AND feature_type = :feature_type
+#             ) <-> :embedding_size AS distance
+#         FROM feature
+#         WHERE feature_id != ':feature_id' AND feature_type = :feature_type
+#         ORDER BY distance;
+#     """)
+#     result = DataAccessObject().fetch_all(
+#         query, {"feature_id": feature_id, "feature_type": feature_type, "embedding_size": f"embedding_{embedding_size}", "k": k})
+
+def get_nearest_neighbors_by_feature(feature_id: int, feature_type: str, embedding_size: int, k: int = 10) -> dict:
+    embedding_column = f"embedding_{embedding_size}"
+    query = text(f"""
+        SELECT 
+            media_id, 
+            feature_id,
+            (SELECT {embedding_column} FROM feature WHERE feature_id = :feature_id
+                AND feature_type = :feature_type
+            ) <-> {embedding_column} AS distance
+        FROM feature
+        WHERE feature_id != :feature_id AND feature_type = :feature_type
+        ORDER BY distance
+        LIMIT :k;
+    """)
+    result = DataAccessObject().fetch_all(
+        query, {"feature_id": feature_id, "feature_type": feature_type, "k": k})
+    return result
+
+
 def get_nearest_neighbors(media_id: int, feature_type: str, model_name: str, version: str, k: int = 10) -> dict:
     _query = """
         WITH target_embedding AS (
         SELECT
             media_id,
             CASE
+                WHEN embedding_size = 33 THEN embedding_33
                 WHEN embedding_size = 1024 THEN embedding_1024
                 WHEN embedding_size = 2048 THEN embedding_2048
                 ELSE NULL
@@ -422,6 +466,7 @@ def get_nearest_neighbors(media_id: int, feature_type: str, model_name: str, ver
         f.media_id,
         (target.embedding_vector <-> 
             CASE
+            WHEN f.embedding_size = 33 THEN f.embedding_33
             WHEN f.embedding_size = 1024 THEN f.embedding_1024
             WHEN f.embedding_size = 2048 THEN f.embedding_2048
             ELSE NULL
@@ -470,7 +515,7 @@ def read_map_projection_features():
 def get_projection_coordinates(projection_id: int):
     query = text("""
         SELECT ST_X(map_projection_feature.coordinates) as x, ST_Y(map_projection_feature.coordinates) as y, ST_Z(map_projection_feature.coordinates) as z,
-            media.media_path, map_projection_feature.media_id, map_projection_feature.atlas_order, map_projection_feature.index_in_atlas
+            media.media_path, map_projection_feature.media_id, map_projection_feature.atlas_order, map_projection_feature.index_in_atlas, map_projection_feature.feature_id
         FROM map_projection_feature
         LEFT JOIN media ON media.media_id = map_projection_feature.media_id
         WHERE map_projection_feature.projection_id = :projection_id
@@ -484,7 +529,7 @@ def get_projection_coordinates(projection_id: int):
 def get_projection_coordinates_by_atlas(projection_id: int, atlas_order: int):
     query = text("""
         SELECT ST_X(map_projection_feature.coordinates) as x, ST_Y(map_projection_feature.coordinates) as y, ST_Z(map_projection_feature.coordinates) as z,
-            media.media_path, map_projection_feature.media_id, map_projection_feature.atlas_order, map_projection_feature.index_in_atlas
+            media.media_path, map_projection_feature.media_id, map_projection_feature.atlas_order, map_projection_feature.index_in_atlas, map_projection_feature.feature_id
         FROM map_projection_feature
         LEFT JOIN media ON media.media_id = map_projection_feature.media_id
         WHERE map_projection_feature.projection_id = :projection_id
@@ -614,7 +659,8 @@ def get_feature_wout_embedding_1024(feature_type: str, limit: int = 100) -> dict
     query = text("""
         SELECT * FROM feature WHERE feature_type=:feature_type AND embedding_1024 IS NULL LIMIT :limit
     """)
-    result = DataAccessObject().fetch_all(query, {"feature_type": feature_type, "limit": limit})
+    result = DataAccessObject().fetch_all(
+        query, {"feature_type": feature_type, "limit": limit})
     return result
 
 

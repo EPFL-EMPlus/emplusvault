@@ -120,7 +120,7 @@ class PipelineRTS(Pipeline):
                 'metadata': metadata,
                 'library_id': self.library_id,
                 'hash': get_hash(original_path),
-                'parent_id': -1,
+                'parent_id': "",
                 'start_ts': 0,
                 'end_ts': media_info['duration'],
                 'start_frame': get_frame_number(0, media_info['video']['framerate']),
@@ -139,9 +139,11 @@ class PipelineRTS(Pipeline):
                 # Extract audio from video
                 extract_audio(original_path, export_path)
             try:
-                self.transcript = emv.features.audio.transcribe_media(audio_path)
+                self.transcript = emv.features.audio.transcribe_media(
+                    audio_path)
             except RuntimeError as e:
-                self.transcript = emv.features.audio.transcribe_media(audio_path_mp4)
+                self.transcript = emv.features.audio.transcribe_media(
+                    audio_path_mp4)
 
             for i, transcript in enumerate(self.transcript):
                 entities = run_nlp(transcript['t'])
@@ -156,7 +158,7 @@ class PipelineRTS(Pipeline):
 
             new_feature = Feature(
                 feature_type=feature_type,
-                version=1,
+                version="1",
                 model_name='whisperx+spacy',
                 model_params={
                     'spacy-ner': 'fr_core_news_lg',
@@ -228,7 +230,7 @@ class PipelineRTS(Pipeline):
 
             new_feature = Feature(
                 feature_type=feature_type,
-                version=1,
+                version="1",
                 model_name='whisperx+spacy',
                 model_params={
                     'spacy-ner': 'fr_core_news_lg',
@@ -287,11 +289,12 @@ class PipelineRTS(Pipeline):
 
                 for row in features:
                     try:
-                        texts.append("".join([x['t'] for x in row['data']['transcript']]))
+                        texts.append(
+                            "".join([x['t'] for x in row['data']['transcript']]))
                     except TypeError:
                         # There are two feature types, full clip or split
                         texts.append(row['data']['transcript'])
-                
+
                 embeddings = create_embeddings(texts)
 
                 for i, row in enumerate(features):
@@ -301,7 +304,7 @@ class PipelineRTS(Pipeline):
                     updated_feature['embedding_size'] = 1024
                     feature = Feature(**updated_feature)
                     queries.update_feature(feature.feature_id, feature)
-            
+
                 pbar.update(len(features))
 
 

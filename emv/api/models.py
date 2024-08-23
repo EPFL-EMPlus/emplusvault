@@ -68,6 +68,7 @@ class Feature(BaseModel):
     data: Dict
 
     embedding_size: Optional[int] = 0
+    embedding_33: Optional[List[float]] = None
     embedding_1024: Optional[List[float]] = None
     embedding_1536: Optional[List[float]] = None
     embedding_2048: Optional[List[float]] = None
@@ -90,6 +91,7 @@ class MapProjectionFeatureCreate(MapProjectionFeatureBase):
 
 class MapProjectionFeature(MapProjectionFeatureBase):
     map_projection_feature_id: int
+
     class Config:
         if pydantic.__version__.startswith('1'):
             orm_mode = True

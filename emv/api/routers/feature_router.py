@@ -4,7 +4,7 @@ from sqlalchemy.sql import text
 from typing import List
 from emv.api.models import Feature
 from emv.db.dao import DataAccessObject
-from emv.db.queries import create_feature, get_feature_by_id, get_all_features, update_feature, delete_feature, get_features_by_type_paginated
+from emv.db.queries import create_feature, get_feature_by_id, get_all_features, update_feature, delete_feature, get_features_by_type_paginated, get_nearest_neighbors_by_feature
 from emv.features.pose import get_keypoints_from_image
 import json
 from datetime import datetime
@@ -34,11 +34,11 @@ async def read_feature(feature_id: int, current_user: User = Depends(get_current
 # async def read_features(current_user: User = Depends(get_current_active_user)):
 #     return get_all_features()
 
-@feature_router.get("/features/{feature_type}")
+@feature_router.get("/features/type/{feature_type}")
 async def get_media_by_library(feature_type: str, page_size: int = 20, last_seen_feature_id: int = -1, current_user: User = Depends(get_current_active_user)):
     try:
         resp = get_features_by_type_paginated(
-            feature_type, page_size, last_seen_feature_id)
+            feature_type, "*", page_size, last_seen_feature_id)
     except Exception as e:
         raise HTTPException(status_code=401, detail="Not allowed")
     return resp
@@ -75,5 +75,23 @@ async def get_keypoints(file: UploadFile = File(...)):
 
     except Exception as e:
         return JSONResponse(status_code=500, content={"message": "Error processing image"})
-    
+
     return keypoints
+
+
+@feature_router.get("/feature/similar/{feature_id}/k/{k_neighbors}")
+async def get_similar_features(feature_id: str, k_neighbors: int, current_user: User = Depends(get_current_active_user)):
+    try:
+        feature = get_feature_by_id(feature_id)
+        if feature is None:
+            print("Feature not found")
+            raise HTTPException(status_code=404, detail="Feature not found")
+        print("Params: ", feature.feature_id,
+              feature.feature_type, 33, k_neighbors)
+        resp = get_nearest_neighbors_by_feature(
+            feature.feature_id, feature.feature_type, 33, k=k_neighbors)
+        return resp
+
+    except Exception as e:
+        print(e)
+        raise HTTPException(status_code=401, detail="Not allowed")
