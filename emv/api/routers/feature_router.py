@@ -24,7 +24,7 @@ async def create(feature: Feature, current_user: User = Depends(get_current_acti
     return create_feature(feature)
 
 
-@feature_router.get("/feature/{feature_id}", response_model=Feature)
+@feature_router.get("/feature/{feature_id}")
 async def read_feature(feature_id: int, current_user: User = Depends(get_current_active_user)):
     result = get_feature_by_id(feature_id)
     if result is None:
@@ -85,11 +85,12 @@ class KeypointsModel(BaseModel):
     keypoints: List[List[float]]
 
 
-@feature_router.post("/feature/similar/projection/{projection_id}/k/{k_neighbors}")
+@feature_router.post("/feature/{feature_type}/similar/projection/{projection_id}/k/{k_neighbors}")
 async def get_similar_features_by_keypoints(
+    feature_type: str,
     projection_id: int,
     k_neighbors: int,
-    keypoints_model: KeypointsModel,  # Expect a KeypointsModel in the body
+    keypoints_model: KeypointsModel,
     current_user: User = Depends(get_current_active_user)
 ):
     try:
@@ -98,7 +99,7 @@ async def get_similar_features_by_keypoints(
 
         angles = get_angle_feature_vector(keypoints)
         resp = get_nearest_neighbors_by_keypoints(
-            angles, "pose_image", 33, projection_id, k=k_neighbors
+            angles, feature_type, 33, projection_id, k=k_neighbors
         )
         return resp
 
