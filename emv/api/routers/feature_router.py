@@ -1,16 +1,18 @@
-from fastapi import APIRouter, HTTPException, Depends, File, UploadFile
+from fastapi import APIRouter, HTTPException, Depends, File, UploadFile, Body
 from fastapi.responses import JSONResponse
 from sqlalchemy.sql import text
 from typing import List
 from emv.api.models import Feature
 from emv.db.dao import DataAccessObject
-from emv.db.queries import create_feature, get_feature_by_id, get_all_features, update_feature, delete_feature, get_features_by_type_paginated, get_nearest_neighbors_by_feature
-from emv.features.pose import get_keypoints_from_image
+from emv.db.queries import create_feature, get_feature_by_id, get_all_features, update_feature, delete_feature, get_features_by_type_paginated, get_nearest_neighbors_by_feature, get_nearest_neighbors_by_keypoints
+from emv.features.pose import get_keypoints_from_image, get_angle_feature_vector
 import json
 from datetime import datetime
 from emv.api.routers.auth_router import get_current_active_user, User
 from PIL import Image
 from io import BytesIO
+from pydantic import BaseModel
+
 
 feature_router = APIRouter()
 
@@ -77,6 +79,34 @@ async def get_keypoints(file: UploadFile = File(...)):
         return JSONResponse(status_code=500, content={"message": "Error processing image"})
 
     return keypoints
+
+
+class KeypointsModel(BaseModel):
+    keypoints: List[List[float]]
+
+
+@feature_router.post("/feature/similar/projection/{projection_id}/k/{k_neighbors}")
+async def get_similar_features_by_keypoints(
+    projection_id: int,
+    k_neighbors: int,
+    keypoints_model: KeypointsModel,  # Expect a KeypointsModel in the body
+    current_user: User = Depends(get_current_active_user)
+):
+    try:
+        # Extract keypoints list from the model
+        keypoints = keypoints_model.keypoints
+
+        angles = get_angle_feature_vector(keypoints)
+        resp = get_nearest_neighbors_by_keypoints(
+            angles, "pose_image", 33, projection_id, k=k_neighbors
+        )
+        return resp
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        print(e)
+        raise HTTPException(status_code=401, detail="Not allowed")
 
 
 @feature_router.get("/feature/similar/{feature_id}/k/{k_neighbors}")
