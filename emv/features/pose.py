@@ -752,3 +752,32 @@ def filter_poses(df: pd.DataFrame, threshold: float = 0.2) -> pd.DataFrame:
                 to_keep[index] = False
 
     return df[to_keep]
+
+
+def centralize_and_scale_keypoints(keypoints, reference_points=['left_hip', 'right_hip'], target_diameter=1):
+
+    keypoint_names = [
+        'nose', 'left_shoulder', 'right_shoulder', 'left_elbow', 'right_elbow',
+        'left_wrist', 'right_wrist', 'left_hip', 'right_hip', 'left_knee', 'right_knee',
+        'left_ankle', 'right_ankle'
+    ]
+    keypoints = np.array(keypoints)
+
+    # Calculate the reference point (midpoint between hips)
+    left_hip = keypoints[keypoint_names.index(reference_points[0])]
+    right_hip = keypoints[keypoint_names.index(reference_points[1])]
+    center_point = (left_hip + right_hip) / 2
+
+    # Translate pose to center it at the origin
+    translated_keypoints = keypoints - center_point
+
+    # Determine the maximum distance from the center point to any keypoint
+    max_distance = np.max(np.linalg.norm(translated_keypoints, axis=1))
+
+    # Calculate the scale factor to make the maximum distance equal to 0.5
+    scale_factor = 0.5 / max_distance
+
+    # Scale keypoints to have the target diameter
+    scaled_keypoints = translated_keypoints * scale_factor
+
+    return scaled_keypoints
