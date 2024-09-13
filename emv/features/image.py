@@ -37,17 +37,16 @@ def load_model(model_name: str = 'resnet50') -> None:
             _model['name'] = model_name
 
 
-def embed_images(image_paths: List[str], model_name: str = 'resnet50') -> Optional[np.ndarray]:
-    if not image_paths:
+def embed_images(images: List[np.ndarray], model_name: str = 'resnet50') -> Optional[np.ndarray]:
+    if not images:
         return None
 
     global _model
     load_model(model_name=model_name)
 
-    if isinstance(image_paths, str) or isinstance(image_paths, Path):
-        image_paths = [image_paths]
+    if isinstance(images, np.ndarray):
+        images = [images]
 
-    images = [Image.open(str(image_path)).convert('RGB')
-              for image_path in image_paths]
+    images = [Image.fromarray(image).convert('RGB') for image in images]
     vecs = _model['model'].get_vec(images, tensor=False)
     return vecs
