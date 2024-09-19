@@ -4,7 +4,7 @@ from sqlalchemy.sql import text
 from typing import List
 from emv.api.models import Feature
 from emv.db.dao import DataAccessObject
-from emv.db.queries import create_feature, get_feature_by_id, get_all_features, update_feature, delete_feature, get_features_by_type_paginated, get_nearest_neighbors_by_feature, get_nearest_neighbors_by_keypoints
+from emv.db.queries import create_feature, get_feature_by_id, get_all_features, update_feature, delete_feature, get_features_by_type_paginated, get_features_media_info_by_type_paginated, get_nearest_neighbors_by_feature, get_nearest_neighbors_by_keypoints
 from emv.features.pose import get_keypoints_from_image, get_angle_feature_vector
 import json
 from datetime import datetime
@@ -40,6 +40,16 @@ async def read_feature(feature_id: int, current_user: User = Depends(get_current
 async def get_media_by_library(feature_type: str, page_size: int = 20, last_seen_feature_id: int = -1, current_user: User = Depends(get_current_active_user)):
     try:
         resp = get_features_by_type_paginated(
+            feature_type, "*", page_size, last_seen_feature_id)
+    except Exception as e:
+        raise HTTPException(status_code=401, detail="Not allowed")
+    return resp
+
+
+@feature_router.get("/features/media/type/{feature_type}")
+async def get_media_info_by_library(feature_type: str, page_size: int = 20, last_seen_feature_id: int = -1, current_user: User = Depends(get_current_active_user)):
+    try:
+        resp = get_features_media_info_by_type_paginated(
             feature_type, "*", page_size, last_seen_feature_id)
     except Exception as e:
         raise HTTPException(status_code=401, detail="Not allowed")
