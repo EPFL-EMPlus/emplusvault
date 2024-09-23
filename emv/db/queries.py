@@ -313,6 +313,31 @@ def get_features_media_info_by_type_paginated(feature_type: str, fields: str = "
     return DataAccessObject().fetch_all(text(query), params)
 
 
+def get_features_by_projection_paginated(projection_id: int, fields: str = "*", page_size: int = 20, last_seen_feature_id: int = -1) -> dict:
+    query = f"""
+        SELECT {fields} FROM feature 
+        LEFT JOIN media ON media.media_id = feature.media_id
+        LEFT JOIN map_projection_feature ON map_projection_feature.feature_id = feature.feature_id
+        WHERE map_projection_feature.projection_id = :projection_id"""
+
+    # Add conditions for the last_seen values
+    if last_seen_feature_id:
+        query += " AND feature_id > :last_seen_feature_id"
+
+    # Order by both created_at and media_id
+    query += " ORDER BY feature_id LIMIT :page_size"
+
+    params = {
+        "projection_id": projection_id,
+        "page_size": page_size
+    }
+
+    if last_seen_feature_id:
+        params["last_seen_feature_id"] = last_seen_feature_id
+
+    return DataAccessObject().fetch_all(text(query), params)
+
+
 def get_features_by_type_paginated(feature_type: str, fields: str = "*", page_size: int = 20, last_seen_feature_id: int = -1, short_clips_only: bool = False, long_clips_only: bool = False) -> dict:
     query = f"SELECT {fields} FROM feature WHERE feature_type = :feature_type"
 
