@@ -322,10 +322,10 @@ def get_features_by_projection_paginated(projection_id: int, fields: str = "*", 
 
     # Add conditions for the last_seen values
     if last_seen_feature_id:
-        query += " AND feature_id > :last_seen_feature_id"
+        query += " AND feature.feature_id > :last_seen_feature_id"
 
     # Order by both created_at and media_id
-    query += " ORDER BY feature_id LIMIT :page_size"
+    query += " ORDER BY feature.feature_id LIMIT :page_size"
 
     params = {
         "projection_id": projection_id,
