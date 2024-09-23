@@ -40,7 +40,7 @@ async def read_feature(feature_id: int, current_user: User = Depends(get_current
 async def get_features_by_projection(projection_id: int, page_size: int = 20, last_seen_feature_id: int = -1, current_user: User = Depends(get_current_active_user)):
     try:
         resp = get_features_by_projection_paginated(
-            "*", projection_id, page_size, last_seen_feature_id)
+            projection_id, "*", page_size, last_seen_feature_id)
     except Exception as e:
         raise HTTPException(status_code=401, detail="Not allowed")
     return resp
