@@ -1,7 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 from emv.api.server import app
-from .conftest import reset_database, mock_authenticate
+from .conftest import reset_database, mock_authenticate, media_data
 from emv.api.routers.auth_router import get_current_active_user
 from emv.db.queries import create_library
 from emv.api.models import LibraryCreate
@@ -13,9 +13,7 @@ def db_setup():
     reset_database()
 
 
-@pytest.fixture
-def create_projection(db_setup):
-    app.dependency_overrides[get_current_active_user] = mock_authenticate
+def create_projection_data():
     with TestClient(app) as client:
         response = client.post("/projections/", json={
             "version": "1.0",
@@ -31,6 +29,13 @@ def create_projection(db_setup):
             "total_tiles": 1,
             "tiles_per_atlas": 1
         })
+    return response
+
+
+@pytest.fixture
+def create_projection(db_setup):
+    app.dependency_overrides[get_current_active_user] = mock_authenticate
+    response = create_projection_data()
     return response.status_code, response.json()
 
 
@@ -55,6 +60,33 @@ def test_read_projection(create_projection):
     assert set(response.json().keys()) == {"projection_id", "version", "library_id", "created_at", "model_name", "model_params",
                                            "data", "dimension"}
 
+
+def create_map_projection_feature_data(feature_id, media_id):
+    with TestClient(app) as client:
+        response = client.post("/projections/mapping", json={
+            "projection_id": 1,
+            "media_id": media_id,
+            "atlas_order": -1,
+            "index_in_atlas": -1,
+            "coordinates": [0, 1, 2],
+            "feature_id": feature_id
+        })
+    return response
+
+
+def test_map_projection_feature(create_projection):
+    from .test_features import feature_data
+    with TestClient(app) as client:
+        response = client.post("/media/", json=media_data)
+        media_id = response.json()["media_id"]
+
+        response = client.post(
+            "/feature/", json={**feature_data, "media_id": media_id})
+        feature_id = response.json()["feature_id"]
+
+    response = create_map_projection_feature_data(feature_id, media_id)
+    assert response.status_code == 200
+    assert response.json() == {"status": "Mapping created"}
 
 # def test_update_projection(create_projection):
 #     # Assuming that a projection with id=1 exists in the database
