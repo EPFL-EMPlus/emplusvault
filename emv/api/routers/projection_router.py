@@ -1,7 +1,8 @@
 from fastapi import (APIRouter, Depends, HTTPException)
-from emv.api.models import Projection
+from emv.api.models import Projection, MapProjectionFeatureCreate
 from emv.utils import get_logger
-from emv.db.queries import create_projection, get_projection_by_id, get_all_projections, update_projection, delete_projection, get_projection_coordinates, get_projection_atlases, get_projection_coordinates_by_atlas
+from emv.db.queries import create_projection, get_projection_by_id, get_all_projections, update_projection, \
+    delete_projection, get_projection_coordinates, get_projection_atlases, get_projection_coordinates_by_atlas, create_map_projection_feature
 from sqlalchemy.sql import text
 from emv.api.routers.auth_router import get_current_active_user, User
 import json
@@ -16,6 +17,12 @@ projection_router = APIRouter()
 async def create(projection: Projection, current_user: User = Depends(get_current_active_user)):
     create_projection(projection)
     return {"status": "Projection created"}
+
+
+@projection_router.post("/projections/mapping")
+async def create_mapping(mapping: MapProjectionFeatureCreate, current_user: User = Depends(get_current_active_user)):
+    create_map_projection_feature(mapping)
+    return {"status": "Mapping created"}
 
 
 @projection_router.get("/projections/")

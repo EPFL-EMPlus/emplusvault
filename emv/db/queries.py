@@ -1,3 +1,4 @@
+import psycopg2
 import json
 import emv.utils
 
@@ -288,6 +289,55 @@ def get_features_by_type(feature_type: str) -> dict:
     return result
 
 
+def get_features_media_info_by_type_paginated(feature_type: str, fields: str = "*", page_size: int = 20, last_seen_feature_id: int = -1) -> dict:
+    query = f"""
+        SELECT * FROM feature 
+        LEFT JOIN media ON media.media_id = feature.media_id
+        WHERE feature_type = :feature_type"""
+
+    # Add conditions for the last_seen values
+    if last_seen_feature_id:
+        query += " AND feature_id > :last_seen_feature_id"
+
+    # Order by both created_at and media_id
+    query += " ORDER BY feature_id LIMIT :page_size"
+
+    params = {
+        "feature_type": feature_type,
+        "page_size": page_size
+    }
+
+    if last_seen_feature_id:
+        params["last_seen_feature_id"] = last_seen_feature_id
+
+    return DataAccessObject().fetch_all(text(query), params)
+
+
+def get_features_by_projection_paginated(projection_id: int, fields: str = "*", page_size: int = 20, last_seen_feature_id: int = -1) -> dict:
+    query = f"""
+        SELECT {fields} FROM feature 
+        LEFT JOIN media ON media.media_id = feature.media_id
+        LEFT JOIN map_projection_feature ON map_projection_feature.feature_id = feature.feature_id
+        WHERE map_projection_feature.projection_id = :projection_id"""
+
+    # Add conditions for the last_seen values
+    if last_seen_feature_id:
+        query += " AND feature.feature_id > :last_seen_feature_id"
+
+    # Order by both created_at and media_id
+    query += " ORDER BY feature.feature_id LIMIT :page_size"
+
+    params = {
+        "projection_id": projection_id,
+        "page_size": page_size
+    }
+
+    if last_seen_feature_id:
+        params["last_seen_feature_id"] = last_seen_feature_id
+
+    return DataAccessObject().fetch_all(text(query), params)
+
+
 def get_features_by_type_paginated(feature_type: str, fields: str = "*", page_size: int = 20, last_seen_feature_id: int = -1, short_clips_only: bool = False, long_clips_only: bool = False) -> dict:
     query = f"SELECT {fields} FROM feature WHERE feature_type = :feature_type"
 
@@ -442,6 +492,47 @@ def get_nearest_neighbors_by_feature(feature_id: int, feature_type: str, embeddi
     """)
     result = DataAccessObject().fetch_all(
         query, {"feature_id": feature_id, "feature_type": feature_type, "k": k})
+    return result
+
+
+def get_nearest_neighbors_by_keypoints(
+    angle_feature: list, feature_type: str, embedding_size: int, projection_id: int, k: int = 10
+) -> dict:
+    # Define the embedding column
+    embedding_column = f"embedding_{embedding_size}"
+
+    # Convert the angle_feature list to a PostgreSQL array format
+    angle_feature_array = psycopg2.extras.Json(angle_feature.tolist())
+
+    # Combine the queries
+    query = text(f"""
+        WITH filtered_features AS (
+            SELECT map_projection_feature.feature_id
+            FROM map_projection_feature
+            LEFT JOIN media ON media.media_id = map_projection_feature.media_id
+            WHERE map_projection_feature.projection_id = :projection_id
+        )
+        SELECT 
+            feature.media_id, 
+            feature.feature_id,
+            :angle_feature <-> feature.{embedding_column} AS distance
+        FROM feature
+        WHERE feature.feature_id IN (SELECT feature_id FROM filtered_features)
+          AND feature_type = :feature_type
+        ORDER BY distance
+        LIMIT :k;
+    """)
+
+    # Execute the combined query
+    result = DataAccessObject().fetch_all(
+        query, {
+            "angle_feature": angle_feature_array,  # Pass the formatted array
+            "feature_type": feature_type,
+            "projection_id": projection_id,
+            "k": k
+        }
+    )
+
     return result
 
 
