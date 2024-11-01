@@ -68,7 +68,8 @@ def export_transcripts(export_dir: str, no_of_rows: int, df: pd.DataFrame, dao):
             # Create DataFrame and add columns
             df_media = pd.DataFrame(r)
             df_media = df_media[df_media['video_id'].str.len() > 12]
-
+            df_media = df_media.drop_duplicates(
+                subset='video_id', keep='first')
             df_media = df_media[~df_media['video_id'].isin(already_processed)]
 
             for media_id in df_media['video_id']:
