@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  postgres_prod9:
+  postgres_prod10:
     restart: always
     build:
       context: .
@@ -9,11 +9,12 @@ services:
     environment:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
+    user: 999:999
     ports:
       - "5435:5432"
     volumes:
       - ${PGVECTOR_VOLUME_LOCATION}:/var/lib/postgresql/data
-    user: "root"
+    # user: "root"
     
   minio9:
     restart: always
@@ -23,6 +24,7 @@ services:
       - "${MINIO_UI_PORT}:9001"
     volumes:
       - ${MINIO_VOLUME_LOCATION}:/data
+    user: 999:999
     environment:
       - MINIO_ROOT_USER=${MINIO_ROOT_USER}
       - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
