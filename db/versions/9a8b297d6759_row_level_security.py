@@ -18,11 +18,11 @@ def upgrade():
     op.execute("""
     -- Enable RLS
     ALTER TABLE media ENABLE ROW LEVEL SECURITY;
-    ALTER TABLE feature ENABLE ROW LEVEL SECURITY;
+    # ALTER TABLE feature ENABLE ROW LEVEL SECURITY;
 
     -- Remove owner rights to bypass the RLS
     ALTER TABLE media FORCE ROW LEVEL SECURITY;
-    ALTER TABLE feature FORCE ROW LEVEL SECURITY;
+    # ALTER TABLE feature FORCE ROW LEVEL SECURITY;
 
     -- Create the policy for the media table
     CREATE POLICY user_media_access_policy
@@ -34,14 +34,14 @@ def upgrade():
             )
         );
     
-    CREATE POLICY user_feature_access_policy
-        ON feature
-        FOR ALL
-        USING (
-            EXISTS (
-                SELECT 1 FROM user_library_access JOIN media ON user_library_access.library_id = media.library_id WHERE user_id = current_setting('emplusvault.current_user_id')::integer AND media.media_id = feature.media_id
-            )
-        );
+    # CREATE POLICY user_feature_access_policy
+    #     ON feature
+    #     FOR ALL
+    #     USING (
+    #         EXISTS (
+    #             SELECT 1 FROM user_library_access JOIN media ON user_library_access.library_id = media.library_id WHERE user_id = current_setting('emplusvault.current_user_id')::integer AND media.media_id = feature.media_id
+    #         )
+    #     );
                
     """)
 
