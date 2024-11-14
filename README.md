@@ -61,10 +61,18 @@ uvicorn server:app --host 0.0.0.0 --port 8763 --reload
 
 Create a new database user to use row level security (RLS). This can't be the default superuser as it has privileges to bypass RLS.
 
+## Migrations
 
-# PyAv
+Create new migration
+```
+alembic revision -m "Comment for new migration"
+```
 
-Maybe compile ffmpeg with hardware decoder enable and bind to pyAv?
+Apply migrations
+```
+alembic upgrade head
+```
+
 
 ## Notes
 
@@ -79,28 +87,6 @@ If Poetry install issues with Keyring
 
 `sudo mount -t drvfs '\\KNAS\mjf' /mnt/mjf`
 `sudo mount -t drvfs '\\emplussrv1.epfl.ch\EMPLUS-Network\RTS-Data' /mnt/rts`
-
-### Front-end
-The frontend code is made with [Cables.gl](htttps://cables.gl), a node-based visual framework on the Web. To be able to pull and serve the visualization a few extra installation steps are required.
-
-1. Install [NVM](https://github.com/nvm-sh/nvm)
-2. Install Node LTS version:  ```nvm install --lts```
-3. Install Cables.gl CLI:  ```npm install -g @cables/cables```
-4. Create an specific API-KEY on [Cables.gl](https://cables.gl/settings)
-5. Create `~/.cablesrc` file with `apikey=YOUR_API_KEY`.
-
-# Copy data from RTS to transfer drive
-```
-rsync -am /media/data/rts/metadata/ /mnt/transfer/rts/metadata/
-rsync -am /media/data/rts/metadata/ /mnt/transfer/rts/metadata/
-```
-
-# Copy data from RTS machine to public demo
-```
-rsync -am /media/data/rts/metadata/ root@128.178.218.107:/media/data/rts/metadata/
-
-
-```
 
 # Tests
 
