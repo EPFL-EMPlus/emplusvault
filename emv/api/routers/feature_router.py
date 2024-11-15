@@ -4,8 +4,8 @@ from sqlalchemy.sql import text
 from typing import List
 from emv.api.models import Feature
 from emv.db.dao import DataAccessObject
-from emv.db.queries import create_feature, get_feature_by_id, get_all_features, update_feature, delete_feature, get_features_by_type_paginated, get_features_media_info_by_type_paginated, get_nearest_neighbors_by_feature, get_nearest_neighbors_by_keypoints, get_features_by_projection_paginated
-from emv.features.pose import get_keypoints_from_image, get_angle_feature_vector
+from emv.db.queries import create_feature, get_feature_by_id, get_features_by_type_paginated, get_features_media_info_by_type_paginated, get_nearest_neighbors_by_feature, get_nearest_neighbors_by_keypoints, get_features_by_projection_paginated
+from emv.features.pose import get_keypoints_from_image, get_angle_feature_vector, get_poem_feature_vector
 import json
 from datetime import datetime
 from emv.api.routers.auth_router import get_current_active_user, User
@@ -142,7 +142,7 @@ async def get_similar_features_by_keypoints_poem(
         # Extract keypoints list from the model
         keypoints = keypoints_model.keypoints
 
-        angles = get_angle_feature_vector(keypoints)
+        angles = get_poem_feature_vector(keypoints)
         resp = get_nearest_neighbors_by_keypoints(
             angles, feature_type, 16, projection_id, k=k_neighbors
         )
