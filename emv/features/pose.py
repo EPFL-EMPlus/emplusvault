@@ -736,7 +736,10 @@ def get_poem_feature_vector(keypoints: List[List[float]]):
         for pose in poses:
             row = []
             for kp in pose:
-                row.extend([kp[0], kp[1], kp[2]])
+                try:
+                    row.extend([kp[0], kp[1], kp[2]])
+                except IndexError:
+                    row.extend([kp[0], kp[1], 0.9])
             data.append(row)
 
         columns = []
