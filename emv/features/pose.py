@@ -742,8 +742,7 @@ def get_poem_feature_vector(keypoints: List[List[float]]):
         columns = []
         for kp in keypoint_names:
             kp = kp.replace('nose', 'nose_tip')
-            columns.extend([f'image/object/part/{kp.upper()}/center/x', f'image/object/part/{
-                           kp.upper()}/center/y', f'image/object/part/{kp.upper()}/score'])
+            columns.extend([f'image/object/part/{kp.upper()}/center/x', f'image/object/part/{kp.upper()}/center/y', f'image/object/part/{kp.upper()}/score'])
 
         return pd.DataFrame(data, columns=columns)
 
