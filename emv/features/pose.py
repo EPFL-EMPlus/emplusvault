@@ -23,6 +23,7 @@ from openpifpaf import transforms
 from typing import List, Dict, Tuple, Union, Optional
 
 from emv.utils import FileVideoStream, timeit
+from emv.settings import get_secret
 
 
 LOG = emv.utils.get_logger()
@@ -723,6 +724,47 @@ def get_angle_feature_vector(keypoints: List[List[float]]):
 
     feature_vector = np.array(angles)
     return feature_vector / 180.0
+
+
+def get_poem_feature_vector(keypoints: List[List[float]]):
+    keypoint_names = ['nose', 'left_shoulder', 'right_shoulder', 'left_elbow', 'right_elbow',
+                      'left_wrist', 'right_wrist', 'left_hip', 'right_hip', 'left_knee',
+                      'right_knee', 'left_ankle', 'right_ankle']
+
+    def create_dataframe(poses):
+        data = []
+        for pose in poses:
+            row = []
+            for kp in pose:
+                row.extend([kp[0], kp[1], kp[2]])
+            data.append(row)
+
+        columns = []
+        for kp in keypoint_names:
+            kp = kp.replace('nose', 'nose_tip')
+            columns.extend([f'image/object/part/{kp.upper()}/center/x', f'image/object/part/{
+                           kp.upper()}/center/y', f'image/object/part/{kp.upper()}/score'])
+
+        return pd.DataFrame(data, columns=columns)
+
+    # normalize x and y cords to be between 0 and 1
+    def normalize(df):
+        for kp in keypoint_names:
+            kp = kp.replace('nose', 'nose_tip')
+            df[f'image/object/part/{kp.upper()}/center/x'] /= df['image/width']
+            df[f'image/object/part/{kp.upper()}/center/y'] /= df['image/height']
+
+        return df
+
+    df = create_dataframe([keypoints])
+    df.insert(0, 'image/width', 1280)
+    df.insert(1, 'image/height', 720)
+    df = normalize(df)
+    df.to_csv(get_secret("POEM_SAVE_LOC"), index=False)
+    # Run the inference script
+    os.system(get_secret("POEM_SCRIPT"))
+    df_poem = pd.read_csv(get_secret("POEM_RETR_LOC"), header=None)
+    return df_poem.values[0]
 
 
 def filter_poses(df: pd.DataFrame, threshold: float = 0.2) -> pd.DataFrame:
