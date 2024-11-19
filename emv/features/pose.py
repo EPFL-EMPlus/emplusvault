@@ -757,6 +757,8 @@ def get_poem_feature_vector(keypoints: List[List[float]]):
             df[f'image/object/part/{kp.upper()}/center/y'] /= df['image/height']
 
         return df
+    
+    import subprocess
 
     df = create_dataframe([keypoints])
     df.insert(0, 'image/width', 1280)
@@ -764,7 +766,7 @@ def get_poem_feature_vector(keypoints: List[List[float]]):
     df = normalize(df)
     df.to_csv(get_secret("POEM_SAVE_LOC"), index=False)
     # Run the inference script
-    os.system(get_secret("POEM_SCRIPT"))
+    subprocess.run(get_secret("POEM_SCRIPT"), shell=True, executable="/bin/bash")
     df_poem = pd.read_csv(get_secret("POEM_RETR_LOC"), header=None)
     return df_poem.values[0]
 
