@@ -1,6 +1,6 @@
 # EMPLUS Vault
 
-Data Vault for digital archives. 
+Data Vault for processing and retrieving digital archives. 
 
 ## Installation
 
