@@ -416,6 +416,48 @@ def get_keypoints_from_image(image_pil: PIL.Image) -> Dict:
     return results
 
 
+def write_pose_to_binary_file(feature_id: int, skeleton_bones_count: int, video_resolution: tuple[int, int], pose_frames: list[list[tuple[float, float]]], filename: str) -> None:
+    """
+    Writes the pose from a video to a binary file.
+
+    :param pose_frames: A list of frames, where each frame corresponds to a video frame, and each frame is a list of its joints positions
+    :param filename: The name of the file to write the pose to
+
+    The binary data structure is as follows:
+
+    Header :
+        Feature identifier (uint32)
+        Frame count (uint32)
+        Skeleton bones count (uint8)
+        Video resolution width and height (2 * uint16)
+
+    Data :
+        for each frame :
+            for each bone in pose :
+                location 2D vector (2 * uint16) -> in video frame coordinates referential (i.e. in range [0, 720] * [0, 1024])
+
+    """
+    with open(filename, 'wb') as f:
+        f.write(feature_id.to_bytes(4, byteorder='little', signed=False))
+        f.write(len(pose_frames).to_bytes(4, byteorder='little', signed=False))
+        f.write(skeleton_bones_count.to_bytes(
+            1, byteorder='little', signed=False))
+        f.write(video_resolution[0].to_bytes(
+            2, byteorder='little', signed=False))
+        f.write(video_resolution[1].to_bytes(
+            2, byteorder='little', signed=False))
+
+        for pose in pose_frames:
+            assert len(pose) == skeleton_bones_count
+
+            for joint_x, joint_y in pose:
+                coord_x: int = int(joint_x * 64)
+                coord_y: int = int(joint_y * 64)
+
+                f.write(coord_x.to_bytes(2, byteorder='little', signed=False))
+                f.write(coord_y.to_bytes(2, byteorder='little', signed=False))
+
+
 @timeit
 def process_video(model_name: str, video_bytes: bytes, skip_frame: int = 0, options=None):
     """Process and run pose detection algorithm
@@ -745,7 +787,8 @@ def get_poem_feature_vector(keypoints: List[List[float]]):
         columns = []
         for kp in keypoint_names:
             kp = kp.replace('nose', 'nose_tip')
-            columns.extend([f'image/object/part/{kp.upper()}/center/x', f'image/object/part/{kp.upper()}/center/y', f'image/object/part/{kp.upper()}/score'])
+            columns.extend([f'image/object/part/{kp.upper()}/center/x', f'image/object/part/{
+                           kp.upper()}/center/y', f'image/object/part/{kp.upper()}/score'])
 
         return pd.DataFrame(data, columns=columns)
 
@@ -754,10 +797,11 @@ def get_poem_feature_vector(keypoints: List[List[float]]):
         for kp in keypoint_names:
             kp = kp.replace('nose', 'nose_tip')
             df[f'image/object/part/{kp.upper()}/center/x'] /= df['image/width']
-            df[f'image/object/part/{kp.upper()}/center/y'] /= df['image/height']
+            df[f'image/object/part/{kp.upper()
+                                    }/center/y'] /= df['image/height']
 
         return df
-    
+
     import subprocess
 
     df = create_dataframe([keypoints])
@@ -765,8 +809,9 @@ def get_poem_feature_vector(keypoints: List[List[float]]):
     df.insert(1, 'image/height', 720)
     df = normalize(df)
     df.to_csv(get_secret("POEM_SAVE_LOC"), index=False)
-    # Run the inference script
-    subprocess.run(get_secret("POEM_SCRIPT"), shell=True, executable="/bin/bash")
+    #  Run the inference script
+    subprocess.run(get_secret("POEM_SCRIPT"),
+                   shell=True, executable="/bin/bash")
     df_poem = pd.read_csv(get_secret("POEM_RETR_LOC"), header=None)
     return df_poem.values[0]
 
