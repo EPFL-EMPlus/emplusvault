@@ -7,13 +7,12 @@ import base64
 
 from emv.pipelines.base import Pipeline, get_hash
 from emv.io.media import get_frame_number
-from emv.api.models import Media
-from emv.db.queries import create_or_update_media, check_media_exists
+from emv.api.models import Media, Feature, Projection, MapProjectionFeatureCreate
+from emv.db.queries import create_or_update_media, check_media_exists, create_projection, create_map_projection_feature
 from emv.db.queries import get_feature_by_media_id_and_type, create_feature, update_feature
-from emv.api.models import Feature
 
 from emv.settings import IOC_ROOT_FOLDER
-from emv.features.pose import process_video, PifPafModel
+from emv.features.pose import process_video, PifPafModel, write_pose_to_binary_file
 from emv.db.dao import DataAccessObject
 
 LOG = emv.utils.get_logger()
@@ -22,6 +21,7 @@ LOG = emv.utils.get_logger()
 IOC_DATA = IOC_ROOT_FOLDER + 'data'
 IOC_VIDEOS = IOC_ROOT_FOLDER + 'videos'
 MODEL = PifPafModel.fast
+
 
 class PipelineIOC(Pipeline):
     library_name: str = 'ioc'
@@ -104,7 +104,8 @@ class PipelineIOC(Pipeline):
             original_path = row.path
             media_path = f"videos/{row.guid}/{row.seq_id}.mp4"
 
-            LOG.info(f"Trimming and uploading clip {original_path} {media_path}")
+            LOG.info(
+                f"Trimming and uploading clip {original_path} {media_path}")
             media_info = self.trim_upload_media(
                 original_path, media_path, row.start_ts, row.end_ts)
             if not media_info:
@@ -162,7 +163,6 @@ class PipelineIOC(Pipeline):
         df = df.sort_values(by='start_ts')
         return df
 
-
     def process_poses(self, df: pd.DataFrame) -> bool:
         """ Process the poses of all clips in the dataframe. """
         # we need a user id for RLS to work even while batch processing
@@ -170,26 +170,27 @@ class PipelineIOC(Pipeline):
         for i, row in self.tqdm(df.iterrows(), leave=False, total=len(df), position=1, desc='Clips'):
             self.process_single_pose(row)
         return True
-    
+
     def process_single_pose(self, row: pd.Series) -> bool:
         """ Process the poses of a single clip. """
-        result = self.store.get_bytes("ioc", f"videos/{row.guid}/{row.seq_id}.mp4")
+        result = self.store.get_bytes(
+            "ioc", f"videos/{row.guid}/{row.seq_id}.mp4")
 
         if not result:
             # We won't have a result if the video is not in the storage
             return False
-        
+
         r, images = process_video(
-            MODEL, 
+            MODEL,
             result,
             skip_frame=10
         )
         image_references = []
-        # Upload to s3    
+        # Upload to s3
         for i, img in enumerate(images):
             img_path = f"images/{row.guid}/{row.seq_id}/pose_frame_{r[i]['frame']}.jpg"
             self.store.upload(self.library_name, img_path, img)
-            
+
             media_id = f"ioc-{row.seq_id}-pose-{r[i]['frame']}"
             image_references.append(media_id)
             r[i]['media_id'] = media_id
@@ -240,4 +241,33 @@ class PipelineIOC(Pipeline):
                 create_feature(new_feature)
         except IntegrityError as e:
             LOG.error(f'Failed to create feature for {clip_media_id}: {e}')
+        return True
+
+    def process_all_video_poses(self, df: pd.DataFrame) -> bool:
+        """ Process every single frame of a clip and store the poses. """
+        DataAccessObject().set_user_id(1)
+        for i, row in self.tqdm(df.iterrows(), leave=False, total=len(df), position=1, desc='Clips'):
+            self.process_all_poses_clip(row)
+        return True
+
+    def process_all_poses_clip(self, row: pd.Series) -> bool:
+        """ Process every single frame of a clip and store the poses. """
+        result = self.store.get_bytes(
+            "ioc", f"videos/{row.guid}/{row.seq_id}.mp4")
+
+        if not result:
+            raise ValueError(
+                f'Failed to download video {row.guid}/{row.seq_id}.mp4')
+
+        r, images = process_video(
+            MODEL,
+            result
+        )
+
+        return r, images
+
+    def create_projection(self, df: pd.DataFrame) -> bool:
+        """ Create the projection for all clips in the dataframe. """
+        for i, row in self.tqdm(df.iterrows(), leave=False, total=len(df), position=1, desc='Clips'):
+            self.create_single_projection(row)
         return True
