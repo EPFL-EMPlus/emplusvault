@@ -11,6 +11,8 @@ import cv2
 import PIL
 import torch
 import orjson
+import struct
+from io import BytesIO
 
 import openpifpaf
 import openpifpaf.predict
@@ -24,6 +26,7 @@ from typing import List, Dict, Tuple, Union, Optional
 
 from emv.utils import FileVideoStream, timeit
 from emv.settings import get_secret
+from emv.storage.storage import get_storage_client
 
 
 LOG = emv.utils.get_logger()
@@ -416,7 +419,43 @@ def get_keypoints_from_image(image_pil: PIL.Image) -> Dict:
     return results
 
 
-def write_pose_to_binary_file(feature_id: int, skeleton_bones_count: int, video_resolution: tuple[int, int], pose_frames: list[list[tuple[float, float]]], filename: str) -> None:
+def extract_pose_frames(data: List[dict]) -> List[Tuple[int, List[Tuple[float, float]]]]:
+    """
+    Extracts pose keypoints from the input data along with the frame number, excluding unnecessary keypoints.
+    """
+
+    EXCLUDED_KEYPOINTS = (1, 2, 3, 4)
+
+    pose_frames = []
+    for frame_data in data:
+        frame_number = frame_data['frame']
+        frame_annotations = frame_data['data']['annotations']
+        frame_poses = []
+
+        for annotation in frame_annotations:
+            keypoints = annotation['keypoints']
+            pose = [
+                (keypoints[i], keypoints[i + 1])
+                for j, i in enumerate(range(0, len(keypoints), 3))
+                if j not in EXCLUDED_KEYPOINTS
+            ]
+            # if nose is not visible, take the average of the eyes or ears instead if they are available
+            if pose[0][0] == 0 and pose[0][1] == 0:
+                if pose[1][0] != 0 and pose[1][1] != 0 and pose[2][0] != 0 and pose[2][1] != 0:
+                    pose[0] = ((pose[1][0] + pose[2][0]) / 2,
+                               (pose[1][1] + pose[2][1]) / 2)
+                elif pose[3][0] != 0 and pose[3][1] != 0 and pose[4][0] != 0 and pose[4][1] != 0:
+                    pose[0] = ((pose[3][0] + pose[4][0]) / 2,
+                               (pose[3][1] + pose[4][1]) / 2)
+
+            frame_poses.append((frame_number, pose))
+
+        pose_frames.extend(frame_poses)
+
+    return pose_frames
+
+
+def write_pose_to_binary_file(feature_id: int, skeleton_bones_count: int, video_resolution: Tuple[int, int], pose_frames: List[Tuple[int, List[Tuple[float, float]]]], bucket_name: str, object_name: str) -> None:
     """
     Writes the pose from a video to a binary file.
 
@@ -434,28 +473,63 @@ def write_pose_to_binary_file(feature_id: int, skeleton_bones_count: int, video_
     Data :
         for each frame :
             for each bone in pose :
-                location 2D vector (2 * uint16) -> in video frame coordinates referential (i.e. in range [0, 720] * [0, 1024])
+                frame number (uint32) + location 2D vector (2 * uint16) -> in video frame coordinates referential (i.e. in range [0, 720] * [0, 1024])
 
     """
-    with open(filename, 'wb') as f:
-        f.write(feature_id.to_bytes(4, byteorder='little', signed=False))
-        f.write(len(pose_frames).to_bytes(4, byteorder='little', signed=False))
-        f.write(skeleton_bones_count.to_bytes(
-            1, byteorder='little', signed=False))
-        f.write(video_resolution[0].to_bytes(
-            2, byteorder='little', signed=False))
-        f.write(video_resolution[1].to_bytes(
-            2, byteorder='little', signed=False))
 
-        for pose in pose_frames:
-            assert len(pose) == skeleton_bones_count
+    binary_stream = BytesIO()
 
-            for joint_x, joint_y in pose:
-                coord_x: int = int(joint_x * 64)
-                coord_y: int = int(joint_y * 64)
+    # Write header
+    # Feature identifier (uint32)
+    binary_stream.write(struct.pack('<I', feature_id))
+    binary_stream.write(struct.pack('<I', len(pose_frames)))
+    # Skeleton bones count (uint8)
+    binary_stream.write(struct.pack('<B', skeleton_bones_count))
+    # Video resolution (2 * uint16)
+    binary_stream.write(struct.pack(
+        '<HH', video_resolution[0], video_resolution[1]))
 
-                f.write(coord_x.to_bytes(2, byteorder='little', signed=False))
-                f.write(coord_y.to_bytes(2, byteorder='little', signed=False))
+    # Write pose data
+    for frame_no, pose in pose_frames:
+        assert len(
+            pose) == skeleton_bones_count, f"Frame {frame_no} has incorrect bone count!"
+        for joint_x, joint_y in pose:
+            coord_x = min(max(0, int(joint_x)), video_resolution[0] - 1)
+            coord_y = min(max(0, int(joint_y)), video_resolution[1] - 1)
+            binary_stream.write(struct.pack(
+                '<HH', coord_x, coord_y))  # 2 * uint16
+
+        # Upload to storage
+        binary_stream.seek(0)
+        storage_client = get_storage_client()
+        success = storage_client.upload(
+            bucket_name, object_name, binary_stream)
+        if success:
+            print(f"File successfully uploaded to {bucket_name}/{object_name}")
+        else:
+            print("File upload failed.")
+
+
+def read_pose_from_binary_file(binary_data: BytesIO) -> Tuple[int, int, Tuple[int, int], List[Tuple[int, List[Tuple[int, int]]]]]:
+    """
+    Reads pose data from a binary file stored in memory. This function is mostly used for testing purposes.
+    """
+    binary_data.seek(0)
+    feature_id = struct.unpack('<I', binary_data.read(4))[0]
+    frame_count = struct.unpack('<I', binary_data.read(4))[0]
+    skeleton_bones_count = struct.unpack('<B', binary_data.read(1))[0]
+    video_resolution = struct.unpack('<HH', binary_data.read(4))
+
+    pose_frames = []
+    for _ in range(frame_count):
+        frame_number = len(pose_frames)
+        pose = [
+            struct.unpack('<HH', binary_data.read(4))
+            for _ in range(skeleton_bones_count)
+        ]
+        pose_frames.append((frame_number, pose))
+
+    return feature_id, skeleton_bones_count, video_resolution, pose_frames
 
 
 @timeit
@@ -787,8 +861,8 @@ def get_poem_feature_vector(keypoints: List[List[float]]):
         columns = []
         for kp in keypoint_names:
             kp = kp.replace('nose', 'nose_tip')
-            columns.extend([f'image/object/part/{kp.upper()}/center/x', f'image/object/part/{
-                           kp.upper()}/center/y', f'image/object/part/{kp.upper()}/score'])
+            columns.extend([f'image/object/part/{kp.upper()}/center/x',
+                           f'image/object/part/{kp.upper()}/center/y', f'image/object/part/{kp.upper()}/score'])
 
         return pd.DataFrame(data, columns=columns)
 
@@ -797,8 +871,7 @@ def get_poem_feature_vector(keypoints: List[List[float]]):
         for kp in keypoint_names:
             kp = kp.replace('nose', 'nose_tip')
             df[f'image/object/part/{kp.upper()}/center/x'] /= df['image/width']
-            df[f'image/object/part/{kp.upper()
-                                    }/center/y'] /= df['image/height']
+            df[f'image/object/part/{kp.upper()}/center/y'] /= df['image/height']
 
         return df
 
