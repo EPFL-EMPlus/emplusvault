@@ -12,7 +12,7 @@ from emv.db.queries import create_or_update_media, check_media_exists, create_pr
 from emv.db.queries import get_feature_by_media_id_and_type, create_feature, update_feature
 
 from emv.settings import IOC_ROOT_FOLDER
-from emv.features.pose import process_video, PifPafModel, write_pose_to_binary_file
+from emv.features.pose import process_video, PifPafModel, write_pose_to_binary_file, extract_pose_frames
 from emv.db.dao import DataAccessObject
 
 LOG = emv.utils.get_logger()
@@ -263,6 +263,15 @@ class PipelineIOC(Pipeline):
             MODEL,
             result
         )
+        clip_media_id = f"ioc-{row.seq_id}"
+        feature_type = 'pose'
+        video_resolution = r[0]['data']['width_height']
+        feature = get_feature_by_media_id_and_type(clip_media_id, feature_type)
+
+        pose_frames = extract_pose_frames(r)
+
+        write_pose_to_binary_file(feature['feature_id'], 13,
+                                  video_resolution, pose_frames, "ioc", f"pose_binaries/{row.guid}/{row.seq_id}.bin")
 
         return r, images
 
