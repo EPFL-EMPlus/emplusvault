@@ -263,16 +263,46 @@ class PipelineIOC(Pipeline):
             MODEL,
             result
         )
-        clip_media_id = f"ioc-{row.seq_id}"
-        feature_type = 'pose'
+        media_id = f"ioc-{row.seq_id}"
+        bin_media_id = f"ioc-{row.seq_id}-binary"
+        feature_type = 'pose-binary'
         video_resolution = r[0]['data']['width_height']
-        feature = get_feature_by_media_id_and_type(clip_media_id, feature_type)
+        # feature = get_feature_by_media_id_and_type(clip_media_id, feature_type)
 
         pose_frames = extract_pose_frames(r)
+        media_path = f"pose_binaries/{row.guid}/{row.seq_id}.bin"
 
-        write_pose_to_binary_file(feature['feature_id'], 13,
-                                  video_resolution, pose_frames, "ioc", f"pose_binaries/{row.guid}/{row.seq_id}.bin")
+        write_pose_to_binary_file(bin_media_id, 13,
+                                  video_resolution, pose_frames, "ioc", media_path)
 
+        binary_file = Media(**{
+            'media_id': bin_media_id,
+            'original_path': media_path,
+            'original_id': row.guid,
+            'media_path': media_path,
+            'media_type': "video",
+            'media_info': {"resolution": video_resolution},
+            'sub_type': "binary",
+            'size': -1,
+            'metadata': {},
+            'library_id': self.library_id,
+            'hash': get_hash(media_path),
+            'parent_id': media_id,
+            'start_ts': row.start_ts,
+            'end_ts': row.end_ts,
+            'start_frame': 0,
+            'end_frame': -1,
+            'frame_rate': -1,
+        })
+
+        try:
+            create_or_update_media(binary_file)
+        except IntegrityError as e:
+            if "duplicate key value violates unique constraint" in str(e):
+                LOG.info(
+                    f'UniqueViolation: Duplicate media_id {binary_file.media_id}')
+            else:
+                raise e
         return r, images
 
     def create_projection(self, df: pd.DataFrame) -> bool:
