@@ -271,6 +271,35 @@ class PipelineIOC(Pipeline):
         pose_frames = extract_pose_frames(r)
         media_path = f"pose_binaries/{row.guid}/{row.seq_id}.bin"
 
+        binary_file = Media(**{
+            'media_id': bin_media_id,
+            'original_path': media_path,
+            'original_id': row.guid,
+            'media_path': media_path,
+            'media_type': "video",
+            'media_info': {"resolution": video_resolution},
+            'sub_type': "binary",
+            'size': -1,
+            'metadata': {},
+            'library_id': self.library_id,
+            'hash': get_hash(media_path),
+            'parent_id': media_id,
+            'start_ts': row.start_ts,
+            'end_ts': row.end_ts,
+            'start_frame': 0,
+            'end_frame': -1,
+            'frame_rate': -1,
+        })
+
+        try:
+            media_id = create_or_update_media(binary_file)['media_id']
+        except IntegrityError as e:
+            if "duplicate key value violates unique constraint" in str(e):
+                LOG.info(
+                    f'UniqueViolation: Duplicate media_id {binary_file.media_id}')
+            else:
+                raise e
+
         feature = get_feature_by_media_id_and_type(
             "ioc-" + row.seq_id, feature_type)
 
@@ -280,7 +309,7 @@ class PipelineIOC(Pipeline):
             model_name='binary',
             model_params={},
             data={},
-            media_id="ioc-" + row.seq_id,
+            media_id=media_id,
         )
 
         try:
