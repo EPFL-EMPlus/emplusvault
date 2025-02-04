@@ -499,15 +499,15 @@ def write_pose_to_binary_file(feature_id: int, skeleton_bones_count: int, video_
             binary_stream.write(struct.pack(
                 '<HH', coord_x, coord_y))  # 2 * uint16
 
-        # Upload to storage
-        binary_stream.seek(0)
-        storage_client = get_storage_client()
-        success = storage_client.upload(
-            bucket_name, object_name, binary_stream)
-        if success:
-            print(f"File successfully uploaded to {bucket_name}/{object_name}")
-        else:
-            print("File upload failed.")
+    # Upload to storage
+    binary_stream.seek(0)
+    storage_client = get_storage_client()
+    success = storage_client.upload(
+        bucket_name, object_name, binary_stream)
+    if success:
+        print(f"File successfully uploaded to {bucket_name}/{object_name}")
+    else:
+        print("File upload failed.")
 
 
 def read_pose_from_binary_file(binary_data: BytesIO) -> Tuple[int, int, Tuple[int, int], List[Tuple[int, List[Tuple[int, int]]]]]:

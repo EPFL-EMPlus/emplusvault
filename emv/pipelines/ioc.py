@@ -267,42 +267,34 @@ class PipelineIOC(Pipeline):
         bin_media_id = f"ioc-{row.seq_id}-binary"
         feature_type = 'pose-binary'
         video_resolution = r[0]['data']['width_height']
-        # feature = get_feature_by_media_id_and_type(clip_media_id, feature_type)
 
         pose_frames = extract_pose_frames(r)
         media_path = f"pose_binaries/{row.guid}/{row.seq_id}.bin"
 
-        write_pose_to_binary_file(bin_media_id, 13,
-                                  video_resolution, pose_frames, "ioc", media_path)
+        feature = get_feature_by_media_id_and_type(
+            "ioc-" + row.seq_id, feature_type)
 
-        binary_file = Media(**{
-            'media_id': bin_media_id,
-            'original_path': media_path,
-            'original_id': row.guid,
-            'media_path': media_path,
-            'media_type': "video",
-            'media_info': {"resolution": video_resolution},
-            'sub_type': "binary",
-            'size': -1,
-            'metadata': {},
-            'library_id': self.library_id,
-            'hash': get_hash(media_path),
-            'parent_id': media_id,
-            'start_ts': row.start_ts,
-            'end_ts': row.end_ts,
-            'start_frame': 0,
-            'end_frame': -1,
-            'frame_rate': -1,
-        })
+        new_feature = Feature(
+            feature_type=feature_type,
+            version="1",
+            model_name='binary',
+            model_params={},
+            data={},
+            media_id="ioc-" + row.seq_id,
+        )
 
         try:
-            create_or_update_media(binary_file)
-        except IntegrityError as e:
-            if "duplicate key value violates unique constraint" in str(e):
-                LOG.info(
-                    f'UniqueViolation: Duplicate media_id {binary_file.media_id}')
+            if feature:
+                feature_id = update_feature(feature['feature_id'], new_feature)[
+                    'feature_id']
             else:
-                raise e
+                feature_id = create_feature(new_feature)['feature_id']
+        except IntegrityError as e:
+            LOG.error(f'Failed to create feature for {bin_media_id}: {e}')
+
+        write_pose_to_binary_file(int(feature_id), 13,
+                                  video_resolution, pose_frames, "ioc", media_path)
+
         return r, images
 
     def create_projection(self, df: pd.DataFrame) -> bool:

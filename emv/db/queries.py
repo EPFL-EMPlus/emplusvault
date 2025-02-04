@@ -425,7 +425,7 @@ def update_feature(feature_id: int, feature: Feature) -> dict:
     """)
     result = DataAccessObject().execute_query(
         query, {**feature_dict, "feature_id": feature_id})
-    return result
+    return {**feature_dict, "feature_id": result.fetchone()[0]}
 
 
 def delete_feature(feature_id: int):
