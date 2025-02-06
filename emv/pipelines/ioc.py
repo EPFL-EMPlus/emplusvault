@@ -48,6 +48,11 @@ class PipelineIOC(Pipeline):
         """
         DataAccessObject().set_user_id(1)
         self.inner_progress_bar = None
+
+        #  fill NaN in round with empty strings
+        df['round'] = df['round'].fillna('')
+        df['category'] = df['category'].fillna('')
+
         for i, group in self.tqdm(df.groupby('guid'), position=0, leave=True, desc='IOC videos'):
             self.ingest_single_video(group, force, min_duration, max_duration)
 
@@ -88,6 +93,8 @@ class PipelineIOC(Pipeline):
             media_id = f"{self.library_name}-{row.seq_id}"
             exists = check_media_exists(media_id)
             if exists and not force:
+                LOG.info(
+                    f'Skipping clip {row.seq_id} because it already exists')
                 continue
 
             seq_dur = row.end_ts - row.start_ts
@@ -117,7 +124,7 @@ class PipelineIOC(Pipeline):
                 'description': str(row.description),
                 'event': row.event,
                 'category': row.category,
-                'round': row['round'],
+                'round': row['round'] if row['round'] else "",
             }
 
             clip = Media(**{
@@ -132,7 +139,7 @@ class PipelineIOC(Pipeline):
                 'metadata': metadata,
                 'library_id': self.library_id,
                 'hash': get_hash(media_path),
-                'parent_id': -1,
+                'parent_id': "",
                 'start_ts': row.start_ts,
                 'end_ts': row.end_ts,
                 'start_frame': get_frame_number(row.start_ts, media_info['video']['framerate']),

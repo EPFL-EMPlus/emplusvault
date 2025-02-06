@@ -41,7 +41,7 @@ def main(base_path):
             result = DataAccessObject().fetch_one(
                 query, {"media_id": media_id})
             if result['count'] > 0:
-                print(f"Media {media_id} already in the database")
+                # print(f"Media {media_id} already in the database")
                 continue
 
             media_id_path = root.strip().replace("/mnt/rts/archives/", "")
