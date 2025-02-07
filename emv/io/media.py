@@ -152,7 +152,10 @@ def get_media_info(media_path: str) -> Dict:
         info['human_filesize'] = emv.utils.human_readable_size(
             info['filesize'])
         with av.open(str(media_path)) as container:
-            info['duration'] = container.duration / 1000000
+            try:
+                info['duration'] = container.duration / 1000000
+            except TypeError:
+                info['duration'] = 0
             info['video'] = {}
             info['audio'] = {}
             for stream in container.streams:
@@ -228,7 +231,6 @@ def trim(input_path: Union[str, Path], output_path: Union[str, Path], start_ts: 
         import traceback
         LOG.error(traceback.format_exc())
         LOG.error(e.stderr.decode())
-        
 
     return False, BytesIO()  # return False and an empty BytesIO object when there's an error
 
@@ -354,7 +356,7 @@ def save_clips_images(timecodes: Any,
                 ]
             ] for i, r in enumerate([
                 # pad ranges to number of images
-                r if 1 + \
+                r if 1 +
                 r[-1] - r[0] >= num_images else list(r) + [r[-1]] * (num_images - len(r))
                 # create range of frames in scene
                 for r in (

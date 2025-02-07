@@ -52,6 +52,9 @@ class PipelineIOC(Pipeline):
         #  fill NaN in round with empty strings
         df['round'] = df['round'].fillna('')
         df['category'] = df['category'].fillna('')
+        df['event'] = df['event'].fillna('')
+        df['description'] = df['description'].fillna('')
+        df['sport'] = df['sport'].fillna('')
 
         for i, group in self.tqdm(df.groupby('guid'), position=0, leave=True, desc='IOC videos'):
             self.ingest_single_video(group, force, min_duration, max_duration)
@@ -113,8 +116,14 @@ class PipelineIOC(Pipeline):
 
             LOG.info(
                 f"Trimming and uploading clip {original_path} {media_path}")
-            media_info = self.trim_upload_media(
-                original_path, media_path, row.start_ts, row.end_ts)
+            try:
+                media_info = self.trim_upload_media(
+                    original_path, media_path, row.start_ts, row.end_ts)
+            except TypeError:
+                LOG.error(
+                    f'Failed to trim and upload clip {row.seq_id} {original_path}')
+                return False
+
             if not media_info:
                 LOG.error(f'Failed to trim and upload clip {row.seq_id}')
                 return False
