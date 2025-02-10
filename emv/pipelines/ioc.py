@@ -259,14 +259,19 @@ class PipelineIOC(Pipeline):
             LOG.error(f'Failed to create feature for {clip_media_id}: {e}')
         return True
 
-    def process_all_video_poses(self, df: pd.DataFrame) -> bool:
+    def process_all_video_poses(self, df: pd.DataFrame, force: bool = False,) -> bool:
         """ Process every single frame of a clip and store the poses. """
         DataAccessObject().set_user_id(1)
+        # filter df to be only for sequences
+        df = df[df.seq_id != df.guid]
         for i, row in self.tqdm(df.iterrows(), leave=False, total=len(df), position=1, desc='Clips'):
-            self.process_all_poses_clip(row)
+            try:
+                self.process_all_poses_clip(row, force)
+            except ValueError:
+                pass  # The error message is already logged in the function
         return True
 
-    def process_all_poses_clip(self, row: pd.Series) -> bool:
+    def process_all_poses_clip(self, row: pd.Series, force: bool = False,) -> bool:
         """ Process every single frame of a clip and store the poses. """
         result = self.store.get_bytes(
             "ioc", f"videos/{row.guid}/{row.seq_id}.mp4")
@@ -275,15 +280,28 @@ class PipelineIOC(Pipeline):
             raise ValueError(
                 f'Failed to download video {row.guid}/{row.seq_id}.mp4')
 
+        media_id = f"ioc-{row.seq_id}"
+        bin_media_id = f"ioc-{row.seq_id}-binary"
+        feature_type = 'pose-binary'
+
+        # check if binary file already exists
+        feature = get_feature_by_media_id_and_type(
+            bin_media_id, feature_type)
+
+        if feature and not force:
+            LOG.info(f'Binary file for {bin_media_id} already exists')
+            return
+
+        LOG.info(f'Processing binary poses for {row.guid}/{row.seq_id}.mp4')
+
         r, images = process_video(
             MODEL,
             result
         )
-        media_id = f"ioc-{row.seq_id}"
-        bin_media_id = f"ioc-{row.seq_id}-binary"
-        feature_type = 'pose-binary'
-        video_resolution = r[0]['data']['width_height']
 
+        LOG.info(f'Extracting pose frames for {row.guid}/{row.seq_id}.mp4')
+
+        video_resolution = r[0]['data']['width_height']
         pose_frames = extract_pose_frames(r)
         media_path = f"pose_binaries/{row.guid}/{row.seq_id}.bin"
 
