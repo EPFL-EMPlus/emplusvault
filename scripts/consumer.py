@@ -16,10 +16,15 @@ def process_message(message):
         from emv.pipelines.ioc import PipelineIOC
         pipeline = PipelineIOC()
         pipeline.process_poses(df)
+    elif job_type == "pose_binary":
+        from emv.pipelines.ioc import PipelineIOC
+        pipeline = PipelineIOC()
+        pipeline.process_all_video_poses(df)
     elif job_type == "transcript":
         from emv.pipelines.rts import PipelineRTS
         pipeline = PipelineRTS()
         pipeline.ingest(df)
+
 
 def callback(ch, method, properties, body):
     ch.basic_ack(delivery_tag=method.delivery_tag)
@@ -52,6 +57,7 @@ def main(queue):
     finally:
         if connection and not connection.is_closed:
             connection.close()
+
 
 if __name__ == "__main__":
     main()
