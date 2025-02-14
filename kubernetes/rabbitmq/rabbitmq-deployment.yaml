@@ -22,6 +22,6 @@ spec:
         - containerPort: 15672 # RabbitMQ Management UI
         env:
         - name: RABBITMQ_DEFAULT_USER
-          value: "admin"
+          value: "guest"
         - name: RABBITMQ_DEFAULT_PASS
-          value: "password"
+          value: "guest"
