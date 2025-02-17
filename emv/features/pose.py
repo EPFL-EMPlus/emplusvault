@@ -532,35 +532,48 @@ def read_pose_from_binary_file(binary_data: BytesIO) -> Tuple[int, int, Tuple[in
     return feature_id, skeleton_bones_count, video_resolution, pose_frames
 
 
-@timeit
 def process_video(model_name: str, video_bytes: bytes, skip_frame: int = 0, options=None):
-    """Process and run pose detection algorithm
+    """Process and run multi-person pose detection using YOLO and MediaPipe
        Returns poses jsonl
     """
+
+    import cv2
+    import io
+    import PIL.Image
+    import mediapipe as mp
+    from ultralytics import YOLO
+
+    mp_pose = mp.solutions.pose
+    pose = mp_pose.Pose(static_image_mode=False,
+                        min_detection_confidence=0.5, min_tracking_confidence=0.5)
+    yolo = YOLO("yolov8n.pt")  # Load YOLOv8 model
+
     def image_reader(frame):
         if frame is None:
             return None
         image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        image_pil = PIL.Image.fromarray(image)
-        return image_pil
+        return PIL.Image.fromarray(image)
 
-    force = False
-    if options and 'force' in options:
-        force = options['force']
-
-    # Create new model because it is executed async in another process
-    # not really thread-safe :/
-    processor = PIFPAF_FACTORY.build_model(model_name)
-    # TODO: switch GPU if possible here
-    processor.reset()
-
-    # loop over frames from the video file stream
     fvs = FileVideoStream(video_bytes, image_reader)
     fvs.start()
     frame_i = -1
 
     processed = []
     images = []
+
+    landmark_names = [
+        'nose', 'left_eye', 'right_eye', 'left_ear', 'right_ear',
+        'left_shoulder', 'right_shoulder', 'left_elbow', 'right_elbow',
+        'left_wrist', 'right_wrist', 'left_hip', 'right_hip',
+        'left_knee', 'right_knee', 'left_ankle', 'right_ankle'
+    ]
+
+    landmark_indices = {
+        'nose': 0, 'left_eye': 1, 'right_eye': 2, 'left_ear': 3, 'right_ear': 4,
+        'left_shoulder': 11, 'right_shoulder': 12, 'left_elbow': 13, 'right_elbow': 14,
+        'left_wrist': 15, 'right_wrist': 16, 'left_hip': 23, 'right_hip': 24,
+        'left_knee': 25, 'right_knee': 26, 'left_ankle': 27, 'right_ankle': 28
+    }
 
     while fvs.more():
         image_pil = fvs.read()
@@ -571,16 +584,39 @@ def process_video(model_name: str, video_bytes: bytes, skip_frame: int = 0, opti
         if skip_frame > 0 and frame_i % skip_frame != 0:
             continue
 
+        image_np = cv2.cvtColor(np.array(image_pil), cv2.COLOR_RGB2BGR)
+        detections = yolo(image_np)  # Detect people using YOLO
+
+        frame_data = []
+        # for detection in detections.pred[0]:
+        for detection in detections[0].boxes:
+            x1, y1, x2, y2 = detection.xyxy[0].tolist()
+
+            person_crop = image_np[int(y1):int(y2), int(x1):int(x2)]
+            results = pose.process(person_crop)
+
+            pose_data = []
+            if results.pose_landmarks:
+                for name, index in landmark_indices.items():
+                    landmark = results.pose_landmarks.landmark[index]
+                    pose_data.append({
+                        'name': name,
+                        'x': landmark.x,
+                        'y': landmark.y,
+                        'z': landmark.z,
+                        'visibility': landmark.visibility
+                    })
+            frame_data.append(
+                {'bbox': [x1, y1, x2, y2], 'pose': pose_data})
+
         image_bytes = io.BytesIO()
         image_pil.save(image_bytes, format="JPEG")
         images.append(image_bytes.getvalue())
 
-        results = processor.process_pil_image(image_pil)
-        processed.append({
-            'frame': frame_i,
-            'data': results,
-        })
+        processed.append({'frame': frame_i, 'data': frame_data})
+
     fvs.stop()
+    pose.close()
 
     return processed, images
 
