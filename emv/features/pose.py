@@ -532,13 +532,102 @@ def read_pose_from_binary_file(binary_data: BytesIO) -> Tuple[int, int, Tuple[in
     return feature_id, skeleton_bones_count, video_resolution, pose_frames
 
 
+# def process_video(model_name: str, video_bytes: bytes, skip_frame: int = 0, options=None):
+#     """Process and run multi-person pose detection using YOLO and MediaPipe
+#        Returns poses jsonl
+#     """
+
+#     import cv2
+#     import io
+#     import PIL.Image
+#     import mediapipe as mp
+#     from ultralytics import YOLO
+
+#     mp_pose = mp.solutions.pose
+#     pose = mp_pose.Pose(static_image_mode=False,
+#                         min_detection_confidence=0.5, min_tracking_confidence=0.5)
+#     yolo = YOLO("yolov8n.pt")  # Load YOLOv8 model
+
+#     def image_reader(frame):
+#         if frame is None:
+#             return None
+#         image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+#         return PIL.Image.fromarray(image)
+
+#     fvs = FileVideoStream(video_bytes, image_reader)
+#     fvs.start()
+#     frame_i = -1
+
+#     processed = []
+#     images = []
+
+#     landmark_names = [
+#         'nose', 'left_eye', 'right_eye', 'left_ear', 'right_ear',
+#         'left_shoulder', 'right_shoulder', 'left_elbow', 'right_elbow',
+#         'left_wrist', 'right_wrist', 'left_hip', 'right_hip',
+#         'left_knee', 'right_knee', 'left_ankle', 'right_ankle'
+#     ]
+
+#     landmark_indices = {
+#         'nose': 0, 'left_eye': 1, 'right_eye': 2, 'left_ear': 3, 'right_ear': 4,
+#         'left_shoulder': 11, 'right_shoulder': 12, 'left_elbow': 13, 'right_elbow': 14,
+#         'left_wrist': 15, 'right_wrist': 16, 'left_hip': 23, 'right_hip': 24,
+#         'left_knee': 25, 'right_knee': 26, 'left_ankle': 27, 'right_ankle': 28
+#     }
+
+#     while fvs.more():
+#         image_pil = fvs.read()
+#         if image_pil is None:  # last frame
+#             break
+
+#         frame_i += 1
+#         if skip_frame > 0 and frame_i % skip_frame != 0:
+#             continue
+
+#         image_np = cv2.cvtColor(np.array(image_pil), cv2.COLOR_RGB2BGR)
+#         detections = yolo(image_np)  # Detect people using YOLO
+
+#         frame_data = []
+#         # for detection in detections.pred[0]:
+#         for detection in detections[0].boxes:
+#             x1, y1, x2, y2 = detection.xyxy[0].tolist()
+
+#             person_crop = image_np[int(y1):int(y2), int(x1):int(x2)]
+#             results = pose.process(person_crop)
+
+#             pose_data = []
+#             if results.pose_landmarks:
+#                 for name, index in landmark_indices.items():
+#                     landmark = results.pose_landmarks.landmark[index]
+#                     pose_data.append({
+#                         'name': name,
+#                         'x': landmark.x,
+#                         'y': landmark.y,
+#                         'z': landmark.z,
+#                         'visibility': landmark.visibility
+#                     })
+#             frame_data.append(
+#                 {'bbox': [x1, y1, x2, y2], 'pose': pose_data})
+
+#         image_bytes = io.BytesIO()
+#         image_pil.save(image_bytes, format="JPEG")
+#         images.append(image_bytes.getvalue())
+
+#         processed.append({'frame': frame_i, 'data': frame_data})
+
+#     fvs.stop()
+#     pose.close()
+
+#     return processed, images
+
 def process_video(model_name: str, video_bytes: bytes, skip_frame: int = 0, options=None):
     """Process and run multi-person pose detection using YOLO and MediaPipe
-       Returns poses jsonl
+       Returns poses jsonl with correctly mapped absolute image positions.
     """
 
     import cv2
     import io
+    import numpy as np
     import PIL.Image
     import mediapipe as mp
     from ultralytics import YOLO
@@ -561,13 +650,6 @@ def process_video(model_name: str, video_bytes: bytes, skip_frame: int = 0, opti
     processed = []
     images = []
 
-    landmark_names = [
-        'nose', 'left_eye', 'right_eye', 'left_ear', 'right_ear',
-        'left_shoulder', 'right_shoulder', 'left_elbow', 'right_elbow',
-        'left_wrist', 'right_wrist', 'left_hip', 'right_hip',
-        'left_knee', 'right_knee', 'left_ankle', 'right_ankle'
-    ]
-
     landmark_indices = {
         'nose': 0, 'left_eye': 1, 'right_eye': 2, 'left_ear': 3, 'right_ear': 4,
         'left_shoulder': 11, 'right_shoulder': 12, 'left_elbow': 13, 'right_elbow': 14,
@@ -585,29 +667,41 @@ def process_video(model_name: str, video_bytes: bytes, skip_frame: int = 0, opti
             continue
 
         image_np = cv2.cvtColor(np.array(image_pil), cv2.COLOR_RGB2BGR)
+        img_height, img_width, _ = image_np.shape
+
         detections = yolo(image_np)  # Detect people using YOLO
 
         frame_data = []
-        # for detection in detections.pred[0]:
+
         for detection in detections[0].boxes:
             x1, y1, x2, y2 = detection.xyxy[0].tolist()
 
-            person_crop = image_np[int(y1):int(y2), int(x1):int(x2)]
-            results = pose.process(person_crop)
+            # **Sanity check: Ignore very small bounding boxes**
+            if (x2 - x1) < 30 or (y2 - y1) < 30:
+                continue
+
+            # **Crop person and run pose estimation on full image**
+            results = pose.process(image_np)  # Run on the full image
 
             pose_data = []
             if results.pose_landmarks:
                 for name, index in landmark_indices.items():
                     landmark = results.pose_landmarks.landmark[index]
+
+                    # **Fix: Use full image scaling**
+                    absolute_x = landmark.x * img_width
+                    absolute_y = landmark.y * img_height
+
                     pose_data.append({
                         'name': name,
-                        'x': landmark.x,
-                        'y': landmark.y,
+                        'x': absolute_x,
+                        'y': absolute_y,
                         'z': landmark.z,
                         'visibility': landmark.visibility
                     })
-            frame_data.append(
-                {'bbox': [x1, y1, x2, y2], 'pose': pose_data})
+            if pose_data:
+                frame_data.append(
+                    {'bbox': [x1, y1, x2, y2], 'pose': pose_data})
 
         image_bytes = io.BytesIO()
         image_pil.save(image_bytes, format="JPEG")
