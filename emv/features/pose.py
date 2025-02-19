@@ -18,6 +18,7 @@ import openpifpaf
 import openpifpaf.predict
 
 import emv.utils
+import math
 
 from enum import Enum
 from pathlib import Path
@@ -532,17 +533,26 @@ def read_pose_from_binary_file(binary_data: BytesIO) -> Tuple[int, int, Tuple[in
     return feature_id, skeleton_bones_count, video_resolution, pose_frames
 
 
-def process_video(model_name: str, video_bytes: bytes, skip_frame: int = 0, options=None):
-    """Process and run multi-person pose detection using YOLO and MediaPipe
-       Returns poses jsonl with correctly mapped absolute image positions.
-    """
+def process_video(model_name: str, video_bytes: bytes, skip_frame: int = 0, options: dict = None) -> Tuple[List[dict], List[bytes]]:
+    """Process and run multi-person pose detection using YOLO and MediaPipe.
+    Returns poses jsonl with correctly mapped absolute image positions.
 
+    Args:
+        model_name: Name of the model to use
+        video_bytes: Raw video bytes to process
+        skip_frame: Number of frames to skip between processing
+        options: Additional processing options
+
+    Returns:
+        Tuple containing list of processed frame data and list of frame images
+    """
     import cv2
     import io
     import numpy as np
     import PIL.Image
     import mediapipe as mp
     from ultralytics import YOLO
+    from typing import Tuple, List
 
     mp_pose = mp.solutions.pose
     pose = mp_pose.Pose(static_image_mode=False,
@@ -569,60 +579,90 @@ def process_video(model_name: str, video_bytes: bytes, skip_frame: int = 0, opti
         'left_knee': 25, 'right_knee': 26, 'left_ankle': 27, 'right_ankle': 28
     }
 
-    while fvs.more():
-        image_pil = fvs.read()
-        if image_pil is None:  # last frame
-            break
+    try:
+        while fvs.more():
+            image_pil = fvs.read()
+            if image_pil is None:  # last frame
+                break
 
-        frame_i += 1
-        if skip_frame > 0 and frame_i % skip_frame != 0:
-            continue
-
-        image_np = cv2.cvtColor(np.array(image_pil), cv2.COLOR_RGB2BGR)
-        img_height, img_width, _ = image_np.shape
-
-        detections = yolo(image_np)  # Detect people using YOLO
-
-        frame_data = []
-
-        for detection in detections[0].boxes:
-            x1, y1, x2, y2 = detection.xyxy[0].tolist()
-
-            # **Sanity check: Ignore very small bounding boxes**
-            if (x2 - x1) < 30 or (y2 - y1) < 30:
+            frame_i += 1
+            if skip_frame > 0 and frame_i % skip_frame != 0:
                 continue
 
-            # **Crop person and run pose estimation on full image**
-            results = pose.process(image_np)  # Run on the full image
+            # if frame_i != 130:  #  skip for now for debugging
+            #     continue
 
-            pose_data = []
-            if results.pose_landmarks:
-                for name, index in landmark_indices.items():
-                    landmark = results.pose_landmarks.landmark[index]
+            image_np = cv2.cvtColor(np.array(image_pil), cv2.COLOR_RGB2BGR)
+            img_height, img_width, _ = image_np.shape
 
-                    # **Fix: Use full image scaling**
-                    absolute_x = landmark.x * img_width
-                    absolute_y = landmark.y * img_height
+            detections = yolo(image_np)  # Detect people using YOLO
 
-                    pose_data.append({
-                        'name': name,
-                        'x': absolute_x,
-                        'y': absolute_y,
-                        'z': landmark.z,
-                        'visibility': landmark.visibility
+            frame_data = []
+
+            # Sort bounding boxes by area
+            bb_sizes = []
+            for detection in detections[0].boxes:
+                x1, y1, x2, y2 = detection.xyxy[0].tolist()
+                area = (x2 - x1) * (y2 - y1)
+                bb_sizes.append((area, (x1, y1, x2, y2)))
+
+            bb_sizes.sort(key=lambda x: x[0], reverse=True)
+
+            # Process top 3 largest detections
+            for _, detection in bb_sizes[:3]:
+                x1, y1, x2, y2 = detection
+
+                # Sanity check: Ignore very small bounding boxes
+                if (x2 - x1) < 30 or (y2 - y1) < 30:
+                    continue
+
+                # Ensure coordinates are within image bounds
+                x1, y1 = max(0, x1), max(0, y1)
+                x2, y2 = min(img_width, x2), min(img_height, y2)
+
+                # Crop person and run pose estimation on cropped region
+                person_crop = image_np[int(y1):int(y2), int(x1):int(x2)]
+
+                if person_crop.size == 0:  # Skip if crop is empty
+                    continue
+
+                results = pose.process(person_crop)
+
+                pose_data = []
+                if results.pose_landmarks:
+                    crop_height, crop_width = person_crop.shape[:2]
+                    for name, index in landmark_indices.items():
+                        landmark = results.pose_landmarks.landmark[index]
+
+                        # Scale coordinates back to original image space
+                        absolute_x = (landmark.x * crop_width) + x1
+                        absolute_y = (landmark.y * crop_height) + y1
+
+                        pose_data.append({
+                            'name': name,
+                            'x': absolute_x,
+                            'y': absolute_y,
+                            'z': landmark.z,
+                            'visibility': landmark.visibility
+                        })
+                if pose_data:
+                    frame_data.append({
+                        'bbox': [x1, y1, x2, y2],
+                        'pose': pose_data
                     })
-            if pose_data:
-                frame_data.append(
-                    {'bbox': [x1, y1, x2, y2], 'pose': pose_data})
 
-        image_bytes = io.BytesIO()
-        image_pil.save(image_bytes, format="JPEG")
-        images.append(image_bytes.getvalue())
+            image_bytes = io.BytesIO()
+            image_pil.save(image_bytes, format="JPEG")
+            images.append(image_bytes.getvalue())
+            if frame_data:
+                processed.append({'frame': frame_i, 'data': frame_data})
 
-        processed.append({'frame': frame_i, 'data': frame_data})
+    except Exception as e:
+        raise RuntimeError(f"Error processing video: {str(e)}")
 
-    fvs.stop()
-    pose.close()
+    finally:
+        fvs.stop()
+        pose.close()
 
     return processed, images
 
