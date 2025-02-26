@@ -60,4 +60,26 @@ RTS_DRIVE_PATH = DRIVE_PATH + "rts/"
 
 RABBITMQ_SERVER = get_secret("RABBITMQ_SERVER")
 
+API_BASE_URL = "https://10.179.68.6:32034"
+API_MAX_CALLS = 100
+API_USERNAME = os.getenv("API_USERNAME")
+API_PASSWORD = os.getenv("API_PASSWORD")
+
+DRIVE_PATH = "/media/data/"
+
+API_BASE_URL = "https://10.179.68.6:32034"
+API_MAX_CALLS = 100
+API_USERNAME = os.getenv("API_USERNAME")
+API_PASSWORD = os.getenv("API_PASSWORD")
+
+DRIVE_PATH = "/media/data/"
+
+API_BASE_URL = "https://10.179.68.6:32034"
+API_MAX_CALLS = 100
+API_USERNAME = os.getenv("API_USERNAME")
+API_PASSWORD = os.getenv("API_PASSWORD")
+
+DRIVE_PATH = "/media/data/"
+
+
 LLM_ENDPOINT = get_secret("LLM_ENDPOINT")
