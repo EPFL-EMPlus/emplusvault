@@ -1,101 +1,157 @@
 # EMPLUS Vault
 
-Data Vault for processing and retrieving digital archives. 
+A comprehensive data vault for digital archives that processes, analyzes, and visualizes media content. EMPLUS Vault extracts features from video, audio, and text content, stores them in a searchable database, and provides API access to this data.
+
+## System Architecture
+
+EMPLUS Vault consists of the following components:
+
+1. **Core Backend**
+   - FastAPI web server provides REST API access
+   - SQLAlchemy with PostgreSQL (pgvector) for data storage
+   - S3-compatible storage (MinIO) for media files
+
+2. **Feature Extraction**
+   - Audio analysis (speech detection, speaker identification)
+   - Image processing (pose detection, visual features)
+   - Text analysis (transcripts, semantic features)
+   
+3. **Processing Pipelines**
+   - Media ingestion and normalization
+   - Feature extraction and indexing
+   - Data transformation workflows
+
+4. **Web Frontend**
+   - Interactive visualization using Cables.gl
+   - Data exploration interface
 
 ## Installation
 
-There are two versions of installation:
-- Just the packages for using the cli
-- Backend infrastructure and service
+### Prerequisites
+- Python 3.9+
+- Docker and Docker Compose
+- Poetry
+- Access to media sources
 
-### Install Tools for the cli
-This requires the installation of poetry as a first step (https://python-poetry.org/docs/). 
+### Option 1: CLI Tools Only
+This requires the installation of poetry as a first step:
 
-- Install poetry
-- Run `poetry install`
-- Run `poe force-torch`
+1. Install Poetry (https://python-poetry.org/docs/)
+2. Clone this repository
+3. Install dependencies:
+   ```
+   poetry install
+   poe force-torch
+   ```
 
-### Run infrastructure locally
+### Option 2: Full Infrastructure
 
-The settings in the .env file should be changed before the first docker compose up command.
-There are two .env files. One for the docker containers and one for the cli and web server. 
+The system requires two environments:
+- Docker environment for database and storage
+- Python environment for application code
 
-- Docker installation for minio and postgres
-```
-cd docker
+1. **Set up infrastructure with Docker:**
+   ```
+   cd docker
+   cp .env.example .env  # Edit with your credentials
+   docker compose up -d
+   ```
 
-# Copy the fake env vars
-cp .env.example .env
+2. **Configure application environment:**
+   ```
+   cd ..  # Back to main directory
+   cp .env.example .env  # Edit with your credentials
+   poetry install
+   poe force-torch
+   poe init-db  # Initialize the database schema
+   ```
 
-# Edit the environment file and fill in all the fields with credentials
-vi .env
+## Usage
 
-# Start
-docker compose up
-```
-
-After the docker images are running, the database needs to be instantiated and the setup for the cli can be done:
-```
-# Go back to the main directory
-cd ..
-
-# Copy the CLI environment file (make sure that you are now not in the docker folder anymore)
-cp .env.example .env
-
-# Edit the environment file and fill in all the fields with credentials
-vi .env
-
-# Initialze the database
-poe init-db
-
-```
-
-### Run the server
+### Run the API Server
 
 ```
-cd rts/api/
-uvicorn server:app --host 0.0.0.0 --port 8763 --reload
+poe serve-dev  # Development mode with auto-reload
+```
+or
+```
+poe serve-prod  # Production mode
 ```
 
-#### Create a new database user
+Server will be available at http://localhost:8763
 
-Create a new database user to use row level security (RLS). This can't be the default superuser as it has privileges to bypass RLS.
+### Run Processing Pipelines
 
-## Migrations
-
-Create new migration
 ```
-alembic revision -m "Comment for new migration"
+poe run-pipeline --source=rts  # Run the RTS pipeline
 ```
 
-Apply migrations
+### Using the CLI
+
 ```
+poetry run python -m emv.cli --help
+```
+
+## API Endpoints
+
+The API is documented using OpenAPI and can be accessed at http://localhost:8763/docs when the server is running.
+
+Key endpoints:
+- `/api/v1/media` - Media management
+- `/api/v1/features` - Feature access
+- `/api/v1/library` - Content library
+- `/api/v1/projections` - Data projections and visualization
+
+## Development
+
+### Testing
+
+Running tests requires the test database to be running:
+
+```
+cd docker/tests
+docker compose up -d
+cd ../..
+pytest tests  # Run all tests
+pytest tests/test_features.py  # Run specific test file
+pytest tests/test_features.py::test_function_name  # Run specific test
+```
+
+### Database Migrations
+
+Database migrations are managed with Alembic:
+
+```
+# Create a new migration
+alembic revision -m "description of change"
+
+# Apply migrations
 alembic upgrade head
 ```
 
+### Frontend Development
 
-## Notes
+The frontend uses Cables.gl:
 
-If Poetry install issues with Keyring
-`export PYTHON_KEYRING_BACKEND=keyring.backends.null.Keyring`
+1. Install requirements:
+   ```
+   # Install NVM
+   nvm install --lts
+   npm install -g @cables/cables
+   ```
+   
+2. Create API key at https://cables.gl/settings
+3. Create `~/.cablesrc` file with `apikey=YOUR_API_KEY`
 
-- First put VPN, map network drive
-`\\emplussrv1.epfl.ch`
+## Deployment
 
-- To mount a network drive to linux, you can use this command:
-`EMPLUS-DataSets/SinergiaFutureCinema/RTS/metadata/rts_metadata.db`
+For Kubernetes deployment, see the `kubernetes/` directory.
 
-`sudo mount -t drvfs '\\KNAS\mjf' /mnt/mjf`
-`sudo mount -t drvfs '\\emplussrv1.epfl.ch\EMPLUS-Network\RTS-Data' /mnt/rts`
+## Troubleshooting
 
-# Tests
-
-Running the tests needs the pgvector docker image to be running. To start it, run the following command:
-```
-docker compose up 
-```
-
-## Run tests
-```
-pytest tests
-```
+- **Poetry issues with Keyring**: Try `export PYTHON_KEYRING_BACKEND=keyring.backends.null.Keyring`
+- **Network drive mounting**: 
+  ```
+  sudo mount -t drvfs '\\KNAS\mjf' /mnt/mjf
+  sudo mount -t drvfs '\\emplussrv1.epfl.ch\EMPLUS-Network\RTS-Data' /mnt/rts
+  ```
