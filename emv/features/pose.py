@@ -555,9 +555,9 @@ def process_video(model_name: str, video_bytes: bytes, skip_frame: int = 0, opti
     from typing import Tuple, List
 
     mp_pose = mp.solutions.pose
-    pose = mp_pose.Pose(static_image_mode=False,
+    pose = mp_pose.Pose(static_image_mode=False, model_complexity=2,
                         min_detection_confidence=0.5, min_tracking_confidence=0.5)
-    yolo = YOLO("yolov8n.pt")  # Load YOLOv8 model
+    yolo = YOLO("yolov8x.pt")  # Load YOLOv8 model
 
     def image_reader(frame):
         if frame is None:
@@ -575,9 +575,13 @@ def process_video(model_name: str, video_bytes: bytes, skip_frame: int = 0, opti
     landmark_indices = {
         'nose': 0, 'left_eye': 1, 'right_eye': 2, 'left_ear': 3, 'right_ear': 4,
         'left_shoulder': 11, 'right_shoulder': 12, 'left_elbow': 13, 'right_elbow': 14,
-        'left_wrist': 15, 'right_wrist': 16, 'left_hip': 23, 'right_hip': 24,
+        'left_wrist': 15, 'right_wrist': 16, 'left_hip': 23, 'right_hip':  24,
         'left_knee': 25, 'right_knee': 26, 'left_ankle': 27, 'right_ankle': 28
     }
+
+    def clamp(value: float, min_val: float, max_val: float) -> float:
+        """Clamp value between min_val and max_val"""
+        return max(min_val, min(value, max_val))
 
     try:
         while fvs.more():
@@ -609,7 +613,10 @@ def process_video(model_name: str, video_bytes: bytes, skip_frame: int = 0, opti
             bb_sizes.sort(key=lambda x: x[0], reverse=True)
 
             # Process top 3 largest detections
-            for _, detection in bb_sizes[:3]:
+            if len(bb_sizes) > 3:
+                bb_sizes = bb_sizes[:3]
+
+            for _, detection in bb_sizes:
                 x1, y1, x2, y2 = detection
 
                 # Sanity check: Ignore very small bounding boxes
@@ -631,31 +638,49 @@ def process_video(model_name: str, video_bytes: bytes, skip_frame: int = 0, opti
                 pose_data = []
                 if results.pose_landmarks:
                     crop_height, crop_width = person_crop.shape[:2]
+                    clamp_count = 0
                     for name, index in landmark_indices.items():
                         landmark = results.pose_landmarks.landmark[index]
 
+                        # count how many images going to be clamped
+                        if landmark.x < 0 or landmark.x > 1 or landmark.y < 0 or landmark.y > 1:
+                            clamp_count += 1
+
+                        # Clamp the normalized coordinates to [0, 1] range
+                        normalized_x = clamp(landmark.x, 0.0, 1.0)
+                        normalized_y = clamp(landmark.y, 0.0, 1.0)
+
                         # Scale coordinates back to original image space
-                        absolute_x = (landmark.x * crop_width) + x1
-                        absolute_y = (landmark.y * crop_height) + y1
+                        absolute_x = (normalized_x * crop_width) + x1
+                        absolute_y = (normalized_y * crop_height) + y1
+
+                        # Double-check that final coordinates are within image bounds
+                        absolute_x = clamp(absolute_x, 0, img_width)
+                        absolute_y = clamp(absolute_y, 0, img_height)
+
+                        # Adjust visibility based on whether point was clamped
+                        adjusted_visibility = landmark.visibility
+                        if (landmark.x != normalized_x or landmark.y != normalized_y):
+                            adjusted_visibility *= 0.5  # Reduce visibility for clamped points
 
                         pose_data.append({
                             'name': name,
                             'x': absolute_x,
                             'y': absolute_y,
                             'z': landmark.z,
-                            'visibility': landmark.visibility
+                            'visibility': adjusted_visibility
                         })
-                if pose_data:
+                if pose_data and clamp_count < 3:  # Skip if too many clamped points
                     frame_data.append({
                         'bbox': [x1, y1, x2, y2],
                         'pose': pose_data
                     })
 
+            # if frame_data:
             image_bytes = io.BytesIO()
             image_pil.save(image_bytes, format="JPEG")
             images.append(image_bytes.getvalue())
-            if frame_data:
-                processed.append({'frame': frame_i, 'data': frame_data})
+            processed.append({'frame': frame_i, 'data': frame_data})
 
     except Exception as e:
         raise RuntimeError(f"Error processing video: {str(e)}")
