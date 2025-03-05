@@ -533,161 +533,232 @@ def read_pose_from_binary_file(binary_data: BytesIO) -> Tuple[int, int, Tuple[in
     return feature_id, skeleton_bones_count, video_resolution, pose_frames
 
 
-def process_video(model_name: str, video_bytes: bytes, skip_frame: int = 0, options: dict = None) -> Tuple[List[dict], List[bytes]]:
-    """Process and run multi-person pose detection using YOLO and MediaPipe.
-    Returns poses jsonl with correctly mapped absolute image positions.
-
-    Args:
-        model_name: Name of the model to use
-        video_bytes: Raw video bytes to process
-        skip_frame: Number of frames to skip between processing
-        options: Additional processing options
-
+def process_video(
+    model_name: str,
+    video_bytes: bytes,
+    skip_frame: int = 0,
+    options: dict = None,
+    detection_conf_threshold: float = 0.3,
+    keypoint_conf_threshold: float = 0.5,
+    matching_distance_threshold: float = 100.0,
+    max_missing_frames: int = 10,
+    top_n_detections: int = 10
+):
+    """
+    Processes video bytes to detect and track poses using a YOLO Pose model and Kalman filters.
     Returns:
-        Tuple containing list of processed frame data and list of frame images
+        (processed, images) where:
+          - processed: List[{'frame': int, 'data': [ { 'track_id':..., 'bbox':..., 'pose':...} ]}]
+          - images: List of the original frames in JPEG bytes
     """
     import cv2
-    import io
+    import tempfile
     import numpy as np
-    import PIL.Image
-    import mediapipe as mp
+    import io
+    import os
+    from PIL import Image
     from ultralytics import YOLO
-    from typing import Tuple, List
 
-    mp_pose = mp.solutions.pose
-    pose = mp_pose.Pose(static_image_mode=False, model_complexity=2,
-                        min_detection_confidence=0.5, min_tracking_confidence=0.5)
-    yolo = YOLO("yolov8x.pt")  # Load YOLOv8 model
+    def create_kalman_filter(initial_center):
+        """
+        Create and initialize a Kalman filter for tracking.
+        """
+        kf = cv2.KalmanFilter(4, 2)
+        # State vector: [x, y, dx, dy]
+        kf.transitionMatrix = np.array([[1, 0, 1, 0],
+                                        [0, 1, 0, 1],
+                                        [0, 0, 1, 0],
+                                        [0, 0, 0, 1]], np.float32)
+        # Measurement vector: [x, y]
+        kf.measurementMatrix = np.array([[1, 0, 0, 0],
+                                         [0, 1, 0, 0]], np.float32)
+        kf.processNoiseCov = np.eye(4, dtype=np.float32) * 0.03
+        kf.measurementNoiseCov = np.eye(2, dtype=np.float32) * 0.5
+        kf.errorCovPost = np.eye(4, dtype=np.float32)
+        kf.statePost = np.array(
+            [[initial_center[0]], [initial_center[1]], [0], [0]], np.float32)
+        return kf
 
-    def image_reader(frame):
-        if frame is None:
-            return None
-        image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        return PIL.Image.fromarray(image)
+    # Write the input video bytes to a temporary file
+    input_temp = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
+    try:
+        input_temp.write(video_bytes)
+        input_temp.flush()
+        input_path = input_temp.name
+    finally:
+        input_temp.close()
 
-    fvs = FileVideoStream(video_bytes, image_reader)
-    fvs.start()
-    frame_i = -1
+    cap = cv2.VideoCapture(input_path)
+    if not cap.isOpened():
+        os.remove(input_path)
+        raise IOError("Could not open video from bytes")
 
+    model = YOLO(model_name)
+
+    # Tracking state
+    # Each track is a dict: {'id', 'box', 'center', 'kf', 'missing_frames', 'color', ...}
+    person_tracks = []
+    next_id = 0
+
+    frame_count = 0
     processed = []
     images = []
 
-    landmark_indices = {
-        'nose': 0, 'left_eye': 1, 'right_eye': 2, 'left_ear': 3, 'right_ear': 4,
-        'left_shoulder': 11, 'right_shoulder': 12, 'left_elbow': 13, 'right_elbow': 14,
-        'left_wrist': 15, 'right_wrist': 16, 'left_hip': 23, 'right_hip':  24,
-        'left_knee': 25, 'right_knee': 26, 'left_ankle': 27, 'right_ankle': 28
-    }
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break  # End of video
 
-    def clamp(value: float, min_val: float, max_val: float) -> float:
-        """Clamp value between min_val and max_val"""
-        return max(min_val, min(value, max_val))
+        # If skipping frames is desired
+        if skip_frame > 0 and frame_count % (skip_frame + 1) != 0:
+            frame_count += 1
+            continue
 
-    try:
-        while fvs.more():
-            image_pil = fvs.read()
-            if image_pil is None:  # last frame
-                break
+        results = model.predict(
+            frame, conf=detection_conf_threshold, verbose=False)
+        current_detections = []
 
-            frame_i += 1
-            if skip_frame > 0 and frame_i % skip_frame != 0:
-                continue
+        for result in results:
+            if result.keypoints is not None and result.boxes is not None:
+                boxes = result.boxes
+                # shape (N, 13, 3) if 13 keypoints, for example
+                keypoints = result.keypoints.data
 
-            # if frame_i != 130:  #  skip for now for debugging
-            #     continue
+                # Compute areas and sort detections by area (largest first)
+                areas = []
+                for i, box in enumerate(boxes):
+                    # boxes[i].xyxy -> shape (1, 4) => x1, y1, x2, y2
+                    x1, y1, x2, y2 = box.xyxy.cpu().numpy()[0]
+                    area = (x2 - x1) * (y2 - y1)
+                    areas.append((area, i))
 
-            image_np = cv2.cvtColor(np.array(image_pil), cv2.COLOR_RGB2BGR)
-            img_height, img_width, _ = image_np.shape
-
-            detections = yolo(image_np)  # Detect people using YOLO
-
-            frame_data = []
-
-            # Sort bounding boxes by area
-            bb_sizes = []
-            for detection in detections[0].boxes:
-                x1, y1, x2, y2 = detection.xyxy[0].tolist()
-                area = (x2 - x1) * (y2 - y1)
-                bb_sizes.append((area, (x1, y1, x2, y2)))
-
-            bb_sizes.sort(key=lambda x: x[0], reverse=True)
-
-            # Process top 3 largest detections
-            if len(bb_sizes) > 3:
-                bb_sizes = bb_sizes[:3]
-
-            for _, detection in bb_sizes:
-                x1, y1, x2, y2 = detection
-
-                # Sanity check: Ignore very small bounding boxes
-                if (x2 - x1) < 30 or (y2 - y1) < 30:
+                if not areas:
                     continue
 
-                # Ensure coordinates are within image bounds
-                x1, y1 = max(0, x1), max(0, y1)
-                x2, y2 = min(img_width, x2), min(img_height, y2)
+                areas.sort(reverse=True)
+                top_indices = [idx for (area, idx) in areas[:top_n_detections]]
 
-                # Crop person and run pose estimation on cropped region
-                person_crop = image_np[int(y1):int(y2), int(x1):int(x2)]
+                # Save only top N detections
+                for idx in top_indices:
+                    box = boxes[idx]
+                    x1, y1, x2, y2 = box.xyxy.cpu().numpy()[0]
+                    cx, cy = (x1 + x2) / 2, (y1 + y2) / 2  # center of bbox
+                    kps = keypoints[idx]  # shape (K, 3) => x, y, conf
 
-                if person_crop.size == 0:  # Skip if crop is empty
-                    continue
-
-                results = pose.process(person_crop)
-
-                pose_data = []
-                if results.pose_landmarks:
-                    crop_height, crop_width = person_crop.shape[:2]
-                    clamp_count = 0
-                    for name, index in landmark_indices.items():
-                        landmark = results.pose_landmarks.landmark[index]
-
-                        # count how many images going to be clamped
-                        if landmark.x < 0 or landmark.x > 1 or landmark.y < 0 or landmark.y > 1:
-                            clamp_count += 1
-
-                        # Clamp the normalized coordinates to [0, 1] range
-                        normalized_x = clamp(landmark.x, 0.0, 1.0)
-                        normalized_y = clamp(landmark.y, 0.0, 1.0)
-
-                        # Scale coordinates back to original image space
-                        absolute_x = (normalized_x * crop_width) + x1
-                        absolute_y = (normalized_y * crop_height) + y1
-
-                        # Double-check that final coordinates are within image bounds
-                        absolute_x = clamp(absolute_x, 0, img_width)
-                        absolute_y = clamp(absolute_y, 0, img_height)
-
-                        # Adjust visibility based on whether point was clamped
-                        adjusted_visibility = landmark.visibility
-                        if (landmark.x != normalized_x or landmark.y != normalized_y):
-                            adjusted_visibility *= 0.5  # Reduce visibility for clamped points
-
-                        pose_data.append({
-                            'name': name,
-                            'x': absolute_x,
-                            'y': absolute_y,
-                            'z': landmark.z,
-                            'visibility': adjusted_visibility
-                        })
-                if pose_data and clamp_count < 3:  # Skip if too many clamped points
-                    frame_data.append({
-                        'bbox': [x1, y1, x2, y2],
-                        'pose': pose_data
+                    current_detections.append({
+                        'center': (cx, cy),
+                        'box': (x1, y1, x2, y2),
+                        'kps': kps
                     })
 
-            # if frame_data:
-            image_bytes = io.BytesIO()
-            image_pil.save(image_bytes, format="JPEG")
-            images.append(image_bytes.getvalue())
-            processed.append({'frame': frame_i, 'data': frame_data})
+        # -- Kalman Filter Tracking Step --
+        # 1) Predict new positions for existing tracks
+        for track in person_tracks:
+            pred = track['kf'].predict()
+            track['predicted_center'] = (pred[0][0], pred[1][0])
 
-    except Exception as e:
-        raise RuntimeError(f"Error processing video: {str(e)}")
+        # 2) Match current detections to existing tracks by distance
+        assigned_tracks = set()
+        assigned_detections = set()
+        for i, track in enumerate(person_tracks):
+            if track['missing_frames'] > max_missing_frames:
+                continue
+            best_match = None
+            best_distance = float('inf')
+            best_det_idx = -1
 
-    finally:
-        fvs.stop()
-        pose.close()
+            tx, ty = track['predicted_center']
+            for j, detection in enumerate(current_detections):
+                if j in assigned_detections:
+                    continue
+                cx, cy = detection['center']
+                distance = np.hypot(tx - cx, ty - cy)
+                if distance < matching_distance_threshold and distance < best_distance:
+                    best_distance = distance
+                    best_match = detection
+                    best_det_idx = j
+
+            if best_match is not None:
+                # Update track using the detection measurement
+                measurement = np.array([[np.float32(best_match['center'][0])],
+                                        [np.float32(best_match['center'][1])]])
+                track['kf'].correct(measurement)
+                state = track['kf'].statePost
+                track['center'] = (state[0][0], state[1][0])
+                track['box'] = best_match['box']
+                track['missing_frames'] = 0
+                best_match['track_id'] = track['id']
+                assigned_tracks.add(i)
+                assigned_detections.add(best_det_idx)
+            else:
+                track['missing_frames'] += 1
+
+        # 3) Create new tracks for unmatched detections
+        for j, detection in enumerate(current_detections):
+            if j not in assigned_detections:
+                track_id = next_id
+                next_id += 1
+                kf = create_kalman_filter(detection['center'])
+                new_track = {
+                    'id': track_id,
+                    'box': detection['box'],
+                    'center': detection['center'],
+                    'kf': kf,
+                    'missing_frames': 0
+                }
+                detection['track_id'] = track_id
+                person_tracks.append(new_track)
+
+        # 4) Remove tracks that have been missing for too long
+        person_tracks = [
+            t for t in person_tracks if t['missing_frames'] <= max_missing_frames]
+
+        frame_data = []
+        img_h, img_w = frame.shape[:2]
+        for detection in current_detections:
+            if 'track_id' in detection:
+                track_id = detection['track_id']
+                (x1, y1, x2, y2) = detection['box']
+                # Ensure bounding box is within image boundaries
+                x1_clamped = max(0, min(x1, img_w))
+                x2_clamped = max(0, min(x2, img_w))
+                y1_clamped = max(0, min(y1, img_h))
+                y2_clamped = max(0, min(y2, img_h))
+
+                # Convert keypoints to the same structure as your old code
+                # YOLO keypoints are (x, y, confidence)
+                kps = detection['kps']
+                pose_data = []
+                for kp_idx, (kp_x, kp_y, kp_conf) in enumerate(kps.tolist()):
+                    # clamp keypoints as well
+                    kp_x_clamped = max(0, min(kp_x, img_w))
+                    kp_y_clamped = max(0, min(kp_y, img_h))
+
+                    pose_data.append({
+                        'name': f'kp_{kp_idx}',
+                        'x': kp_x_clamped,
+                        'y': kp_y_clamped,
+                        'z': 0,  # YOLO doesn't provide a z coordinate
+                        'visibility': float(kp_conf),  # or 'confidence'
+                    })
+
+                frame_data.append({
+                    'track_id': track_id,
+                    'bbox': [x1_clamped, y1_clamped, x2_clamped, y2_clamped],
+                    'pose': pose_data
+                })
+
+        img_bytes = io.BytesIO()
+        pil_img = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+        pil_img.save(img_bytes, format="JPEG")
+
+        images.append(img_bytes.getvalue())
+        processed.append({'frame': frame_count, 'data': frame_data})
+
+        frame_count += 1
+
+    cap.release()
+    os.remove(input_path)
 
     return processed, images
 
