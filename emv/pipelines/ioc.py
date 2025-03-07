@@ -20,7 +20,8 @@ LOG = emv.utils.get_logger()
 
 IOC_DATA = IOC_ROOT_FOLDER + 'data'
 IOC_VIDEOS = IOC_ROOT_FOLDER + 'videos'
-MODEL = PifPafModel.fast
+# MODEL = PifPafModel.fast
+MODEL = "yolo11l-pose.pt"
 
 
 class PipelineIOC(Pipeline):

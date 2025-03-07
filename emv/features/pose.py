@@ -713,7 +713,8 @@ def process_video(
         person_tracks = [
             t for t in person_tracks if t['missing_frames'] <= max_missing_frames]
 
-        frame_data = []
+        frame_data = {'annotations': [],
+                      'width_height': frame.shape[:2], 'model_name': model_name}
         img_h, img_w = frame.shape[:2]
         for detection in current_detections:
             if 'track_id' in detection:
@@ -742,10 +743,10 @@ def process_video(
                         'visibility': float(kp_conf),  # or 'confidence'
                     })
 
-                frame_data.append({
+                frame_data['annotations'].append({
                     'track_id': track_id,
                     'bbox': [x1_clamped, y1_clamped, x2_clamped, y2_clamped],
-                    'pose': pose_data
+                    'pose': pose_data,
                 })
 
         img_bytes = io.BytesIO()
