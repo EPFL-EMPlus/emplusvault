@@ -9,9 +9,10 @@ import emv.io.media
 import emv.features.audio
 import emv.features.text
 from emv.io.media import extract_audio, get_frame_number, save_clips_images
-from emv.db.queries import create_or_update_media, get_feature_by_media_id_and_type, create_feature, update_feature, get_feature_wout_embedding_1024
+from emv.db.queries import create_or_update_media, get_feature_by_media_id_and_type, create_feature, update_feature, get_feature_wout_embedding_1024, get_media_clips_by_type_sub_type
 from emv.features.text import run_nlp, timecodes_from_transcript, create_embeddings
 from emv.pipelines.utils import get_media_info
+from emv.storage.storage import get_storage_client
 
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple, Any
@@ -245,6 +246,75 @@ class PipelineRTS(Pipeline):
                 queries.create_feature(new_feature)
 
         return media_info
+
+    def extract_audio_from_clips(self, force: bool = False) -> bool:
+        """ Extract audio from all clips in the dataframe. This assumes that all clips are already ingested and uses the db and s3 to retrieve the clips. """
+        DataAccessObject().set_user_id(1)
+        # get all media objects that are clips. e.g. media_type = 'video' and sub_type = 'clip'
+        clips = get_media_clips_by_type_sub_type(
+            self.library_id, 'video', 'clip', 'media_id, media_path, start_ts, end_ts, start_frame, end_frame')
+        for clip in self.tqdm(clips, position=1, desc='Clips'):
+            self.extract_audio_from_clip(clip, force)
+        return True
+
+    def extract_audio_from_clip(self, media: dict, force: bool = False) -> bool:
+        """ Extract audio from a single clip. """
+
+        # skip clips that are too long
+        # if media['end_ts'] - media['start_ts'] > 60 * 60:
+        #     return
+
+        # check the database if there is already an audio media object
+        audio_id = f"{media['media_id']}_audio"
+        audio = queries.get_media_by_id(audio_id)
+        if audio and not force:
+            return
+
+        #  get the audio from the s3 storage
+        stream = get_storage_client().get_bytes(
+            media['library_name'], media['media_path'])
+
+        # extract audio from the video
+        audio_path = os.path.join('/tmp', f'{media["media_id"]}_audio.mp3')
+        with open(audio_path, 'wb') as f:
+            f.write(stream)
+
+        # Extract audio from the video
+        extracted_audio_path = os.path.join(
+            '/tmp', f'{media["media_id"]}_extracted_audio.mp3')
+        extract_audio(audio_path, extracted_audio_path)
+
+        # Create or update the audio media object
+        audio_info = get_media_info(extracted_audio_path, extracted_audio_path)
+        media_id_short = media['media_id'].split('-')[1]
+        media_path = f"audios/{media_id_short}/{audio_id}.mp3"
+        audio_media = Media(
+            media_id=audio_id,
+            original_path=extracted_audio_path,
+            original_id=media['media_id'],
+            media_path=media_path,
+            media_type="audio",
+            media_info=audio_info,
+            sub_type="audio",
+            size=audio_info['filesize'],
+            metadata={},
+            library_id=self.library_id,
+            hash=get_hash(extracted_audio_path),
+            parent_id=media['media_id'],
+            start_ts=media['start_ts'],
+            end_ts=media['end_ts'],
+            start_frame=media['start_frame'],
+            end_frame=media['end_frame'],
+            frame_rate=audio_info['audio']['sample_rate'],
+        )
+        create_or_update_media(audio_media)
+
+        # upload the audio to the s3 storage
+        with open(extracted_audio_path, 'rb') as f:
+            get_storage_client().upload(
+                self.library_name, audio_media.media_path, f)
+
+        return True
 
     def upload_clip_images(self, archive_media_id, media_id, key, img_binary):
 

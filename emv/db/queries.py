@@ -172,6 +172,15 @@ def get_media_for_streaming(media_id: str) -> dict:
     return DataAccessObject().fetch_one(query, {"media_id": str(media_id)})
 
 
+def get_media_clips_by_type_sub_type(library_id: int, media_type: str, sub_type: str, fields: str = "*",) -> dict:
+    # Convert fields parameter to actual columns in SQL query
+    query = text(f"""SELECT {fields} FROM media 
+                    WHERE library_id = :library 
+                    AND media_type = :media_type 
+                    AND sub_type = :sub_type""")
+    return DataAccessObject().fetch_all(query, {"library": library_id, "media_type": media_type, "sub_type": sub_type, "fields": fields})
+
+
 def check_media_exists(media_id: str) -> bool:
     query = text(
         "SELECT EXISTS(SELECT 1 FROM media WHERE media_id = :media_id)")
