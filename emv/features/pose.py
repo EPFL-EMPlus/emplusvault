@@ -579,6 +579,9 @@ def process_video(
             [[initial_center[0]], [initial_center[1]], [0], [0]], np.float32)
         return kf
 
+    #  Face keypoints not needed for pose matching
+    EXCLUDED_KEYPOINTS = (1, 2, 3, 4)
+
     # Write the input video bytes to a temporary file
     input_temp = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
     try:
@@ -731,22 +734,23 @@ def process_video(
                 kps = detection['kps']
                 pose_data = []
                 for kp_idx, (kp_x, kp_y, kp_conf) in enumerate(kps.tolist()):
+
+                    if kp_idx in EXCLUDED_KEYPOINTS:
+                        continue
+
                     # clamp keypoints as well
                     kp_x_clamped = max(0, min(kp_x, img_w))
                     kp_y_clamped = max(0, min(kp_y, img_h))
 
-                    pose_data.append({
-                        'name': f'kp_{kp_idx}',
-                        'x': kp_x_clamped,
-                        'y': kp_y_clamped,
-                        'z': 0,  # YOLO doesn't provide a z coordinate
-                        'visibility': float(kp_conf),  # or 'confidence'
-                    })
+                    pose_data.extend([
+                        kp_x_clamped, kp_y_clamped, float(
+                            kp_conf),  # 'confidence'
+                    ])
 
                 frame_data['annotations'].append({
                     'track_id': track_id,
                     'bbox': [x1_clamped, y1_clamped, x2_clamped, y2_clamped],
-                    'pose': pose_data,
+                    'keypoints': pose_data,
                 })
 
         img_bytes = io.BytesIO()
