@@ -218,6 +218,16 @@ def pipeline(continuous: bool,
                                              force_media, force_transcript, force_clips)
 
 
+@rts_archive.command()
+@click.option('--batch-no', type=int, default=0, help='Batch number')
+@click.option('--number-of-batches', type=int, default=10, help='Total number of batches the clips are split into')
+def create_audio(batch_no: int, number_of_batches: int) -> None:
+    from emv.pipelines.rts import PipelineRTS
+    pipeline = PipelineRTS()
+    pipeline.extract_audio_from_clips(
+        batch_no=batch_no, number_of_batches=number_of_batches)
+
+
 # @rts_archive.command()
 # def location() -> None:
 #     ts = rts.pipelines.rts.load_all_transcripts(RTS_LOCAL_VIDEOS)

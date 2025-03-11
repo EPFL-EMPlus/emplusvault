@@ -13,6 +13,7 @@ from emv.db.queries import create_or_update_media, get_feature_by_media_id_and_t
 from emv.features.text import run_nlp, timecodes_from_transcript, create_embeddings
 from emv.pipelines.utils import get_media_info
 from emv.storage.storage import get_storage_client
+from emv.io.media import get_media_info as generate_media_info
 
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple, Any
@@ -247,12 +248,21 @@ class PipelineRTS(Pipeline):
 
         return media_info
 
-    def extract_audio_from_clips(self, force: bool = False) -> bool:
+    def extract_audio_from_clips(self, batch_no: int, number_of_batches: int, force: bool = False) -> bool:
         """ Extract audio from all clips in the dataframe. This assumes that all clips are already ingested and uses the db and s3 to retrieve the clips. """
         DataAccessObject().set_user_id(1)
         # get all media objects that are clips. e.g. media_type = 'video' and sub_type = 'clip'
+        print("Extracting audio from clips")
         clips = get_media_clips_by_type_sub_type(
             self.library_id, 'video', 'clip', 'media_id, media_path, start_ts, end_ts, start_frame, end_frame')
+        print(f"Found {len(clips)} clips")
+
+        #  assume the clips are processed in 10 batches and the batch_no is the current batch
+        batch_size = len(clips) // number_of_batches
+        start = batch_no * batch_size
+        end = (batch_no + 1) * batch_size
+        clips = clips[start:end]
+
         for clip in self.tqdm(clips, position=1, desc='Clips'):
             self.extract_audio_from_clip(clip, force)
         return True
@@ -268,26 +278,36 @@ class PipelineRTS(Pipeline):
         audio_id = f"{media['media_id']}_audio"
         audio = queries.get_media_by_id(audio_id)
         if audio and not force:
-            return
+            # print("alraedy exists")
+            return False
 
         #  get the audio from the s3 storage
         stream = get_storage_client().get_bytes(
-            media['library_name'], media['media_path'])
+            self.library_name, media['media_path'])
 
         # extract audio from the video
-        audio_path = os.path.join('/tmp', f'{media["media_id"]}_audio.mp3')
+        audio_path = os.path.join('/tmp', f'{media["media_id"]}_audio.mp4')
+        if not stream:
+            # print(f"Could not get stream for {media['media_id']}")
+            return False
+
         with open(audio_path, 'wb') as f:
             f.write(stream)
 
         # Extract audio from the video
         extracted_audio_path = os.path.join(
-            '/tmp', f'{media["media_id"]}_extracted_audio.mp3')
-        extract_audio(audio_path, extracted_audio_path)
+            '/tmp', f'{media["media_id"]}_extracted_audio.ogg')
+        try:
+            extract_audio(audio_path, extracted_audio_path,
+                          output_format='ogg')
+        except Exception as e:
+            # print(f"Error extracting audio: {e}")
+            return False
 
         # Create or update the audio media object
-        audio_info = get_media_info(extracted_audio_path, extracted_audio_path)
+        audio_info = generate_media_info(extracted_audio_path)
         media_id_short = media['media_id'].split('-')[1]
-        media_path = f"audios/{media_id_short}/{audio_id}.mp3"
+        media_path = f"audios/{media_id_short}/{audio_id}.ogg"
         audio_media = Media(
             media_id=audio_id,
             original_path=extracted_audio_path,
@@ -305,7 +325,7 @@ class PipelineRTS(Pipeline):
             end_ts=media['end_ts'],
             start_frame=media['start_frame'],
             end_frame=media['end_frame'],
-            frame_rate=audio_info['audio']['sample_rate'],
+            frame_rate=0,
         )
         create_or_update_media(audio_media)
 
@@ -313,6 +333,10 @@ class PipelineRTS(Pipeline):
         with open(extracted_audio_path, 'rb') as f:
             get_storage_client().upload(
                 self.library_name, audio_media.media_path, f)
+
+        # remove tmp files
+        os.remove(audio_path)
+        os.remove(extracted_audio_path)
 
         return True
 

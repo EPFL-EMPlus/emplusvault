@@ -80,30 +80,62 @@ def to_mp3(in_path: str, out_path: str = None, bitrate: str = '') -> str:
 
 
 @emv.utils.timeit
-def extract_audio(in_path: str, out_path: str = None) -> Optional[str]:
+def extract_audio(in_path: str, out_path: str = None, output_format: str = 'mp3') -> Optional[str]:
     try:
         with av.open(str(in_path)) as in_container:
             in_stream = in_container.streams.audio[0]
             in_stream.thread_type = "AUTO"
-            ext = in_stream.codec_context.codec.name
-            if ext == 'aac':
-                ext = 'm4a'
-            out_path = str(Path(out_path).with_suffix(f'.{ext}'))
-            with av.open(out_path, 'w') as out_container:
-                out_stream = out_container.add_stream(template=in_stream)
-                for packet in in_container.demux(in_stream):
-                    # We need to skip the "flushing" packets that `demux` generates.
-                    if packet.dts is None:
-                        continue
-                    # We need to assign the packet to the new stream.
-                    packet.stream = out_stream
+
+            # Ensure valid format
+            if output_format not in ['mp3', 'ogg', 'opus']:
+                raise ValueError(
+                    "Unsupported output format. Use 'mp3', 'ogg', or 'opus'.")
+
+            # Set correct codec for the given format
+            if output_format == 'mp3':
+                codec_name = 'mp3'
+            elif output_format == 'ogg':
+                codec_name = 'libvorbis'  # Vorbis for OGG format
+            elif output_format == 'opus':
+                codec_name = 'libopus'  # Opus for OPUS format
+            else:
+                raise ValueError(
+                    "Unsupported output format. Use 'mp3', 'ogg', or 'opus'.")
+
+            # Define output path
+            if out_path is None:
+                out_path = str(Path(in_path).with_suffix(f'.{output_format}'))
+            else:
+                out_path = str(Path(out_path).with_suffix(f'.{output_format}'))
+
+            with av.open(out_path, 'w', format=output_format) as out_container:
+                # Get input stream parameters
+                sample_rate = in_stream.sample_rate
+                layout = in_stream.layout.name  # Get the layout name instead of the layout object
+
+                # Create output stream with parameters
+                out_stream = out_container.add_stream(codec_name)
+
+                # Set audio parameters for the output stream
+                if output_format in ['ogg', 'opus']:
+                    out_stream.sample_rate = sample_rate
+                    out_stream.layout = layout  # Use the layout name
+
+                # Decode and re-encode
+                for frame in in_container.decode(in_stream):
+                    for packet in out_stream.encode(frame):
+                        out_container.mux(packet)
+
+                # Flush the encoder
+                for packet in out_stream.encode(None):
                     out_container.mux(packet)
+
         return out_path
-    except av.AVError as e:
+    except (av.AVError, ValueError) as e:
         import traceback
         LOG.error(traceback.format_exc())
         LOG.error(e)
-        return None
+        raise e
 
 
 def merge_video_audio_files(video_path: str, audio_path: str, out_path: str) -> Optional[str]:

@@ -177,7 +177,7 @@ def get_media_clips_by_type_sub_type(library_id: int, media_type: str, sub_type:
     query = text(f"""SELECT {fields} FROM media 
                     WHERE library_id = :library 
                     AND media_type = :media_type 
-                    AND sub_type = :sub_type""")
+                    AND sub_type = :sub_type ORDER BY created_at ASC""")
     return DataAccessObject().fetch_all(query, {"library": library_id, "media_type": media_type, "sub_type": sub_type, "fields": fields})
 
 
