@@ -9,7 +9,7 @@ import emv.io.media
 import emv.features.audio
 import emv.features.text
 from emv.io.media import extract_audio, get_frame_number, save_clips_images
-from emv.db.queries import create_or_update_media, get_feature_by_media_id_and_type, create_feature, update_feature, get_feature_wout_embedding_1024, get_media_clips_by_type_sub_type
+from emv.db.queries import create_or_update_media, get_feature_by_media_id_and_type, create_feature, update_feature, get_feature_wout_embedding_1024, get_media_clips_by_type_sub_type, get_media_by_parent_id_and_types
 from emv.features.text import run_nlp, timecodes_from_transcript, create_embeddings
 from emv.pipelines.utils import get_media_info
 from emv.storage.storage import get_storage_client
@@ -370,6 +370,48 @@ class PipelineRTS(Pipeline):
                 'frame_rate': -1,
             })
             create_or_update_media(screenshot)
+
+    def extract_thumbnails(self, batch_no: int, number_of_batches: int, force: bool = False) -> bool:
+        """ Extract thumbnails from all clips in the dataframe. This assumes that all clips are already ingested and uses the db and s3 to retrieve the clips. """
+        DataAccessObject().set_user_id(1)
+        # get all media objects that are clips. e.g. media_type = 'video' and sub_type = 'clip'
+        print("Extracting thumbnails from clips")
+        clips = get_media_clips_by_type_sub_type(
+            self.library_id, 'video', 'clip', 'media_id, media_path, start_ts, end_ts, start_frame, end_frame')
+        print(f"Found {len(clips)} clips")
+
+        #  assume the clips are processed in 10 batches and the batch_no is the current batch
+        batch_size = len(clips) // number_of_batches
+        start = batch_no * batch_size
+        end = (batch_no + 1) * batch_size
+        clips = clips[start:end]
+
+        for clip in self.tqdm(clips, position=1, desc='Clips'):
+            self.extract_thumbnails_from_clip(clip, force)
+        return True
+
+    def extract_thumbnails_from_clip(self, media: dict, force: bool = False) -> bool:
+        """ Extract thumbnails from a single clip. """
+
+        # check the database if there is already an audio media object
+        thumbnail = get_media_by_parent_id_and_types(
+            media['media_id'], 'image', 'screenshot')
+        if thumbnail and not force:
+            return False
+
+        #  get the video from the s3 storage
+        stream = get_storage_client().get_bytes(
+            self.library_name, media['media_path'])
+
+        # upload_clip_images
+        img_binaries = save_clips_images(
+            [(media['start_ts'], media['end_ts'])], stream, 'import', 1, 'M')['image_binaries']
+
+        for key in img_binaries:
+            self.upload_clip_images(
+                media['original_id'], media['media_id'], key, img_binaries[key])
+
+        return True
 
     def preprocess(self, df: pd.DataFrame, **kwargs) -> pd.DataFrame:
         pass
