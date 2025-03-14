@@ -334,7 +334,6 @@ class PipelineRTS(Pipeline):
             get_storage_client().upload(
                 self.library_name, audio_media.media_path, f)
 
-        # remove tmp files
         os.remove(audio_path)
         os.remove(extracted_audio_path)
 
@@ -403,13 +402,18 @@ class PipelineRTS(Pipeline):
         stream = get_storage_client().get_bytes(
             self.library_name, media['media_path'])
 
-        # upload_clip_images
-        img_binaries = save_clips_images(
-            [(media['start_ts'], media['end_ts'])], stream, 'import', 1, 'M')['image_binaries']
+        # write video to tmp file
+        video_path = os.path.join('/tmp', f'{media["media_id"]}.mp4')
+        with open(video_path, 'wb') as f:
+            f.write(stream)
 
-        for key in img_binaries:
+        # upload_clip_images
+        self.clip_infos = save_clips_images(
+            [(media['start_ts'], media['end_ts'])], video_path, 'import', 1, 'M')['image_binaries']
+
+        for key in self.clip_infos['img_binaries']:
             self.upload_clip_images(
-                media['original_id'], media['media_id'], key, img_binaries[key])
+                media['original_id'], media['media_id'], key, self.clip_infos['img_binaries'][key])
 
         return True
 

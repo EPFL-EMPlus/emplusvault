@@ -167,6 +167,12 @@ def get_media_by_id(media_id: str) -> dict:
     return DataAccessObject().fetch_one(query, {"media_id": str(media_id)})
 
 
+def get_media_by_parent_id_and_types(parent_id: str, media_type: str, sub_type: str) -> dict:
+    query = text(
+        "SELECT * FROM media WHERE parent_id = :parent_id AND media_type = :media_type AND sub_type = :sub_type")
+    return DataAccessObject().fetch_all(query, {"parent_id": parent_id, "media_type": media_type, "sub_type": sub_type})
+
+
 def get_media_for_streaming(media_id: str) -> dict:
     query = text("SELECT media.media_path, media.size, library.library_name FROM media LEFT JOIN library ON media.library_id = library.library_id WHERE media_id = :media_id")
     return DataAccessObject().fetch_one(query, {"media_id": str(media_id)})
