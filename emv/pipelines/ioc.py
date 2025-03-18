@@ -274,9 +274,10 @@ class PipelineIOC(Pipeline):
 
     def process_all_poses_clip(self, row: pd.Series, force: bool = False,) -> bool:
         """ Process every single frame of a clip and store the poses. """
+        LOG.info(f'Processing poses for {row.guid}/{row.seq_id}.mp4')
         result = self.store.get_bytes(
             "ioc", f"videos/{row.guid}/{row.seq_id}.mp4")
-
+        LOG.info(f'Processing poses for {row.guid}/{row.seq_id}.mp4')
         if not result:
             raise ValueError(
                 f'Failed to download video {row.guid}/{row.seq_id}.mp4')
@@ -356,7 +357,8 @@ class PipelineIOC(Pipeline):
         except IntegrityError as e:
             LOG.error(f'Failed to create feature for {bin_media_id}: {e}')
 
-        write_pose_to_binary_file(int(feature_id), 13,
+        no_frames = r[-1]['frame'] + 1
+        write_pose_to_binary_file(int(feature_id), no_frames, 13,
                                   video_resolution, pose_frames, "ioc", media_path)
 
         return r, images

@@ -272,12 +272,13 @@ def ingest_ioc(data: str):
 
 @ioc_archive.command()
 @click.option('--data', type=str, default='{}', help='csv dataframe')
-def process_binary_poses(data: str):
+@click.option('--force', is_flag=True, help='Reprocess all poses even when they are already present')
+def process_binary_poses(data: str, force: bool):
     """ Process binary poses. The poses of each single frame of the clip are stored in a binary file. """
     from emv.pipelines.ioc import PipelineIOC
     df = pd.read_csv(data)
     pipeline = PipelineIOC()
-    pipeline.process_all_video_poses(df)
+    pipeline.process_all_video_poses(df, force)
 
 
 @ioc_archive.command()
