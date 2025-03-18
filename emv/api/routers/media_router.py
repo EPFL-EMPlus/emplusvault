@@ -39,7 +39,7 @@ async def get_media_by_library(library_id: int, last_seen_date: str = None, last
 
 
 @media_router.get("/media/parent/{parent_id}/type/{media_type}/sub_type/{sub_type}")
-async def get_media_by_library_and_parent(parent_id: int, media_type: str, sub_type: str, current_user: User = Depends(get_current_active_user)):
+async def get_media_by_library_and_parent(parent_id: str, media_type: str, sub_type: str, current_user: User = Depends(get_current_active_user)):
     return get_media_by_parent_id_and_types(parent_id, media_type, sub_type)
 
 
