@@ -425,7 +425,7 @@ def extract_pose_frames(data: List[dict]) -> List[Tuple[int, List[Tuple[float, f
     Extracts pose keypoints from the input data along with the frame number, excluding unnecessary keypoints.
     """
 
-    EXCLUDED_KEYPOINTS = (1, 2, 3, 4)
+    EXCLUDED_KEYPOINTS = ()  #  (1, 2, 3, 4)
 
     pose_frames = []
     for frame_data in data:
@@ -435,6 +435,7 @@ def extract_pose_frames(data: List[dict]) -> List[Tuple[int, List[Tuple[float, f
 
         for annotation in frame_annotations:
             keypoints = annotation['keypoints']
+            person_id = annotation['track_id']
             pose = [
                 (keypoints[i], keypoints[i + 1])
                 for j, i in enumerate(range(0, len(keypoints), 3))
@@ -449,14 +450,14 @@ def extract_pose_frames(data: List[dict]) -> List[Tuple[int, List[Tuple[float, f
                     pose[0] = ((pose[3][0] + pose[4][0]) / 2,
                                (pose[3][1] + pose[4][1]) / 2)
 
-            frame_poses.append((frame_number, pose))
+            frame_poses.append((frame_number, person_id, pose))
 
         pose_frames.extend(frame_poses)
 
     return pose_frames
 
 
-def write_pose_to_binary_file(feature_id: int, skeleton_bones_count: int, video_resolution: Tuple[int, int], pose_frames: List[Tuple[int, List[Tuple[float, float]]]], bucket_name: str, object_name: str) -> None:
+def write_pose_to_binary_file(feature_id: int, no_frames: int, skeleton_bones_count: int, video_resolution: Tuple[int, int], pose_frames: List[Tuple[int, List[Tuple[float, float]]]], bucket_name: str, object_name: str) -> None:
     """
     Writes the pose from a video to a binary file.
 
@@ -467,7 +468,8 @@ def write_pose_to_binary_file(feature_id: int, skeleton_bones_count: int, video_
 
     Header :
         Feature identifier (uint32)
-        Frame count (uint32)
+        Total frames in binary file, a multiple of frames in video due to multiple persons in a frame (uint32)
+        Total frames in the video (uint32)
         Skeleton bones count (uint8)
         Video resolution width and height (2 * uint16)
 
@@ -484,6 +486,7 @@ def write_pose_to_binary_file(feature_id: int, skeleton_bones_count: int, video_
     # Feature identifier (uint32)
     binary_stream.write(struct.pack('<I', feature_id))
     binary_stream.write(struct.pack('<I', len(pose_frames)))
+    binary_stream.write(struct.pack('<I', no_frames))
     # Skeleton bones count (uint8)
     binary_stream.write(struct.pack('<B', skeleton_bones_count))
     # Video resolution (2 * uint16)
@@ -491,9 +494,13 @@ def write_pose_to_binary_file(feature_id: int, skeleton_bones_count: int, video_
         '<HH', video_resolution[0], video_resolution[1]))
 
     # Write pose data
-    for frame_no, pose in pose_frames:
+    for frame_no, person_id, pose in pose_frames:
         assert len(
             pose) == skeleton_bones_count, f"Frame {frame_no} has incorrect bone count!"
+
+        binary_stream.write(struct.pack('<I', frame_no))  # uint32
+        binary_stream.write(struct.pack('<I', person_id))  # uint32
+
         for joint_x, joint_y in pose:
             coord_x = min(max(0, int(joint_x)), video_resolution[0] - 1)
             coord_y = min(max(0, int(joint_y)), video_resolution[1] - 1)
