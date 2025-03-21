@@ -342,7 +342,7 @@ class PifPafFactory(object):
 
 
 _model_cache = dict()
-PIFPAF_FACTORY = PifPafFactory()
+# PIFPAF_FACTORY = PifPafFactory()
 
 
 def get_model(model_name):

@@ -44,6 +44,7 @@ def main(queue):
 
         connection = pika.BlockingConnection(params)
         channel = connection.channel()
+        print(f"Connected to {RABBITMQ_SERVER}")
 
         channel.queue_declare(queue=queue, durable=True)
         channel.basic_consume(queue=queue, on_message_callback=callback)
