@@ -14,15 +14,11 @@ import orjson
 import struct
 from io import BytesIO
 
-import openpifpaf
-import openpifpaf.predict
-
 import emv.utils
 import math
 
 from enum import Enum
 from pathlib import Path
-from openpifpaf import transforms
 from typing import List, Dict, Tuple, Union, Optional
 
 from emv.utils import FileVideoStream, timeit
