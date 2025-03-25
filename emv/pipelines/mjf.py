@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import emv.utils
 
@@ -8,6 +9,7 @@ from emv.pipelines.base import Pipeline, get_hash
 from emv.io.media import get_media_info, get_frame_number
 from emv.api.models import Media
 from emv.db.queries import create_media, create_or_update_media, check_media_exists
+from emv.db.dao import DataAccessObject
 
 from emv.settings import MJF_ROOT_FOLDER
 
@@ -21,27 +23,32 @@ MIF_VIDEOS = MJF_ROOT_FOLDER + 'videos'
 class PipelineMJF(Pipeline):
     library_name: str = 'mjf'
 
-    def ingest(self, df: pd.DataFrame, force: bool = False) -> bool:
+    def ingest(self, input_file_path: str, df: pd.DataFrame, force: bool = False) -> bool:
         for i, row in self.tqdm(df.iterrows()):
-            self.ingest_single_video(row, force)
+            self.ingest_single_video(input_file_path, row, force)
 
         return True
 
-    def ingest_single_video(self, row: pd.Series, force: bool = False) -> bool:
-
-        # TODO upload media
+    def ingest_single_video(self, input_file_path: str, row: pd.Series, force: bool = False) -> bool:
+        DataAccessObject().set_user_id(1)
         media_id = f"{self.library_name}-{row.song_id}"
 
         exists = check_media_exists(media_id)
         if exists and not force:
             return True
 
-        local_path = self.library['prefix_path'] + row.path
+        local_path = input_file_path + row.path
         media_info = get_media_info(local_path)
 
         if not media_info:
             LOG.error(f"Skipping {row.path} (no media info)")
             return False
+
+        s3_path = f"videos/{row.path}"
+        # Upload to storage
+        with open(os.path.join(input_file_path, row.path), 'rb') as f:
+            self.store.upload(
+                self.library_name, s3_path, f)
 
         metadata = {
             'title': row.title,
@@ -58,16 +65,16 @@ class PipelineMJF(Pipeline):
         clip = Media(**{
             'media_id': media_id,
             'original_path': row.path,
-            'original_id': row.song_id,
-            'media_path': row.path,
+            'original_id': str(row.song_id),
+            'media_path': s3_path,
             'media_type': "video",
-            'sub_type': "",
+            'sub_type': "clip",
             'size': media_info['filesize'],
             'metadata': metadata,
             'media_info': media_info,
             'library_id': self.library['library_id'],
             'hash': get_hash(row.path),
-            'parent_id': -1,
+            'parent_id': "",
             'start_ts': 0,
             'end_ts': media_info['duration'],
             'start_frame': get_frame_number(0, media_info['video']['framerate']),
