@@ -42,15 +42,3 @@ def download_video(media_id: str, current_user: User = Depends(get_current_activ
             "Content-Disposition": f'attachment; filename="{media_id}.mp4"'
         }
     )
-
-
-@stream_router.get('/hls/{media_id}/playlist.m3u8')
-async def get_playlist(media_id: str, current_user: User = Depends(get_current_active_user)):
-    stream = get_storage_client().get_bytes("rts", "test/output.m3u8")
-    return StreamingResponse(BytesIO(stream), media_type="application/x-mpegURL")
-
-
-@stream_router.get('/hls/{media_id}/{segment_file}')
-async def get_segment(media_id: str, segment_file: str, current_user: User = Depends(get_current_active_user)):
-    stream = get_storage_client().get_bytes("rts", f"test/{segment_file}")
-    return StreamingResponse(BytesIO(stream), media_type="video/MP2T")
