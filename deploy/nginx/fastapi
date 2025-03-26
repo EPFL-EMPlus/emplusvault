@@ -1,0 +1,30 @@
+server {
+    listen 9999 ssl;
+    #listen [::]:9999;
+
+    server_name emplusvault www.emplusvault;
+    ssl_certificate     /home/sinergia/certs/minio.crt;
+    ssl_certificate_key /home/sinergia/certs/minio.key;
+
+    location /mjf {
+        proxy_pass http://localhost:9000;
+        include proxy_params;  # if you have a file of common proxy settings
+    }
+
+    location /ioc {
+        proxy_pass http://localhost:9000;
+        include proxy_params;  # if you have a file of common proxy settings
+    }
+
+    location /rts {
+        proxy_pass http://localhost:9000;
+        include proxy_params;  # if you have a file of common proxy settings
+    }
+
+
+    location / {
+        proxy_pass http://localhost:8763;
+        include proxy_params;
+    }
+
+}
