@@ -20,6 +20,15 @@ async def stream_video4(req: Request, media_id: str, current_user: User = Depend
     return RedirectResponse(url=url)
 
 
+@stream_router.get('/redirection_url/{media_id}')
+async def redirection_url(media_id: str, current_user: User = Depends(get_current_active_user)):
+    check_access(current_user, media_id)
+    media = get_media_for_streaming(media_id)
+    url = get_storage_client().generate_presigned_url(
+        media['library_name'], media['media_path'])
+    return JSONResponse(content={"url": url})
+
+
 @stream_router.get('/download/{media_id}')
 def download_video(media_id: str, current_user: User = Depends(get_current_active_user)):
     check_access(current_user, media_id)
