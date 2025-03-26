@@ -24,7 +24,7 @@ class PipelineMJF(Pipeline):
     library_name: str = 'mjf'
 
     def ingest(self, input_file_path: str, df: pd.DataFrame, force: bool = False) -> bool:
-        for i, row in self.tqdm(df.iterrows()):
+        for i, row in self.tqdm(df.iterrows(), total=len(df)):
             self.ingest_single_video(input_file_path, row, force)
 
         return True
