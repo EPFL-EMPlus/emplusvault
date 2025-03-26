@@ -23,6 +23,7 @@ SECRET_KEY = get_secret("SECRET_KEY")
 S3_ACCESS_KEY = get_secret("S3_ACCESS_KEY")
 S3_SECRET_KEY = get_secret("S3_SECRET_KEY")
 S3_ENDPOINT = get_secret("S3_ENDPOINT")
+S3_OUTSIDE_ENDPOINT = get_secret("S3_OUTSIDE_ENDPOINT")
 
 DB_HOST = get_secret("DB_HOST")
 DB_PORT = get_secret("DB_PORT")

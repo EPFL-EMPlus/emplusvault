@@ -407,7 +407,7 @@ def check_if_valid_annotations(annot_path: Path) -> bool:
     return False
 
 
-def get_keypoints_from_image(image_pil: PIL.Image) -> Dict:
+def get_keypoints_from_image(image_pil) -> Dict:
     PIFPAF_FACTORY = PifPafFactory()
     processor = PIFPAF_FACTORY.build_model(PifPafModel.fast)
     processor.reset()

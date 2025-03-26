@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Optional
 from botocore.exceptions import ClientError, BotoCoreError
 from botocore.response import StreamingBody
-from emv.settings import S3_ACCESS_KEY, S3_SECRET_KEY, S3_ENDPOINT
+from emv.settings import S3_ACCESS_KEY, S3_SECRET_KEY, S3_ENDPOINT, S3_OUTSIDE_ENDPOINT
 
 
 LOG = emv.utils.get_logger()
@@ -115,7 +115,8 @@ class StorageClient:
             },
             ExpiresIn=1800,  # link valid for 30 minutes
         )
-        return url
+        return url.replace(
+            S3_ENDPOINT, S3_OUTSIDE_ENDPOINT)
 
     def get_stream(self, bucket_name: str, object_name: str, start: Optional[int] = None, end: Optional[int] = None) -> Optional[StreamingBody]:
         """
