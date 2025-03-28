@@ -127,18 +127,17 @@ class PipelineMJF(Pipeline):
             _, buffer = cv2.imencode('.jpg', thumbnail)
             thumbnail_bytes = io.BytesIO(buffer.tobytes())
 
+            orig_folder_name = int(Path(row.original_path).stem)
+            #  folder names in the mjf archive are organized in groups of 1000
+            folder_name = orig_folder_name - (orig_folder_name % 1000)
+
             # Define the S3 path for the thumbnail
-            thumbnail_s3_path = f"images/{Path(row.media_path).stem}_thumbnail.jpg"
+            media_path = f"images/{folder_name}/{orig_folder_name}.jpg"
 
             # Upload the thumbnail to S3
             self.store.upload(self.library_name,
-                              thumbnail_s3_path, thumbnail_bytes)
+                              media_path, thumbnail_bytes)
 
-            orig_folder_name = int(Path(row.original_path).stem)
-            #  folder names in the mjf archive are organized in groups of 1000
-            folder_name = (orig_folder_name % 1000)
-
-            media_path = f"images/{folder_name}/{orig_folder_name}.jpg"
             screenshot = Media(**{
                 'media_id': f"{row.media_id}-thumbnail",
                 'original_path': f"{row.media_id}-thumbnail",
