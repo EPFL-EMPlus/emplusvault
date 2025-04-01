@@ -122,10 +122,13 @@ pytest tests/test_features.py::test_function_name  # Run specific test
 Database migrations are managed with Alembic:
 
 ```
-# Create a new migration
+# Change either the model definition or do a manual change in the migration file later (see db/versions/). This is the preferred way. 
+nano emv/api/models.py
+
+# Create a new migration file. This will have the new definition of the changes if models.py was changed. Otherwise add your changes here (also found in db/versions/).
 alembic revision -m "description of change"
 
-# Apply migrations
+# Apply migrations to the db. 
 alembic upgrade head
 ```
 
