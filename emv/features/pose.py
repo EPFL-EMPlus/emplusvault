@@ -516,24 +516,26 @@ def write_pose_to_binary_file(feature_id: int, no_frames: int, skeleton_bones_co
 
 def read_pose_from_binary_file(binary_data: BytesIO) -> Tuple[int, int, Tuple[int, int], List[Tuple[int, List[Tuple[int, int]]]]]:
     """
-    Reads pose data from a binary file stored in memory. This function is mostly used for testing purposes.
+    Reads pose data from a binary file stored in memory.
     """
     binary_data.seek(0)
     feature_id = struct.unpack('<I', binary_data.read(4))[0]
+    frames_in_video = struct.unpack('<I', binary_data.read(4))[0]
     frame_count = struct.unpack('<I', binary_data.read(4))[0]
     skeleton_bones_count = struct.unpack('<B', binary_data.read(1))[0]
     video_resolution = struct.unpack('<HH', binary_data.read(4))
 
     pose_frames = []
-    for _ in range(frame_count):
-        frame_number = len(pose_frames)
+    for _ in range(frames_in_video):
+        frame_number = struct.unpack('<I', binary_data.read(4))[0]
+        person_id = struct.unpack('<I', binary_data.read(4))[0]
         pose = [
             struct.unpack('<HH', binary_data.read(4))
             for _ in range(skeleton_bones_count)
         ]
-        pose_frames.append((frame_number, pose))
+        pose_frames.append((frame_number, person_id, pose))
 
-    return feature_id, skeleton_bones_count, video_resolution, pose_frames
+    return feature_id, frames_in_video, frame_count, skeleton_bones_count, video_resolution, pose_frames
 
 
 def process_video(
