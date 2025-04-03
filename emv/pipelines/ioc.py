@@ -1,9 +1,12 @@
 import pandas as pd
+import numpy as np
 import emv.utils
 
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.sql import text
 from datetime import datetime
 import base64
+from io import BytesIO
 
 from emv.pipelines.base import Pipeline, get_hash
 from emv.io.media import get_frame_number
@@ -13,7 +16,10 @@ from emv.db.queries import get_feature_by_media_id_and_type, create_feature, upd
 
 from emv.settings import IOC_ROOT_FOLDER
 from emv.features.pose import process_video, PifPafModel, write_pose_to_binary_file, extract_pose_frames
+from emv.features.pose import read_pose_from_binary_file, get_pose_feature_vector as build_pose_vector_with_flip
 from emv.db.dao import DataAccessObject
+from emv.storage.storage import get_storage_client
+
 
 LOG = emv.utils.get_logger()
 
@@ -362,6 +368,207 @@ class PipelineIOC(Pipeline):
                                   video_resolution, pose_frames, "ioc", media_path)
 
         return r, images
+
+    def extract_poses_from_binary(self):
+        """ Extracts poses from the binary files and creates a feature for each frame. """
+        # Retrieve a list of all binary files
+        query = text(
+            "SELECT media_id, created_at, media_path FROM media WHERE media_type = 'video' AND sub_type = 'binary'")
+        df = pd.DataFrame(DataAccessObject().fetch_all(query), columns=[
+                          "media_id", "created_at", "media_path"])
+
+        #  iterate through the dataframe, 300 clips at a time
+        for i in self.tqdm(range(0, len(df), 300), desc='Processing binary files', position=0, leave=True):
+            batch = df.iloc[i:i + 300]
+            self.extract_poses_from_binary_subset(batch)
+
+    def extract_poses_from_binary_subset(self, df: pd.DataFrame) -> bool:
+        """ Extracts poses from the binary files and creates a feature for each frame. """
+
+        pose_frames = []
+        frame_lenghts = []
+
+        for i, row in df.iterrows():
+            binary_data = BytesIO()
+            get_storage_client().download("ioc", row.media_path, binary_data)
+            feature_id, frames_in_video, frame_count, skeleton_bones_count, video_resolution, frames = read_pose_from_binary_file(
+                binary_data)
+            pose_frames.extend(frames)
+            frame_lenghts.append(len(pose_frames))
+
+        keypoints_13 = []
+        frame_indices = []  # Store original frame indices
+        clip_indices = np.ones(len(pose_frames), dtype=bool)
+        frame_lengths_filtered = []
+
+        current_clip_idx = 0
+        current_clip_count = 0
+        clip_ends = frame_lenghts  # e.g. [1336, 1716, 2855, ...]
+
+        for i, pose in enumerate(pose_frames):
+            # Check if we moved into a new clip
+            if i >= clip_ends[current_clip_idx]:
+                # Store the filtered frame count so far for this clip
+                frame_lengths_filtered.append(len(keypoints_13))
+                current_clip_idx += 1
+                current_clip_count = 0
+
+            kp = np.array(pose[2])
+            if np.any(kp == 0):  # If any keypoint is 0
+                clip_indices[i] = False  # Mark this frame as invalid
+            else:
+                keypoints_13.append(kp)
+                frame_indices.append(i)  # Store original index
+                current_clip_count += 1
+
+        # Add the last clip's frame count
+        frame_lengths_filtered.append(len(keypoints_13))
+
+        selected = self.select_diverse_poses(
+            poses=keypoints_13,
+            build_embedding_fn=build_pose_vector_with_flip,
+            frame_lengths=frame_lengths_filtered,
+            threshold=200.0,
+        )
+        print("Selection done, creating features")
+        # save the selected poses to the database
+        for i in selected:
+            pose = keypoints_13[i]
+            pose = np.array(pose).flatten()
+            pose = pose.tolist()
+            # Get the original frame index
+            # Get the original frame index
+            original_frame_index = frame_indices[i]
+
+            # Determine which clip this frame belongs to
+            clip_idx = 0
+            while clip_idx < len(clip_ends)-1 and original_frame_index >= clip_ends[clip_idx]:
+                clip_idx += 1
+
+            # Calculate the frame number relative to the start of the clip
+            clip_start = 0 if clip_idx == 0 else clip_ends[clip_idx-1]
+            frame_number_in_clip = original_frame_index - clip_start
+
+            # Use the frame number in clip for the feature
+            media_id = df.iloc[clip_idx].media_id
+
+            # Create a new feature for each selected pose
+            feature = Feature(
+                feature_type='pose-binary-extracted',
+                version="1",
+                model_name='YOLO.pose',
+                model_params={
+                    'YOLO': 'pose',
+                },
+                data={
+                    'keypoints': pose,
+                    'frame': original_frame_index,
+                },
+                media_id=row.media_id,
+                # start_frame=original_frame_index,
+                # end_frame=original_frame_index,
+            )
+            create_feature(feature)
+        print("Features created")
+
+    def select_diverse_poses(
+        self,
+        poses,
+        build_embedding_fn,
+        frame_lengths,  # cumulative end-frames for each clip,
+        threshold=5.0,  # distance threshold for "difference"
+        min_per_clip=2,  # minimum number of poses per clip
+    ):
+        """
+        Selects diverse poses based on a distance threshold, 
+        but also ensures each clip has at least 'min_per_clip' selections.
+
+        Args:
+            poses (list or np.ndarray): shape (N, 13, 2)
+            build_embedding_fn (callable): returns a (d,)-dim embedding from a pose
+            frame_lengths (list of int): cumulative sum of frames 
+                indicating the end of each video clip. 
+                For example, if clip1 has 1336 frames, clip2 has 380, etc., 
+                frame_lengths might look like [1336, 1716, 2855, 3249, ...].
+            threshold (float): distance threshold to consider a pose "unique enough."
+            min_per_clip (int): enforce this minimum selection per clip.
+            order (str): 'original' => sequential from 0..N-1,
+                        'random' => shuffled order.
+
+        Returns:
+            selected_indices (list of int): indices of poses selected
+        """
+        # Build embeddings for all poses
+        all_embeddings = [build_embedding_fn(pose) for pose in poses]
+        all_embeddings = np.array(all_embeddings)  # shape (N, d)
+        N = len(poses)
+
+        # Determine clip boundaries
+        # frame_lengths is cumulative end-frames, e.g. [1336, 1716, 2855, 3249, ...]
+        # So clip i starts at frame_lengths[i-1] (or 0 if i=0),
+        # and ends at frame_lengths[i]-1.
+        clip_index_for_frame = np.zeros(N, dtype=int)
+        current_clip = 0
+        start_frame = 0
+        for i, end_frame in enumerate(frame_lengths):
+            # e.g. frames from [start_frame .. end_frame-1] belong to clip i
+            clip_index_for_frame[start_frame:end_frame] = i
+            start_frame = end_frame
+        total_clips = len(frame_lengths)
+
+        indices = np.arange(N)
+
+        selected_indices = []
+        selected_embeddings = []
+
+        # Main selection loop: distance-threshold approach
+        for idx in indices:
+            emb = all_embeddings[idx]
+
+            if not selected_embeddings:
+                selected_indices.append(idx)
+                selected_embeddings.append(emb)
+            else:
+                dists = [np.linalg.norm(emb - se)
+                         for se in selected_embeddings]
+                if all(d > threshold for d in dists):
+                    selected_indices.append(idx)
+                    selected_embeddings.append(emb)
+
+        # Post-process each clip to ensure min_per_clip
+        selected_indices_set = set(selected_indices)
+
+        # Build a list of frames that belong to each clip
+        clip_frames = [[] for _ in range(total_clips)]
+        for frame_idx in range(N):
+            cidx = clip_index_for_frame[frame_idx]
+            clip_frames[cidx].append(frame_idx)
+
+        # Check how many are selected in each clip
+        for clip_id in range(total_clips):
+            frames_in_clip = clip_frames[clip_id]
+            already_selected = [
+                f for f in frames_in_clip if f in selected_indices_set]
+
+            if len(already_selected) < min_per_clip:
+                needed = min_per_clip - len(already_selected)
+                unselected = [
+                    f for f in frames_in_clip if f not in selected_indices_set]
+                unselected.sort()
+
+                to_add = unselected[:needed]
+                # if len(to_add) < needed:
+                #     print(
+                #         f"⚠️  Clip {clip_id} only has {len(already_selected) + len(to_add)} poses available; can't meet min_per_clip={min_per_clip}")
+
+                selected_indices.extend(to_add)
+                selected_indices_set.update(to_add)
+                for f in to_add:
+                    selected_embeddings.append(all_embeddings[f])
+
+        selected_indices = sorted(selected_indices)
+
+        return selected_indices
 
     def create_projection(self, df: pd.DataFrame) -> bool:
         """ Create the projection for all clips in the dataframe. """

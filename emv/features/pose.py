@@ -1077,6 +1077,102 @@ def get_poem_feature_vector(keypoints: List[List[float]]):
     return df_poem.values[0]
 
 
+def get_pose_feature_vector(keypoints: List[List[float]]) -> np.ndarray:
+    """
+    Produces an embedding that includes:
+    - (x,y) coords translated so hips midpoint is at (0,0) => 26 dims
+    - 7 local angles 
+    - 1 global "flip angle" => how rotated wrt vertical
+    Total: 26 + 7 + 1 = 34 dims
+    """
+    def angle_between(vec1, vec2):
+        """Helper: compute angle between two 2D vectors. Angle in [0, pi]."""
+        mag1 = np.linalg.norm(vec1)
+        mag2 = np.linalg.norm(vec2)
+        if mag1 < 1e-9 or mag2 < 1e-9:
+            return 0.0
+        dot = np.dot(vec1, vec2)
+        cos_val = np.clip(dot / (mag1 * mag2), -1.0, 1.0)
+        return np.arccos(cos_val)
+
+    def compute_limb_angle(kpts, A_idx, B_idx, C_idx):
+        """
+        Returns the angle at joint B in [0, pi].
+        Computed between vectors (B->A) and (B->C).
+        """
+        A = kpts[A_idx]
+        B = kpts[B_idx]
+        C = kpts[C_idx]
+        BA = A - B
+        BC = C - B
+        magBA = np.linalg.norm(BA)
+        magBC = np.linalg.norm(BC)
+        if magBA < 1e-9 or magBC < 1e-9:
+            return 0.0
+        dot = np.dot(BA, BC)
+        cos_val = np.clip(dot / (magBA * magBC), -1.0, 1.0)
+        return np.arccos(cos_val)  # range [0, pi]
+
+    kpts = np.array(keypoints)  # shape (13,2)
+
+    # 1) Translate so that hips midpoint is at (0,0)
+    left_hip = kpts[7]
+    right_hip = kpts[8]
+    hips_mid = (left_hip + right_hip) / 2.0
+    translated = kpts - hips_mid
+
+    # 2) Compute the "flip angle" wrt global vertical
+    #    Let's define shoulders midpoint as reference
+    left_shoulder = translated[1]
+    right_shoulder = translated[2]
+    shoulders_mid = (left_shoulder + right_shoulder) / 2.0
+
+    # Vector from hips_mid (origin) to shoulders_mid
+    ref_vec = shoulders_mid  # shape (2,)
+
+    # Global vertical axis in image coords:
+    # If y increases downward, "up" is (0, -1).
+    # If y increases upward, "up" is (0, +1).
+    global_up = np.array([0, -1], dtype=np.float32)
+
+    flip_angle = angle_between(ref_vec, global_up)  # in [0, pi]
+
+    # Optional: if you want to distinguish left from right tilts,
+    # you can measure sign with cross product, but let's keep it simple.
+
+    # 3) Flatten the translated coords (26D)
+    coords_flat = translated.flatten()
+
+    # 4) Some local angles => same logic as before
+    angle_left_elbow = compute_limb_angle(translated, 1, 3, 5)
+    angle_right_elbow = compute_limb_angle(translated, 2, 4, 6)
+    angle_left_knee = compute_limb_angle(translated, 7, 9, 11)
+    angle_right_knee = compute_limb_angle(translated, 8, 10, 12)
+    angle_left_shoulder = compute_limb_angle(translated, 7, 1, 3)
+    angle_right_shoulder = compute_limb_angle(translated, 8, 2, 4)
+    # One more angle, e.g. left_hip wrt nose
+    angle_left_hip = compute_limb_angle(translated, 9, 7, 0)
+
+    angles = np.array([
+        angle_left_elbow,
+        angle_right_elbow,
+        angle_left_knee,
+        angle_right_knee,
+        angle_left_shoulder,
+        angle_right_shoulder,
+        angle_left_hip
+    ], dtype=np.float32)
+
+    # 5) Concatenate => final vector
+    #    We put the flip_angle last.
+    embedding_34 = np.concatenate([
+        coords_flat,  # 26
+        angles,       # 7
+        [flip_angle]  # 1
+    ])
+    return embedding_34
+
+
 def filter_poses(df: pd.DataFrame, threshold: float = 0.2) -> pd.DataFrame:
     """
     Filter poses based distance to other poses. We want to keep poses that are as unique as possible.
