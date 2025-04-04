@@ -373,9 +373,9 @@ class PipelineIOC(Pipeline):
         """ Extracts poses from the binary files and creates a feature for each frame. """
         # Retrieve a list of all binary files
         query = text(
-            "SELECT media_id, created_at, media_path FROM media WHERE media_type = 'video' AND sub_type = 'binary'")
+            "SELECT media_id, created_at, media_path, parent_id FROM media WHERE media_type = 'video' AND sub_type = 'binary'")
         df = pd.DataFrame(DataAccessObject().fetch_all(query), columns=[
-                          "media_id", "created_at", "media_path"])
+                          "media_id", "created_at", "media_path", "parent_id"])
 
         #  iterate through the dataframe, 300 clips at a time
         for i in self.tqdm(range(0, len(df), 300), desc='Processing binary files', position=0, leave=True):
@@ -383,93 +383,76 @@ class PipelineIOC(Pipeline):
             self.extract_poses_from_binary_subset(batch)
 
     def extract_poses_from_binary_subset(self, df: pd.DataFrame) -> bool:
-        """ Extracts poses from the binary files and creates a feature for each frame. """
+        """ Extracts poses from the binary files and creates a feature for each valid frame. """
 
-        pose_frames = []
-        frame_lenghts = []
+        all_keypoints = []
+        all_clip_indices = []
+        all_frame_numbers = []
+        all_person_ids = []
 
-        for i, row in df.iterrows():
+        for clip_idx, (_, row) in enumerate(df.iterrows()):
             binary_data = BytesIO()
             get_storage_client().download("ioc", row.media_path, binary_data)
-            feature_id, frames_in_video, frame_count, skeleton_bones_count, video_resolution, frames = read_pose_from_binary_file(
+            _, _, _, _, video_resolution, frames = read_pose_from_binary_file(
                 binary_data)
-            pose_frames.extend(frames)
-            frame_lenghts.append(len(pose_frames))
 
-        keypoints_13 = []
-        frame_indices = []  # Store original frame indices
-        clip_indices = np.ones(len(pose_frames), dtype=bool)
-        frame_lengths_filtered = []
+            for pose in frames:
+                frame_number = pose[0]  # Original frame number in video
+                person_id = pose[1]
+                keypoints = np.array(pose[2])  # shape (13, 2)
 
-        current_clip_idx = 0
-        current_clip_count = 0
-        clip_ends = frame_lenghts  # e.g. [1336, 1716, 2855, ...]
+                if np.any(keypoints == 0):
+                    continue  # Skip incomplete poses
 
-        for i, pose in enumerate(pose_frames):
-            # Check if we moved into a new clip
-            if i >= clip_ends[current_clip_idx]:
-                # Store the filtered frame count so far for this clip
-                frame_lengths_filtered.append(len(keypoints_13))
-                current_clip_idx += 1
-                current_clip_count = 0
+                all_keypoints.append(keypoints)
+                all_clip_indices.append(clip_idx)
+                all_frame_numbers.append(frame_number)
+                all_person_ids.append(person_id)
 
-            kp = np.array(pose[2])
-            if np.any(kp == 0):  # If any keypoint is 0
-                clip_indices[i] = False  # Mark this frame as invalid
-            else:
-                keypoints_13.append(kp)
-                frame_indices.append(i)  # Store original index
-                current_clip_count += 1
+        # At this point:
+        # - all_keypoints[i] is the i-th valid pose (np.array)
+        # - all_clip_indices[i] is the index of the clip in df
+        # - all_frame_numbers[i] is the frame number in the original video
 
-        # Add the last clip's frame count
-        frame_lengths_filtered.append(len(keypoints_13))
-
-        selected = self.select_diverse_poses(
-            poses=keypoints_13,
+        # Select diverse poses
+        selected_indices = self.select_diverse_poses(
+            poses=all_keypoints,
             build_embedding_fn=build_pose_vector_with_flip,
-            frame_lengths=frame_lengths_filtered,
+            frame_lengths=np.bincount(all_clip_indices).tolist(),
             threshold=200.0,
         )
+
         print("Selection done, creating features")
-        # save the selected poses to the database
-        for i in selected:
-            pose = keypoints_13[i]
-            pose = np.array(pose).flatten()
-            pose = pose.tolist()
-            # Get the original frame index
-            # Get the original frame index
-            original_frame_index = frame_indices[i]
 
-            # Determine which clip this frame belongs to
-            clip_idx = 0
-            while clip_idx < len(clip_ends)-1 and original_frame_index >= clip_ends[clip_idx]:
-                clip_idx += 1
+        for i in selected_indices:
+            pose = all_keypoints[i].flatten().tolist()
+            clip_idx = all_clip_indices[i]
+            frame_number = all_frame_numbers[i]
+            person_id = all_person_ids[i]
+            media_id = df.iloc[clip_idx].parent_id
 
-            # Calculate the frame number relative to the start of the clip
-            clip_start = 0 if clip_idx == 0 else clip_ends[clip_idx-1]
-            frame_number_in_clip = original_frame_index - clip_start
+            # Reshape the keypoints from flat list [x1, y1, x2, y2, ...] to nested list [[x1, y1], [x2, y2], ...]
+            keypoints_nested = []
+            for j in range(0, len(pose), 2):
+                if j + 1 < len(pose):
+                    keypoints_nested.append([pose[j], pose[j+1]])
 
-            # Use the frame number in clip for the feature
-            media_id = df.iloc[clip_idx].media_id
-
-            # Create a new feature for each selected pose
             feature = Feature(
                 feature_type='pose-binary-extracted',
                 version="1",
                 model_name='YOLO.pose',
-                model_params={
-                    'YOLO': 'pose',
-                },
+                model_params={'YOLO': 'pose'},
                 data={
-                    'keypoints': pose,
-                    'frame': original_frame_index,
+                    'keypoints': keypoints_nested,
+                    'frame': frame_number,
+                    'person_id': person_id,
                 },
-                media_id=row.media_id,
-                # start_frame=original_frame_index,
-                # end_frame=original_frame_index,
+                media_id=media_id,
             )
             create_feature(feature)
+
         print("Features created")
+        return True
 
     def select_diverse_poses(
         self,
