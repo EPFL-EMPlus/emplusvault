@@ -553,6 +553,22 @@ class PipelineIOC(Pipeline):
 
         return selected_indices
 
+    def create_binary_pose_embeddings(self) -> bool:
+        #  Retrieve all binary pose files from the db
+
+        query = text(
+            "SELECT * FROM feature WHERE feature_type = 'pose-binary-extracted' LIMIT 10")
+        result = DataAccessObject().fetch_all(query)
+        df = pd.DataFrame(result)
+
+        for i, row in self.tqdm(df.iterrows(), leave=False, total=len(df), position=1, desc='Clips'):
+            # Set embedding_33 and embedding_size and update the feature
+            pose = row.data['keypoints']
+
+            # create embedding with build_pose_vector_with_flip
+            embedding = build_pose_vector_with_flip(pose)
+            return embedding
+
     def create_projection(self, df: pd.DataFrame) -> bool:
         """ Create the projection for all clips in the dataframe. """
         for i, row in self.tqdm(df.iterrows(), leave=False, total=len(df), position=1, desc='Clips'):

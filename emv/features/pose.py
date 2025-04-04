@@ -1137,9 +1137,6 @@ def get_pose_feature_vector(keypoints: List[List[float]]) -> np.ndarray:
 
     flip_angle = angle_between(ref_vec, global_up)  # in [0, pi]
 
-    # Optional: if you want to distinguish left from right tilts,
-    # you can measure sign with cross product, but let's keep it simple.
-
     # 3) Flatten the translated coords (26D)
     coords_flat = translated.flatten()
 
