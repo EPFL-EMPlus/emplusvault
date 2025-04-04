@@ -567,7 +567,12 @@ class PipelineIOC(Pipeline):
 
             # create embedding with build_pose_vector_with_flip
             embedding = build_pose_vector_with_flip(pose)
-            return embedding
+            query = text(
+                "UPDATE feature SET embedding_33 = :embedding, embedding_size = 33 WHERE feature_id = :feature_id")
+            DataAccessObject().execute_query(
+                query, {'embedding': embedding.tolist(), 'feature_id': row.feature_id})
+            print(row.feature_id, embedding)
+        return True
 
     def create_projection(self, df: pd.DataFrame) -> bool:
         """ Create the projection for all clips in the dataframe. """

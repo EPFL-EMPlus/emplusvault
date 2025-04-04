@@ -1083,7 +1083,7 @@ def get_pose_feature_vector(keypoints: List[List[float]]) -> np.ndarray:
     - (x,y) coords translated so hips midpoint is at (0,0) => 26 dims
     - 7 local angles 
     - 1 global "flip angle" => how rotated wrt vertical
-    Total: 26 + 7 + 1 = 34 dims
+    Total: 26 + 6 + 1 = 33 dims
     """
     def angle_between(vec1, vec2):
         """Helper: compute angle between two 2D vectors. Angle in [0, pi]."""
@@ -1148,7 +1148,7 @@ def get_pose_feature_vector(keypoints: List[List[float]]) -> np.ndarray:
     angle_left_shoulder = compute_limb_angle(translated, 7, 1, 3)
     angle_right_shoulder = compute_limb_angle(translated, 8, 2, 4)
     # One more angle, e.g. left_hip wrt nose
-    angle_left_hip = compute_limb_angle(translated, 9, 7, 0)
+    # angle_left_hip = compute_limb_angle(translated, 9, 7, 0)
 
     angles = np.array([
         angle_left_elbow,
@@ -1157,7 +1157,7 @@ def get_pose_feature_vector(keypoints: List[List[float]]) -> np.ndarray:
         angle_right_knee,
         angle_left_shoulder,
         angle_right_shoulder,
-        angle_left_hip
+        # angle_left_hip
     ], dtype=np.float32)
 
     # 5) Concatenate => final vector
