@@ -117,34 +117,13 @@ async def get_similar_features_by_keypoints(
         # Extract keypoints list from the model
         keypoints = keypoints_model.keypoints
 
-        angles = get_angle_feature_vector(keypoints)
+        if feature_type == "pose-binary-extracted":
+            from emv.features.pose import get_pose_feature_vector
+            angles = get_pose_feature_vector(keypoints)
+        else:
+            angles = get_angle_feature_vector(keypoints)
         resp = get_nearest_neighbors_by_keypoints(
             angles, feature_type, 33, projection_id, k=k_neighbors
-        )
-        return resp
-
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        print(e)
-        raise HTTPException(status_code=401, detail="Not allowed")
-
-
-@feature_router.post("/feature/poem/{feature_type}/similar/projection/{projection_id}/k/{k_neighbors}")
-async def get_similar_features_by_keypoints_poem(
-    feature_type: str,
-    projection_id: int,
-    k_neighbors: int,
-    keypoints_model: KeypointsModel,
-    current_user: User = Depends(get_current_active_user)
-):
-    try:
-        # Extract keypoints list from the model
-        keypoints = keypoints_model.keypoints
-
-        angles = get_poem_feature_vector(keypoints)
-        resp = get_nearest_neighbors_by_keypoints(
-            angles, feature_type, 16, projection_id, k=k_neighbors
         )
         return resp
 

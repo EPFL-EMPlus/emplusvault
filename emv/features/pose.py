@@ -1162,12 +1162,12 @@ def get_pose_feature_vector(keypoints: List[List[float]]) -> np.ndarray:
 
     # 5) Concatenate => final vector
     #    We put the flip_angle last.
-    embedding_34 = np.concatenate([
+    embedding_33 = np.concatenate([
         coords_flat,  # 26
-        angles,       # 7
+        angles,       # 6
         [flip_angle]  # 1
     ])
-    return embedding_34
+    return embedding_33
 
 
 def filter_poses(df: pd.DataFrame, threshold: float = 0.2) -> pd.DataFrame:
