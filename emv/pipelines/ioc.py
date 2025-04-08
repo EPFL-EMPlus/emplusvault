@@ -557,7 +557,7 @@ class PipelineIOC(Pipeline):
         #  Retrieve all binary pose files from the db
 
         query = text(
-            "SELECT * FROM feature WHERE feature_type = 'pose-binary-extracted' LIMIT 10")
+            "SELECT feature_id, data FROM feature WHERE feature_type = 'pose-binary-extracted'")
         result = DataAccessObject().fetch_all(query)
         df = pd.DataFrame(result)
 
@@ -571,7 +571,7 @@ class PipelineIOC(Pipeline):
                 "UPDATE feature SET embedding_33 = :embedding, embedding_size = 33 WHERE feature_id = :feature_id")
             DataAccessObject().execute_query(
                 query, {'embedding': embedding.tolist(), 'feature_id': row.feature_id})
-            print(row.feature_id, embedding)
+            # print(row.feature_id, embedding)
         return True
 
     def create_projection(self, df: pd.DataFrame) -> bool:
