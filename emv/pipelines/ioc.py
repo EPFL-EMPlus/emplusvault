@@ -557,7 +557,7 @@ class PipelineIOC(Pipeline):
         #  Retrieve all binary pose files from the db
 
         query = text(
-            "SELECT feature_id, data FROM feature WHERE feature_type = 'pose-binary-extracted'")
+            "SELECT feature_id, data FROM feature WHERE feature_type = 'pose-binary-extracted' AND embedding_33 IS NULL")
         result = DataAccessObject().fetch_all(query)
         df = pd.DataFrame(result)
 
