@@ -48,7 +48,7 @@ class Media(BaseModel):
     metadata: Dict = Field(..., alias="metadata")
     library_id: int = Field(..., alias="library_id")
     hash: Optional[str] = Field(None, alias="hash", max_length=50)
-    parent_id: str = Field(None, alias="parent_id")
+    parent_id: Optional[str] = Field(None, alias="parent_id")
     start_ts: Optional[float] = Field(None, alias="start_ts")
     end_ts: Optional[float] = Field(None, alias="end_ts")
     start_frame: Optional[int] = Field(None, alias="start_frame")

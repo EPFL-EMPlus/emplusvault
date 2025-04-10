@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Optional
 from botocore.exceptions import ClientError, BotoCoreError
 from botocore.response import StreamingBody
-from emv.settings import S3_ACCESS_KEY, S3_SECRET_KEY, S3_ENDPOINT
+from emv.settings import S3_ACCESS_KEY, S3_SECRET_KEY, S3_ENDPOINT, S3_OUTSIDE_ENDPOINT
 
 
 LOG = emv.utils.get_logger()
@@ -16,24 +16,6 @@ LOG = emv.utils.get_logger()
 
 def get_storage_client():
     return StorageClient()
-
-# class ProgressPercentage(object):
-#     def __init__(self, filename):
-#         self._filename = filename
-#         self._size = float(os.path.getsize(filename))
-#         self._seen_so_far = 0
-#         self._lock = threading.Lock()
-
-#     def __call__(self, bytes_amount):
-#         # To simplify, assume this is hooked up to a single filename
-#         with self._lock:
-#             self._seen_so_far += bytes_amount
-#             percentage = (self._seen_so_far / self._size) * 100
-#             LOG.debug(
-#                 "\r%s  %s / %s  (%.2f%%)" % (
-#                     self._filename, self._seen_so_far, self._size,
-#                     percentage))
-#             # sys.stdout.flush()
 
 
 class StorageClient:
@@ -122,6 +104,19 @@ class StorageClient:
                 f"Failed to download: {bucket_name}/{object_name} due to {e}")
             ok = False
         return ok
+
+    def generate_presigned_url(self, bucket_name: str, object_name: str):
+
+        url = self.client.generate_presigned_url(
+            ClientMethod="get_object",
+            Params={
+                "Bucket": bucket_name,
+                "Key": object_name,
+            },
+            ExpiresIn=1800,  # link valid for 30 minutes
+        )
+        return url.replace(
+            S3_ENDPOINT, S3_OUTSIDE_ENDPOINT)
 
     def get_stream(self, bucket_name: str, object_name: str, start: Optional[int] = None, end: Optional[int] = None) -> Optional[StreamingBody]:
         """

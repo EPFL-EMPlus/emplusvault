@@ -5,7 +5,7 @@ from sqlalchemy.exc import IntegrityError, ProgrammingError
 from emv.api.models import Media
 from emv.api.routers.auth_router import get_current_active_user, User
 from emv.db.dao import DataAccessObject
-from emv.db.queries import create_media, get_media_by_id, get_all_media, create_or_update_media, delete_media, get_all_media_by_library_id
+from emv.db.queries import create_media, get_media_by_id, get_all_media, create_or_update_media, delete_media, get_all_media_by_library_id, get_media_by_parent_id_and_types
 import json
 
 media_router = APIRouter()
@@ -26,7 +26,7 @@ async def create(media: Media, current_user: User = Depends(get_current_active_u
 #     return get_all_media()
 
 
-@media_router.get("/media/{media_id}", response_model=Media)
+@media_router.get("/media/{media_id}")
 async def get_media(media_id: str, current_user: User = Depends(get_current_active_user)):
     return get_media_by_id(media_id)
 
@@ -34,8 +34,14 @@ async def get_media(media_id: str, current_user: User = Depends(get_current_acti
 @media_router.get("/media/library/{library_id}")
 async def get_media_by_library(library_id: int, last_seen_date: str = None, last_seen_media_id: str = None, page_size: int = 20, media_type: str = None, sub_type: str = None, current_user: User = Depends(get_current_active_user)):
     resp = get_all_media_by_library_id(
-            library_id, last_seen_date, last_seen_media_id, page_size, media_type, sub_type)
+        library_id, last_seen_date, last_seen_media_id, page_size, media_type, sub_type)
     return resp
+
+
+@media_router.get("/media/parent/{parent_id}/type/{media_type}/sub_type/{sub_type}")
+async def get_media_by_library_and_parent(parent_id: str, media_type: str, sub_type: str, current_user: User = Depends(get_current_active_user)):
+    return get_media_by_parent_id_and_types(parent_id, media_type, sub_type)
+
 
 # @media_router.put("/media/{media_id}")
 # async def update(media_id: int, media: Media, supabase: Client = Depends(authenticate)):

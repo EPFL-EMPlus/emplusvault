@@ -1,54 +1,32 @@
 from fastapi import (APIRouter, Depends, Request, Response, HTTPException)
-from fastapi.responses import HTMLResponse, StreamingResponse, FileResponse
+from fastapi.responses import HTMLResponse, StreamingResponse, FileResponse, RedirectResponse
 from io import BytesIO
 from emv.api.routers.auth_router import get_current_active_user, User
 from emv.db.queries import check_access, get_media_for_streaming
 from emv.storage.storage import get_storage_client
 from emv.settings import BUCKET_NAME
+from fastapi.responses import JSONResponse
 
-BYTES_PER_RESPONSE = 300000
+BYTES_PER_RESPONSE = 5_000_000
 stream_router = APIRouter()
 
 
 @stream_router.get('/stream/{media_id}')
-async def stream_video(req: Request, media_id: str, current_user: User = Depends(get_current_active_user)):
-
+async def stream_video4(req: Request, media_id: str, current_user: User = Depends(get_current_active_user)):
     check_access(current_user, media_id)
     media = get_media_for_streaming(media_id)
+    url = get_storage_client().generate_presigned_url(
+        media['library_name'], media['media_path'])
+    return RedirectResponse(url=url)
 
-    total_size = media['size']
-    byte_ranges = [0, total_size]
-    try:
-        byte_ranges = req.headers.get("Range").split("=")[1].split('-')
-    except AttributeError:
-        pass
 
-    start_byte_requested = int(byte_ranges[0])
-    end_byte_requested = None
-    if len(byte_ranges) > 1:  # safari
-        if byte_ranges[1]:
-            end_byte_requested = int(byte_ranges[1])
-
-    # End byte is included, need to remove 1
-    end_byte_planned = min(start_byte_requested +
-                           BYTES_PER_RESPONSE, total_size) - 1
-    if end_byte_requested:
-        end_byte_planned = min(end_byte_requested, end_byte_planned)
-
-    stream = get_storage_client().get_stream(
-        media['library_name'], media['media_path'],
-        start=start_byte_requested, end=end_byte_planned)
-
-    return StreamingResponse(
-        stream,
-        headers={
-            "Accept-Ranges": "bytes",
-            "Content-Range": f"bytes {start_byte_requested}-{end_byte_planned}/{total_size}",
-            "Content-Type": 'video/mp4',
-            "Content-Length": f"{end_byte_planned + 1 - start_byte_requested}"
-        },
-        status_code=206
-    )
+@stream_router.get('/redirection_url/{media_id}')
+async def redirection_url(media_id: str, current_user: User = Depends(get_current_active_user)):
+    check_access(current_user, media_id)
+    media = get_media_for_streaming(media_id)
+    url = get_storage_client().generate_presigned_url(
+        media['library_name'], media['media_path'])
+    return JSONResponse(content={"url": url})
 
 
 @stream_router.get('/download/{media_id}')
@@ -64,15 +42,3 @@ def download_video(media_id: str, current_user: User = Depends(get_current_activ
             "Content-Disposition": f'attachment; filename="{media_id}.mp4"'
         }
     )
-
-
-@stream_router.get('/hls/{media_id}/playlist.m3u8')
-async def get_playlist(media_id: str, current_user: User = Depends(get_current_active_user)):
-    stream = get_storage_client().get_bytes("rts", "test/output.m3u8")
-    return StreamingResponse(BytesIO(stream), media_type="application/x-mpegURL")
-
-
-@stream_router.get('/hls/{media_id}/{segment_file}')
-async def get_segment(media_id: str, segment_file: str, current_user: User = Depends(get_current_active_user)):
-    stream = get_storage_client().get_bytes("rts", f"test/{segment_file}")
-    return StreamingResponse(BytesIO(stream), media_type="video/MP2T")

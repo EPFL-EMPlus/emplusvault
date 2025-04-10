@@ -49,6 +49,7 @@ def mjf_archive():
 def db():
     pass
 
+
 @db.command()
 def init_db():
     click.echo(f"Connecting to {DB_HOST}:{DB_PORT}/{DB_NAME}")
@@ -177,13 +178,14 @@ def migrate_db():
     click.echo(f"Connecting to {DB_HOST}:{DB_PORT}/{DB_NAME}")
     confirm = click.prompt(
         'Are you sure you want to migrate the database? This will apply all migrations to the database [yes/no]', default='no')
-    
+
     if confirm.lower() == 'yes':
         click.echo('Migrating database...')
         alembic_cfg = Config("alembic.ini")
         alembic_cfg.set_main_option('sqlalchemy.url', db_url)
 
-        click.echo(f'Revision before migration: {command.current(alembic_cfg)}')
+        click.echo(
+            f'Revision before migration: {command.current(alembic_cfg)}')
         # Run Alembic Upgrade
         command.upgrade(alembic_cfg, 'head')
         click.echo('Database has been successfully migrated.')
@@ -192,6 +194,8 @@ def migrate_db():
         click.echo('Database migration has been canceled.')
 
 # RTS
+
+
 @rts_archive.command()
 @click.option('--continuous', is_flag=True, help='Merge continuous sentences from the same speaker')
 @click.option('--compute-transcript', is_flag=True, help='Compute transcript')
@@ -214,6 +218,16 @@ def pipeline(continuous: bool,
                                              force_media, force_transcript, force_clips)
 
 
+@rts_archive.command()
+@click.option('--batch-no', type=int, default=0, help='Batch number')
+@click.option('--number-of-batches', type=int, default=10, help='Total number of batches the clips are split into')
+def create_audio(batch_no: int, number_of_batches: int) -> None:
+    from emv.pipelines.rts import PipelineRTS
+    pipeline = PipelineRTS()
+    pipeline.extract_audio_from_clips(
+        batch_no=batch_no, number_of_batches=number_of_batches)
+
+
 # @rts_archive.command()
 # def location() -> None:
 #     ts = rts.pipelines.rts.load_all_transcripts(RTS_LOCAL_VIDEOS)
@@ -223,7 +237,7 @@ def pipeline(continuous: bool,
 #     fts = rts.pipelines.rts.merge_location_df_with_metadata(sample_df, fts)
 
 
-## IOC
+# IOC
 @ioc_archive.command()
 @click.option('--data', type=str, default='{}', help='csv dataframe')
 def ingest_ioc(data: str):
@@ -254,6 +268,17 @@ def ingest_ioc(data: str):
     click.echo(f"Processing {len(df)} rows")
     pipeline = PipelineIOC()
     pipeline.ingest(df)
+
+
+@ioc_archive.command()
+@click.option('--data', type=str, default='{}', help='csv dataframe')
+@click.option('--force', is_flag=True, help='Reprocess all poses even when they are already present')
+def process_binary_poses(data: str, force: bool):
+    """ Process binary poses. The poses of each single frame of the clip are stored in a binary file. """
+    from emv.pipelines.ioc import PipelineIOC
+    df = pd.read_csv(data)
+    pipeline = PipelineIOC()
+    pipeline.process_all_video_poses(df, force)
 
 
 @ioc_archive.command()

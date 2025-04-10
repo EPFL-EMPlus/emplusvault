@@ -53,6 +53,19 @@ class DataAccessObject:
                 LOG.error(f"An error occurred when executing query: {e}")
                 raise e
 
+    def execute_batch_query(self, query: str, param_list: List[Dict[str, Any]]) -> None:
+        with self._engine.connect() as conn:
+            trans = conn.begin()
+            try:
+                self.set_rls_context(conn)
+                # Use the execute many style operation
+                conn.execute(text(query), param_list)
+                trans.commit()
+            except SQLAlchemyError as e:
+                trans.rollback()
+                LOG.error(f"An error occurred during batch execution: {e}")
+                raise e
+
     def batch_insert(self, table: str, data: List[Dict[str, Any]]) -> None:
         # Insert a batch of data into the specified table
         with self._engine.connect() as conn:

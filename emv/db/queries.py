@@ -167,9 +167,24 @@ def get_media_by_id(media_id: str) -> dict:
     return DataAccessObject().fetch_one(query, {"media_id": str(media_id)})
 
 
+def get_media_by_parent_id_and_types(parent_id: str, media_type: str, sub_type: str) -> dict:
+    query = text(
+        "SELECT * FROM media WHERE parent_id = :parent_id AND media_type = :media_type AND sub_type = :sub_type")
+    return DataAccessObject().fetch_all(query, {"parent_id": parent_id, "media_type": media_type, "sub_type": sub_type})
+
+
 def get_media_for_streaming(media_id: str) -> dict:
     query = text("SELECT media.media_path, media.size, library.library_name FROM media LEFT JOIN library ON media.library_id = library.library_id WHERE media_id = :media_id")
     return DataAccessObject().fetch_one(query, {"media_id": str(media_id)})
+
+
+def get_media_clips_by_type_sub_type(library_id: int, media_type: str, sub_type: str, fields: str = "*",) -> dict:
+    # Convert fields parameter to actual columns in SQL query
+    query = text(f"""SELECT {fields} FROM media 
+                    WHERE library_id = :library 
+                    AND media_type = :media_type 
+                    AND sub_type = :sub_type ORDER BY created_at ASC""")
+    return DataAccessObject().fetch_all(query, {"library": library_id, "media_type": media_type, "sub_type": sub_type, "fields": fields})
 
 
 def check_media_exists(media_id: str) -> bool:
@@ -425,7 +440,7 @@ def update_feature(feature_id: int, feature: Feature) -> dict:
     """)
     result = DataAccessObject().execute_query(
         query, {**feature_dict, "feature_id": feature_id})
-    return result
+    return {**feature_dict, "feature_id": result.fetchone()[0]}
 
 
 def delete_feature(feature_id: int):

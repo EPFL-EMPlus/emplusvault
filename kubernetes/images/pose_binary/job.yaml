@@ -1,0 +1,27 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: pose-openpifpaf-binary
+spec:
+  completions: 2000
+  parallelism: 16
+  backoffLimit: 10
+  template:
+    metadata:
+      name: pose-openpifpaf-binary
+    spec:
+      containers:
+      - name: c
+        image: 192.168.1.43:5000/pose-openpifpaf-binary
+        imagePullPolicy: Always
+        env:
+        - name: BROKER_URL
+          value: amqp://guest:guest@10.244.3.8:5672
+        - name: QUEUE
+          value: job1
+        envFrom:
+        - secretRef:
+            name: s3-secret
+      restartPolicy: Never
+#       nodeSelector:
+#         kubernetes.io/hostname: emdpn3
