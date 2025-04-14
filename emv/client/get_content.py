@@ -97,7 +97,7 @@ def get_features(feature_type: str, page_size: int = 100, max_features: int = 10
             f"Page size cannot be larger than {API_MAX_CALLS}. Setting page size to {API_MAX_CALLS}")
         page_size = API_MAX_CALLS
 
-    response = requests.get(f"{API_BASE_URL}/features/{feature_type}",
+    response = requests.get(f"{API_BASE_URL}/features/type/{feature_type}",
                             params={
                                 "page_size": page_size
                             },
@@ -113,7 +113,7 @@ def get_features(feature_type: str, page_size: int = 100, max_features: int = 10
         except:
             print(response.json())
             break
-        response = requests.get(f"{API_BASE_URL}/features/{feature_type}",
+        response = requests.get(f"{API_BASE_URL}/features/type/{feature_type}",
                                 params={
                                     "page_size": page_size,
                                     "last_seen_feature_id": last_seen_feature_id
