@@ -194,6 +194,24 @@ def check_media_exists(media_id: str) -> bool:
     return result['exists']
 
 
+def count_media_by_library_id(library_id: int, media_type: str = None, sub_type: str = None) -> int:
+    query = "SELECT COUNT(*) FROM media WHERE library_id = :library_id"
+    params = {
+        "library_id": int(library_id),
+    }
+
+    if media_type:
+        query += " AND media_type = :media_type"
+        params["media_type"] = media_type
+    if sub_type:
+        query += " AND sub_type = :sub_type"
+        params["sub_type"] = sub_type
+
+    query = text(query)
+    result = DataAccessObject().fetch_one(query, params)
+    return result.get('count')
+
+
 def get_all_media_by_library_id(library_id: int, last_seen_date: str = None, last_seen_media_id: str = None, page_size: int = 20, media_type: str = None, sub_type: str = None) -> dict:
     query = "SELECT * FROM media WHERE library_id = :library_id"
 
