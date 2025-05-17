@@ -553,11 +553,12 @@ class PipelineIOC(Pipeline):
 
         return selected_indices
 
-    def create_binary_pose_embeddings(self) -> bool:
-        #  Retrieve all binary pose files from the db
-
-        query = text(
-            "SELECT feature_id, data FROM feature WHERE feature_type = 'pose-binary-extracted' AND embedding_33 IS NULL")
+    def create_binary_pose_embeddings(self, force: bool = False) -> bool:
+        # Retrieve all binary pose files from the db. Can force the update of the embedding_33 column
+        query_text = "SELECT feature_id, data FROM feature WHERE feature_type = 'pose-binary-extracted'"
+        if not force:
+            query_text += " AND embedding_33 IS NULL"
+        query = text(query_text)
         result = DataAccessObject().fetch_all(query)
         df = pd.DataFrame(result)
 
