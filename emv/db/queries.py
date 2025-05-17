@@ -1,3 +1,4 @@
+import psycopg2.extras
 import psycopg2
 import json
 import emv.utils
@@ -529,37 +530,86 @@ def get_nearest_neighbors_by_feature(feature_id: int, feature_type: str, embeddi
 
 
 def get_nearest_neighbors_by_keypoints(
-    angle_feature: list, feature_type: str, embedding_size: int, projection_id: int, k: int = 10
+    angle_feature: list,
+    feature_type: str,
+    embedding_size: int,
+    projection_id: int,
+    k: int = 10,
+    distinct_media: bool = True,
+    distance_metric: str = "cosine",  # options: "euclidean" or "cosine"
 ) -> dict:
-    # Define the embedding column
-    embedding_column = f"embedding_{embedding_size}"
+    """
+    Retrieve the k most similar features based on angle keypoints.
 
-    # Convert the angle_feature list to a PostgreSQL array format
+    Parameters:
+        - angle_feature (list): input feature vector.
+        - feature_type (str): filter by type of feature.
+        - embedding_size (int): dimension of embedding column to use.
+        - projection_id (int): restrict to subset of projection.
+        - k (int): number of neighbors to return.
+        - distinct_media (bool): if True, return at most one feature per media_id. True by default.
+        - distance_metric (str): "euclidean" for Euclidean (<->), "cosine" for cosine distance (<=>).
+    """
+    # Validate metric
+    if distance_metric not in {"euclidean", "cosine"}:
+        raise ValueError("distance_metric must be 'euclidean' or 'cosine'")
+
+    # Choose PostgreSQL operator
+    distance_operator = "<->" if distance_metric == "euclidean" else "<=>"
+
+    # Determine embedding column
+    embedding_column = f"embedding_{embedding_size}"
     angle_feature_array = psycopg2.extras.Json(angle_feature.tolist())
 
-    # Combine the queries
-    query = text(f"""
-        WITH filtered_features AS (
-            SELECT map_projection_feature.feature_id
-            FROM map_projection_feature
-            LEFT JOIN media ON media.media_id = map_projection_feature.media_id
-            WHERE map_projection_feature.projection_id = :projection_id
-        )
-        SELECT 
-            feature.media_id, 
-            feature.feature_id,
-            :angle_feature <-> feature.{embedding_column} AS distance
-        FROM feature
-        WHERE feature.feature_id IN (SELECT feature_id FROM filtered_features)
-          AND feature_type = :feature_type
-        ORDER BY distance
-        LIMIT :k;
-    """)
+    if distinct_media:
+        query = text(f"""
+            WITH filtered_features AS (
+                SELECT map_projection_feature.feature_id
+                FROM map_projection_feature
+                LEFT JOIN media ON media.media_id = map_projection_feature.media_id
+                WHERE map_projection_feature.projection_id = :projection_id
+            ),
+            ranked_features AS (
+                SELECT 
+                    feature.media_id,
+                    feature.feature_id,
+                    :angle_feature {distance_operator} feature.{embedding_column} AS distance,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY feature.media_id 
+                        ORDER BY :angle_feature {distance_operator} feature.{embedding_column}
+                    ) AS rank
+                FROM feature
+                WHERE feature.feature_id IN (SELECT feature_id FROM filtered_features)
+                  AND feature_type = :feature_type
+            )
+            SELECT media_id, feature_id, distance
+            FROM ranked_features
+            WHERE rank = 1
+            ORDER BY distance
+            LIMIT :k;
+        """)
+    else:
+        query = text(f"""
+            WITH filtered_features AS (
+                SELECT map_projection_feature.feature_id
+                FROM map_projection_feature
+                LEFT JOIN media ON media.media_id = map_projection_feature.media_id
+                WHERE map_projection_feature.projection_id = :projection_id
+            )
+            SELECT 
+                feature.media_id, 
+                feature.feature_id,
+                :angle_feature {distance_operator} feature.{embedding_column} AS distance
+            FROM feature
+            WHERE feature.feature_id IN (SELECT feature_id FROM filtered_features)
+              AND feature_type = :feature_type
+            ORDER BY distance
+            LIMIT :k;
+        """)
 
-    # Execute the combined query
     result = DataAccessObject().fetch_all(
         query, {
-            "angle_feature": angle_feature_array,  # Pass the formatted array
+            "angle_feature": angle_feature_array,
             "feature_type": feature_type,
             "projection_id": projection_id,
             "k": k

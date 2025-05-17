@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, File, UploadFile, Body
+from fastapi import APIRouter, HTTPException, Depends, File, UploadFile, Body, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.sql import text
 from typing import List
@@ -105,16 +105,20 @@ class KeypointsModel(BaseModel):
     keypoints: List[List[float]]
 
 
-@feature_router.post("/feature/{feature_type}/similar/projection/{projection_id}/k/{k_neighbors}")
+@feature_router.post("/feature/{feature_type}/similar/projection/{projection_id}")
 async def get_similar_features_by_keypoints(
     feature_type: str,
     projection_id: int,
-    k_neighbors: int,
+    k_neighbors: int = Query(
+        10, description="Number of nearest neighbors to return"),
     keypoints_model: KeypointsModel,
+    distinct_media: bool = Query(
+        True, description="Ensure one result per video (distinct media_id)"),
+    distance_metric: str = Query("cosine", regex="^(euclidean|cosine)$",
+                                 description="Distance metric: 'euclidean' or 'cosine'"),
     current_user: User = Depends(get_current_active_user)
 ):
     try:
-        # Extract keypoints list from the model
         keypoints = keypoints_model.keypoints
 
         if feature_type == "pose-binary-extracted":
@@ -122,16 +126,22 @@ async def get_similar_features_by_keypoints(
             angles = get_pose_feature_vector(keypoints)
         else:
             angles = get_angle_feature_vector(keypoints)
+
         resp = get_nearest_neighbors_by_keypoints(
-            angles, feature_type, 33, projection_id, k=k_neighbors
+            angle_feature=angles,
+            feature_type=feature_type,
+            embedding_size=33,
+            projection_id=projection_id,
+            k=k_neighbors,
+            distinct_media=distinct_media,
+            distance_metric=distance_metric
         )
         return resp
 
     except Exception as e:
         import traceback
         traceback.print_exc()
-        print(e)
-        raise HTTPException(status_code=401, detail="Not allowed")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @feature_router.get("/feature/similar/{feature_id}/k/{k_neighbors}")
