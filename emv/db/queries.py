@@ -269,6 +269,7 @@ def get_media_by_feature_value(key: str, value: Any) -> dict:
 def update_media(media_id: int, media: Media) -> dict:
     media_data = media.model_dump()
     media_data['metadata'] = json.dumps(media_data['metadata'])
+    media_data['media_info'] = json.dumps(media_data['media_info'])
 
     query = text("""
         UPDATE media
