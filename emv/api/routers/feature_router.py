@@ -109,8 +109,8 @@ class KeypointsModel(BaseModel):
 async def get_similar_features_by_keypoints(
     feature_type: str,
     projection_id: int,
-    k_neighbors: int = 10,
     keypoints_model: KeypointsModel,
+    k_neighbors: int = 10,
     distinct_media: bool = True,
     distance_metric: str = "cosine",
     current_user: User = Depends(get_current_active_user)
