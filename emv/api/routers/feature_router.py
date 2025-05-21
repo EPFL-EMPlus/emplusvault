@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, File, UploadFile, Body, Query
+from fastapi import APIRouter, HTTPException, Depends, File, UploadFile, Body
 from fastapi.responses import JSONResponse
 from sqlalchemy.sql import text
 from typing import List
@@ -109,13 +109,10 @@ class KeypointsModel(BaseModel):
 async def get_similar_features_by_keypoints(
     feature_type: str,
     projection_id: int,
-    k_neighbors: int = Query(
-        10, description="Number of nearest neighbors to return"),
+    k_neighbors: int = 10,
     keypoints_model: KeypointsModel,
-    distinct_media: bool = Query(
-        True, description="Ensure one result per video (distinct media_id)"),
-    distance_metric: str = Query("cosine", regex="^(euclidean|cosine)$",
-                                 description="Distance metric: 'euclidean' or 'cosine'"),
+    distinct_media: bool = True,
+    distance_metric: str = "cosine",
     current_user: User = Depends(get_current_active_user)
 ):
     try:
