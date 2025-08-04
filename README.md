@@ -158,3 +158,30 @@ For Kubernetes deployment, see the `kubernetes/` directory.
   sudo mount -t drvfs '\\KNAS\mjf' /mnt/mjf
   sudo mount -t drvfs '\\emplussrv1.epfl.ch\EMPLUS-Network\RTS-Data' /mnt/rts
   ```
+
+## Environment Variables
+
+Required environment variables (see `.env.example` for template):
+
+- **Database**: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`
+- **S3 Storage**: `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_ENDPOINT`, `BUCKET_NAME`
+- **Authentication**: `SECRET_KEY` (for JWT tokens), `SUPERUSER_CLI_KEY`
+- **Optional**: `HF_TOKEN` (for HuggingFace models), `BASE_PATH` (for data storage)
+
+## Citation
+
+If you use this software in your research, please cite it as:
+
+```bibtex
+@software{emv2025,
+  title = {EMV - EPFL Media Vault},
+  author = {Rattinger, André and Benzi, Kirell and Alliata, Giacomo},
+  year = {2025},
+  institution = {École Polytechnique Fédérale de Lausanne (EPFL)},
+  url = {https://github.com/EPFL-EMPlus/emv}
+}
+```
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

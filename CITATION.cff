@@ -1,0 +1,30 @@
+cff-version: 1.2.0
+title: "EMV - EPFL Media Vault"
+message: "If you use this software, please cite it as below."
+type: software
+authors:
+  - family-names: "Rattinger"
+    given-names: "André"
+    email: "andre.rattinger@epfl.ch"
+    affiliation: "École Polytechnique Fédérale de Lausanne (EPFL)"
+  - family-names: "Benzi"
+    given-names: "Kirell"
+    email: "kirell.benzi@epfl.ch"
+    affiliation: "École Polytechnique Fédérale de Lausanne (EPFL)"
+  - family-names: "Alliata"
+    given-names: "Giacomo"
+    email: "giacomo.alliata@epfl.ch"
+    affiliation: "École Polytechnique Fédérale de Lausanne (EPFL)"
+repository-code: "https://github.com/EPFL-EMPlus/emv"
+url: "https://github.com/EPFL-EMPlus/emv"
+abstract: "A comprehensive media processing and analysis framework for managing large-scale multimedia archives with advanced features including pose detection, transcript analysis, and semantic search capabilities."
+keywords:
+  - media processing
+  - pose detection
+  - video analysis
+  - multimedia archives
+  - semantic search
+  - computer vision
+  - natural language processing
+license: MIT
+date-released: 2025-08-04

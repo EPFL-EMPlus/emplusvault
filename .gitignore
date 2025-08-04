@@ -148,3 +148,4 @@ outputs/
 /results
 /library
 data/
+*.pt

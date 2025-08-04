@@ -1,0 +1,36 @@
+{
+    "title": "EMV - EPFL Media Vault",
+    "description": "A comprehensive media processing and analysis framework for managing large-scale multimedia archives with advanced features including pose detection, transcript analysis, and semantic search capabilities.",
+    "creators": [
+        {
+            "name": "Rattinger, André",
+            "affiliation": "École Polytechnique Fédérale de Lausanne (EPFL)",
+            "orcid": ""
+        },
+        {
+            "name": "Benzi, Kirell",
+            "affiliation": "École Polytechnique Fédérale de Lausanne (EPFL)",
+            "orcid": ""
+        },
+        {
+            "name": "Alliata, Giacomo",
+            "affiliation": "École Polytechnique Fédérale de Lausanne (EPFL)",
+            "orcid": ""
+        }
+    ],
+    "keywords": [
+        "media processing",
+        "pose detection",
+        "video analysis",
+        "multimedia archives",
+        "semantic search",
+        "EPFL",
+        "computer vision",
+        "natural language processing"
+    ],
+    "license": "MIT",
+    "upload_type": "software",
+    "access_right": "open",
+    "language": "eng",
+    "notes": "This software was developed at EPFL as part of the EMPlus project for managing and analyzing large multimedia archives."
+}
