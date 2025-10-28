@@ -1,11 +1,12 @@
 from pathlib import Path
 from functools import lru_cache
-try:
-    from pydantic import BaseSettings
-except ImportError:
-    from pydantic_settings import BaseSettings
-
 from typing import Any, List, Optional
+
+try:
+    from pydantic import BaseSettings  # Pydantic v1
+    SettingsConfigDict = None  # type: ignore[assignment]
+except ImportError:
+    from pydantic_settings import BaseSettings, SettingsConfigDict  # Pydantic v2
 
 from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
@@ -55,10 +56,19 @@ class Settings(BaseSettings):
     db_password: str = ''
     secret_key: str = ''
 
-    class Config:
-        env_prefix = "rts_"
-        env_file = get_project_root_path() / ".env"
-        env_file_encoding = 'utf-8'
+    if SettingsConfigDict is not None:
+        model_config = SettingsConfigDict(
+            env_prefix="rts_",
+            env_file=str(get_project_root_path() / ".env"),
+            env_file_encoding='utf-8',
+            extra="ignore",
+        )
+    else:
+        class Config:
+            env_prefix = "rts_"
+            env_file = get_project_root_path() / ".env"
+            env_file_encoding = 'utf-8'
+            extra = "ignore"
 
     def get_metadata_folder(self) -> Path:
         return Path(self.data_folder) / "metadata"

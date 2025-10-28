@@ -13,8 +13,7 @@ from umap.umap_ import nearest_neighbors
 # Metrics
 from sklearn.metrics import pairwise_distances
 from scipy.spatial.distance import pdist
-from coranking import coranking_matrix
-from coranking.metrics import trustworthiness, continuity, LCMC
+from emv.embeddings.coranking_utils import LCMC, continuity, coranking_matrix, trustworthiness
 import mantel
 
 

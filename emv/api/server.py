@@ -1,6 +1,7 @@
 import click
 import uvicorn
 
+from contextlib import asynccontextmanager
 from fastapi.staticfiles import StaticFiles
 from fastapi import FastAPI, HTTPException, Depends, Form
 from pathlib import Path
@@ -18,7 +19,6 @@ from emv.api.routers.feature_router import feature_router
 from emv.api.routers.atlas_router import atlas_router
 from emv.api.routers.stream_router import stream_router
 from emv.api.routers.auth_router import auth_router
-from emv.settings import DATABASE_URL
 
 
 LOG = get_logger()
@@ -31,6 +31,9 @@ def cli():
 
 
 def mount_routers(app, settings: Settings) -> None:
+    if getattr(app.state, "routers_mounted", False):
+        return
+
     # app.include_router(stream_router)
     app.include_router(library_router, tags=["library"])
     app.include_router(projection_router, tags=["projection"])
@@ -40,34 +43,33 @@ def mount_routers(app, settings: Settings) -> None:
     app.include_router(stream_router, tags=["stream"])
     app.include_router(auth_router, tags=["auth"])
 
+    static_mount_point = "/"
     if settings.app_mode == 'prod':
         mount_point = settings.app_prefix if settings.app_prefix else ''
-        # print("MOUNT POINT: ", mount_point)
-        app.mount(mount_point + "/",
-                  StaticFiles(directory=get_public_folder_path(), html=True), name="public")
-    else:
-        app.mount("/", StaticFiles(directory=get_public_folder_path(),
-                  html=True), name="public")
+        static_mount_point = mount_point + "/"
+
+    app.mount(
+        static_mount_point,
+        StaticFiles(directory=get_public_folder_path(), html=True),
+        name="public",
+    )
+    app.state.routers_mounted = True
 
 
-@app.on_event("startup")
-async def startup_event():
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
     settings = get_settings()
-    metadata_folder = settings.get_metadata_folder()
-    archive_folder = settings.get_archive_folder()
-    dao = DataAccessObject()
-    mount_routers(app, settings)
+    DataAccessObject()
+    mount_routers(_app, settings)
+    yield
 
 
-@app.on_event("shutdown")
-async def on_shutdown():
-    dao = DataAccessObject()
+app.router.lifespan_context = lifespan
 
 
 @cli.command('dev', help='Start the server in development mode')
 @click.option('--library', '-l', default='rts', help='Video collection (default: rts)')
 def start_dev(library: str):
-    DataAccessObject().connect(DATABASE_URL)
     LOG.info("Starting server in development mode")
     # LOG.info(f"Connecting to database {DATABASE_URL}")
     library_id = get_library_id_from_name(library)
@@ -79,15 +81,13 @@ def start_dev(library: str):
     init_library(library_id, is_prod=False)
     settings = get_settings()
 
-    uvicorn.run("rts.api.server:app", host='0.0.0.0',
+    uvicorn.run("emv.api.server:app", host='0.0.0.0',
                 port=int(settings.app_port), reload=True)
 
 
 @cli.command('prod')
 @click.option('--library', '-l', default='rts', help='Video collection (default: rts)')
 def start_prod(library: str):
-
-    DataAccessObject().connect(DATABASE_URL)
     library_id = get_library_id_from_name(library)
     if not library_id:
         LOG.error(

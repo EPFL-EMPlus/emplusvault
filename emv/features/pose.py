@@ -18,6 +18,13 @@ from io import BytesIO
 import emv.utils
 import math
 
+import openpifpaf
+
+try:
+    import openpifpaf_vita  # noqa: F401
+except ImportError:  # pragma: no cover - optional dependency
+    openpifpaf_vita = None  # noqa: F841
+
 from enum import Enum
 from pathlib import Path
 from typing import List, Dict, Tuple, Union, Optional

@@ -3,8 +3,8 @@ server {
     #listen [::]:9999;
 
     server_name emplusvault www.emplusvault;
-    ssl_certificate     /home/sinergia/certs/minio.crt;
-    ssl_certificate_key /home/sinergia/certs/minio.key;
+    ssl_certificate     /home/emplus/certs/minio.crt;
+    ssl_certificate_key /home/emplus/certs/minio.key;
 
     location /mjf {
         proxy_pass http://localhost:9000;

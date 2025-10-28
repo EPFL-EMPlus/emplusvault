@@ -23,6 +23,21 @@ class DataAccessObject:
 
         return cls.instance
 
+    def connect(self, db_url: Optional[str] = None) -> Engine:
+        """
+        Backwards-compatible method to initialise or reinitialise the engine.
+        Older callers expect a `connect` method, so we recreate the engine when
+        invoked explicitly. A no-op if the current engine already targets the
+        requested URL.
+        """
+        target_url = db_url or DATABASE_URL
+        # If the engine already matches the requested URL, reuse it.
+        if self._engine and str(self._engine.url) == str(target_url):
+            return self._engine
+
+        self._engine = sqlalchemy.create_engine(target_url)
+        return self._engine
+
     def database_exists(self, db_name: str) -> bool:
         # Check if a database with the given name exists
         query = f"SELECT 1 FROM pg_database WHERE datname='{db_name}'"
