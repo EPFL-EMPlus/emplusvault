@@ -1,8 +1,8 @@
 import os
 import cv2
+import click
 import requests
 import numpy as np
-from getpass import getpass
 from typing import List, Dict, Tuple, Union, Optional
 
 from emv.storage.storage import get_storage_client
@@ -12,22 +12,50 @@ headers = None
 storage_client = get_storage_client()
 
 
-def authenticate() -> dict[str, str]:
-    print("Authenticating...")
-    data = {
+class APIAuthenticationError(RuntimeError):
+    """Raised when the API cannot authenticate."""
+
+
+def _get_auth_payload() -> dict[str, str]:
+    if not API_USERNAME or not API_PASSWORD:
+        raise APIAuthenticationError("Missing API credentials (set API_USERNAME and API_PASSWORD).")
+    return {
         "grant_type": "password",
         "username": API_USERNAME,
         "password": API_PASSWORD,
     }
 
-    # Authenticate
-    response = requests.post(
-        f"{API_BASE_URL}/gettoken", data=data, verify=False)
+
+def authenticate() -> dict[str, str]:
+    click.echo("Authenticating...")
+    data = _get_auth_payload()
+
+    try:
+        response = requests.post(f"{API_BASE_URL}/gettoken", data=data, verify=False, timeout=30)
+    except requests.RequestException as exc:
+        raise APIAuthenticationError(f"Unable to reach API at {API_BASE_URL}: {exc}") from exc
 
     if response.status_code != 200:
-        print("Authentication failed!")
+        summary = ""
+        try:
+            payload = response.json()
+        except ValueError:
+            payload = response.text.strip()
 
-    json_response = response.json()
+        if isinstance(payload, dict):
+            summary = payload.get("detail") or payload.get("message") or str(payload)
+        elif payload:
+            summary = payload[:200]
+
+        raise APIAuthenticationError(
+            f"Authentication failed (status {response.status_code}){': ' + summary if summary else ''}"
+        )
+
+    try:
+        json_response = response.json()
+    except ValueError as exc:
+        raise APIAuthenticationError("Authentication succeeded but response was not JSON.") from exc
+
     access_token = json_response["access_token"]
 
     # Headers can be used for further requests
@@ -48,15 +76,21 @@ def download_video(media_id: str) -> str:
     if headers is None:
         headers = authenticate()
 
-    response = requests.get(
-        f"{API_BASE_URL}/download/{media_id}", headers=headers, verify=False)
+    try:
+        response = requests.get(f"{API_BASE_URL}/download/{media_id}", headers=headers, verify=False, timeout=60)
+    except requests.RequestException as exc:
+        print(f"Download request failed: {exc}")
+        return None
     print(f"{API_BASE_URL}/download/{media_id}")
     if response.status_code != 200:
         headers = authenticate()  # Refresh token
-        response = requests.get(
-            f"{API_BASE_URL}/download/{media_id}", headers=headers, verify=False)
-        if response.status_code == 200:
-            print("Download failed!")
+        try:
+            response = requests.get(f"{API_BASE_URL}/download/{media_id}", headers=headers, verify=False, timeout=60)
+        except requests.RequestException as exc:
+            print(f"Download request failed: {exc}")
+            return None
+        if response.status_code != 200:
+            print(f"Download failed (status {response.status_code}): {response.text[:200]}")
             return None
 
     with open(fn, "wb") as f:
@@ -129,3 +163,59 @@ def get_features(feature_type: str, page_size: int = 100, max_features: int = 10
     print(f"Retrieved {len(results)} features")
 
     return results
+
+
+@click.group()
+def cli() -> None:
+    """Command line utilities for quick EMPLUS Vault API checks."""
+    pass
+
+
+@cli.command("auth")
+def auth_command() -> None:
+    """Authenticate against the API and show the issued token prefix."""
+    try:
+        token_headers = authenticate()
+    except APIAuthenticationError as exc:
+        click.echo(str(exc), err=True)
+        raise SystemExit(1)
+    token = token_headers.get("Authorization", "").replace("Bearer ", "")
+    if token:
+        click.echo(f"Authenticated OK (token starts with: {token[:12]}...)")
+    else:
+        click.echo("Authentication did not return a token", err=True)
+
+
+@cli.command("features")
+@click.option("--feature-type", "-t", required=True, help="Feature type slug to fetch.")
+@click.option("--page-size", "-p", default=25, show_default=True, type=int,
+              help="Records per request (capped by API_MAX_CALLS).")
+@click.option("--max-features", "-m", default=100, show_default=True, type=int,
+              help="Maximum number of records to retrieve.")
+def features_command(feature_type: str, page_size: int, max_features: int) -> None:
+    """Fetch a set of features and report how many were returned."""
+    try:
+        feats = get_features(feature_type, page_size=page_size, max_features=max_features)
+    except APIAuthenticationError as exc:
+        click.echo(str(exc), err=True)
+        raise SystemExit(1)
+    click.echo(f"Received {min(len(feats), max_features)} features (raw total {len(feats)})")
+
+
+@cli.command("download")
+@click.argument("media_id")
+def download_command(media_id: str) -> None:
+    """Download the media file for the given media id."""
+    try:
+        path = download_video(media_id)
+    except APIAuthenticationError as exc:
+        click.echo(str(exc), err=True)
+        raise SystemExit(1)
+    if path:
+        click.echo(f"Saved to {path}")
+    else:
+        click.echo("Download failed", err=True)
+
+
+if __name__ == "__main__":
+    cli()

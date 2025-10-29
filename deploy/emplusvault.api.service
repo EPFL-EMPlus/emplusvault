@@ -1,13 +1,19 @@
 [Unit]
-Description=Uvicorn instance to serve the emplusvault API
-After=network.target
+Description=EMPLUS Vault FastAPI service
+Wants=network-online.target
+After=network-online.target
 
 [Service]
+Type=simple
 User=emplus
 Group=emplus
-WorkingDirectory=/home/emplus/emplusvault/rts/api
-Environment="PATH=/home/emplus/.cache/pypoetry/virtualenvs/emv-tRKeAi0S-py3.11"
-ExecStart=/home/emplus/.cache/pypoetry/virtualenvs/emv-tRKeAi0S-py3.11/bin/uvicorn server:app --host 0.0.0.0 --port 8763 --workers 24
+WorkingDirectory=/home/emplus/work/emplusvault
+EnvironmentFile=-/home/emplus/work/emplusvault/.env
+Environment="PATH=/home/emplus/.cache/pypoetry/virtualenvs/emv-tRKeAi0S-py3.11/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
+Environment="RTS_APP_PORT=8763"
+ExecStart=/home/emplus/.cache/pypoetry/virtualenvs/emv-tRKeAi0S-py3.11/bin/python -m emv.api.server prod -l rts
+Restart=on-failure
+RestartSec=5
 
 [Install]
 WantedBy=multi-user.target

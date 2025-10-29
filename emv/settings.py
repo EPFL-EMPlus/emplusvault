@@ -16,6 +16,13 @@ def get_secret(key):
         return os.getenv(key)
 
 
+def _coerce_int(value, default):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
 # SECRET_KEY FOR AUTH
 # openssl rand -hex 32
 SECRET_KEY = get_secret("SECRET_KEY")
@@ -51,36 +58,30 @@ MJF_ROOT_FOLDER = get_secret("MJF_ROOT_FOLDER") or "/media/data/mjf/"
 VIDEO_ROOT_FOLDER = get_secret("VIDEO_ROOT_FOLDER") or "/media/data/videos/"
 
 API_BASE_URL = get_secret("API_BASE_URL")
-API_MAX_CALLS = 100
 API_USERNAME = get_secret("API_USERNAME")
 API_PASSWORD = get_secret("API_PASSWORD")
+API_MAX_CALLS = _coerce_int(get_secret("API_MAX_CALLS"), 100)
 
-DRIVE_PATH = "/media/data/"
+_api_host = get_secret("API_HOST") or "127.0.0.1"
+_api_port = get_secret("API_PORT") or get_secret("RTS_APP_PORT") or "8763"
+_api_scheme = get_secret("API_SCHEME")
+if not _api_scheme:
+    _api_scheme = "https" if _api_port == "443" else "http"
+
+if not API_BASE_URL:
+    if _api_port in (None, "", "80", "443"):
+        port_fragment = ""
+    else:
+        port_fragment = f":{_api_port}"
+    API_BASE_URL = f"{_api_scheme}://{_api_host}{port_fragment}"
+
+DRIVE_PATH = get_secret("DRIVE_PATH") or "/media/data/"
+if not DRIVE_PATH.endswith("/"):
+    DRIVE_PATH = DRIVE_PATH + "/"
 IOC_DRIVE_PATH = DRIVE_PATH + "ioc/"
 RTS_DRIVE_PATH = DRIVE_PATH + "rts/"
 
 RABBITMQ_SERVER = get_secret("RABBITMQ_SERVER")
-
-API_BASE_URL = "https://10.179.68.6:32034"
-API_MAX_CALLS = 100
-API_USERNAME = os.getenv("API_USERNAME")
-API_PASSWORD = os.getenv("API_PASSWORD")
-
-DRIVE_PATH = "/media/data/"
-
-API_BASE_URL = "https://10.179.68.6:32034"
-API_MAX_CALLS = 100
-API_USERNAME = os.getenv("API_USERNAME")
-API_PASSWORD = os.getenv("API_PASSWORD")
-
-DRIVE_PATH = "/media/data/"
-
-API_BASE_URL = "https://10.179.68.6:32034"
-API_MAX_CALLS = 100
-API_USERNAME = os.getenv("API_USERNAME")
-API_PASSWORD = os.getenv("API_PASSWORD")
-
-DRIVE_PATH = "/media/data/"
 
 
 LLM_ENDPOINT = get_secret("LLM_ENDPOINT")

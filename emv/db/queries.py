@@ -324,7 +324,14 @@ def get_features_by_type(feature_type: str) -> dict:
     return result
 
 
-def get_features_media_info_by_type_paginated(feature_type: str, fields: str = "*", page_size: int = 20, last_seen_feature_id: int = -1) -> dict:
+def get_features_media_info_by_type_paginated(
+    feature_type: str,
+    fields: str = "*",
+    page_size: int = 20,
+    last_seen_feature_id: int = -1,
+    short_clips_only: bool = False,
+    long_clips_only: bool = False,
+) -> dict:
     query = f"""
         SELECT * FROM feature 
         LEFT JOIN media ON media.media_id = feature.media_id
@@ -333,6 +340,12 @@ def get_features_media_info_by_type_paginated(feature_type: str, fields: str = "
     # Add conditions for the last_seen values
     if last_seen_feature_id:
         query += " AND feature_id > :last_seen_feature_id"
+
+    # Add conditions for clip length
+    if short_clips_only and not long_clips_only:
+        query += " AND feature.media_id LIKE '%-%-%'"
+    elif long_clips_only and not short_clips_only:
+        query += " AND feature.media_id NOT LIKE '%-%-%'"
 
     # Order by both created_at and media_id
     query += " ORDER BY feature_id LIMIT :page_size"
